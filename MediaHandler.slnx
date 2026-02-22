@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="MediaHandler.API/MediaHandler.API.csproj" />
+  <Project Path="MediaHandler.Application/MediaHandler.Application.csproj" />
+  <Project Path="MediaHandler.Domain/MediaHandler.Domain.csproj" />
+  <Project Path="MediaHandler.Infrastructure/MediaHandler.Infrastructure.csproj" />
+</Solution>
