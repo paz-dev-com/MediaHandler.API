@@ -56,23 +56,23 @@ Clean Architecture with .NET 10:
   - File info retrieval via `/api/v8/fs/info/`
   - Base64 + URL-encoded path encoding
 
-### 🔄 Phase 5 — API Layer (In Progress)
+### ✅ Phase 5 — API Layer
 - [x] `HealthController` — `GET /api/v1/health`
-- [x] Swagger / OpenAPI configured
+- [x] Swagger / OpenAPI with JWT Bearer security definition
 - [x] CORS configured
-- [ ] Okta JWT authentication middleware
-- [ ] Global exception handler middleware
-- [ ] Rate limiting
+- [x] Okta JWT authentication middleware (`AddApiAuthentication`)
+- [x] Global exception handler middleware (`GlobalExceptionHandler`)
+- [x] Rate limiting — fixed window, 100 req/min (`AddApiRateLimiting`)
 
-### 📋 Phase 6 — Features (Planned)
-- [ ] `AuthController` — user profile & preferences
-- [ ] `MediaController` — CRUD, search, filter, paginate
-- [ ] `WatchStatusController` — mark watched/unwatched
-- [ ] `TmdbController` — search & import from TMDB
-- [ ] `FilesController` — NAS scan & folder access
-- [ ] `WishlistController` — manage desired media
-- [ ] `EpisodesController` — TV show episode tracking
-- [ ] `AdminController` — user management, system config
+### ✅ Phase 6 — Features
+- [x] `AuthController` — `POST /sync`, `GET /me`, `PUT /preferences`
+- [x] `MediaController` — list (paginated, filtered), get by id, create, delete (admin), set watched
+- [x] `EpisodesController` — get seasons with episodes, set episode watched
+- [x] `TmdbController` — search TMDB, import by TMDB id
+- [x] `FilesController` — NAS scan (admin-only)
+- [x] `WishlistController` — list, add, remove
+- [x] `AdminController` — list users, set role, enable/disable user
+- [x] `IApplicationDbContext` — Application-layer interface, implemented by `MediaHandlerDbContext`
 
 ---
 
@@ -90,7 +90,17 @@ MediaHandler.API/
 │
 ├── MediaHandler.Application/
 │   ├── Common/
+│   │   ├── Interfaces/          IApplicationDbContext
 │   │   └── Models/              Result<T>, ApiResponse<T>, PagedResult<T>
+│   ├── Features/
+│   │   ├── Admin/               GetUsers, SetUserRole, SetUserActive
+│   │   ├── Auth/                SyncUser, UpdatePreferences, GetCurrentUser
+│   │   ├── Episodes/            GetSeasons, SetEpisodeWatched
+│   │   ├── Files/               ScanNas
+│   │   ├── Media/               GetMediaList, GetMediaById, CreateMedia, DeleteMedia
+│   │   ├── Tmdb/                SearchTmdb, ImportFromTmdb
+│   │   ├── WatchStatus/         SetWatchStatus
+│   │   └── Wishlist/            GetWishlist, AddToWishlist, RemoveFromWishlist
 │   └── DependencyInjection.cs
 │
 ├── MediaHandler.Infrastructure/
@@ -99,11 +109,14 @@ MediaHandler.API/
 │   ├── Options/                 OktaOptions, TmdbOptions, NasOptions
 │   ├── Persistence/
 │   │   └── Configurations/      One IEntityTypeConfiguration<T> per entity
-│   ├── MediaHandlerDbContext.cs
+│   ├── MediaHandlerDbContext.cs  (implements IApplicationDbContext)
 │   └── DependencyInjection.cs
 │
 └── MediaHandler.API/
-    ├── Controllers/             HealthController
+    ├── Controllers/             Health, Auth, Media, Episodes, Tmdb,
+    │                            Files, Wishlist, Admin
+    ├── Extensions/              ServiceExtensions (auth, rate limiting, swagger)
+    ├── Middleware/              GlobalExceptionHandler
     ├── appsettings.json         Safe defaults only — no secrets
     └── Program.cs
 ```
@@ -182,18 +195,28 @@ dotnet ef database update --project MediaHandler.Infrastructure --startup-projec
 
 ## API Endpoints
 
-| Status | Method | Route | Description |
-|--------|--------|-------|-------------|
-| ✅ | `GET` | `/api/v1/health` | Health check |
-| 📋 | `GET` | `/api/v1/auth/me` | Current user profile |
-| 📋 | `GET` | `/api/v1/media` | List media (paginated) |
-| 📋 | `POST` | `/api/v1/media` | Add media to collection |
-| 📋 | `GET` | `/api/v1/tmdb/search` | Search TMDB |
-| 📋 | `POST` | `/api/v1/tmdb/import/{tmdbId}` | Import media from TMDB |
-| 📋 | `PUT` | `/api/v1/media/{id}/watched` | Set watch status |
-| 📋 | `GET` | `/api/v1/wishlist` | User wishlist |
-| 📋 | `GET` | `/api/v1/files/scan` | Trigger NAS scan |
-| 📋 | `GET` | `/api/v1/admin/users` | Admin: list users |
+| Status | Method | Route | Description | Auth |
+|--------|--------|-------|-------------|------|
+| ✅ | `GET` | `/api/v1/health` | Health check | Public |
+| ✅ | `POST` | `/api/v1/auth/sync` | Sync Okta user on login | User |
+| ✅ | `GET` | `/api/v1/auth/me` | Current user profile | User |
+| ✅ | `PUT` | `/api/v1/auth/preferences` | Update language preference | User |
+| ✅ | `GET` | `/api/v1/media` | List media (page, search, type, watched filter) | User |
+| ✅ | `GET` | `/api/v1/media/{id}` | Get media detail | User |
+| ✅ | `POST` | `/api/v1/media` | Add media to collection | User |
+| ✅ | `DELETE` | `/api/v1/media/{id}` | Remove media | Admin |
+| ✅ | `PUT` | `/api/v1/media/{id}/watched` | Set watch status | User |
+| ✅ | `GET` | `/api/v1/media/{id}/seasons` | Get TV seasons & episodes | User |
+| ✅ | `PUT` | `/api/v1/media/{id}/seasons/{s}/episodes/{e}/watched` | Set episode watched | User |
+| ✅ | `GET` | `/api/v1/tmdb/search` | Search TMDB | User |
+| ✅ | `POST` | `/api/v1/tmdb/import/{tmdbId}` | Import media from TMDB | User |
+| ✅ | `GET` | `/api/v1/wishlist` | List wishlist (paginated) | User |
+| ✅ | `POST` | `/api/v1/wishlist` | Add to wishlist | User |
+| ✅ | `DELETE` | `/api/v1/wishlist/{id}` | Remove from wishlist | User |
+| ✅ | `POST` | `/api/v1/files/scan` | Trigger Freebox NAS scan | Admin |
+| ✅ | `GET` | `/api/v1/admin/users` | List all users | Admin |
+| ✅ | `PUT` | `/api/v1/admin/users/{id}/role` | Set user role | Admin |
+| ✅ | `PUT` | `/api/v1/admin/users/{id}/active` | Enable/disable user | Admin |
 
 ---
 

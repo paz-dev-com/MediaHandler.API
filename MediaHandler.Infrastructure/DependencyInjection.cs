@@ -1,3 +1,4 @@
+using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Domain.Interfaces;
 using MediaHandler.Infrastructure.Identity;
 using MediaHandler.Infrastructure.Nas;
@@ -34,6 +35,7 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<MediaHandlerDbContext>());
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         services.AddHttpClient("Freebox")
@@ -43,7 +45,7 @@ public static class DependencyInjection
                 client.BaseAddress = new Uri(options.FreeboxUrl);
             });
 
-        services.AddSingleton<INasService, FreeboxNasService>();
+        services.AddScoped<INasService, FreeboxNasService>();
 
         return services;
     }

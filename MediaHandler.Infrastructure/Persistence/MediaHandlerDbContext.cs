@@ -1,9 +1,10 @@
+using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediaHandler.Infrastructure.Persistence;
 
-public class MediaHandlerDbContext : DbContext
+public class MediaHandlerDbContext : DbContext, IApplicationDbContext
 {
     public MediaHandlerDbContext(DbContextOptions<MediaHandlerDbContext> options) : base(options)
     {
