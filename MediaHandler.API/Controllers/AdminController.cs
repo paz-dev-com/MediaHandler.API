@@ -1,15 +1,20 @@
-using MediaHandler.Application.Common.Models;
-using MediaHandler.Application.Features.Admin.Queries;
-using MediaHandler.Domain.Enums;
+using MediaHandler.API.Contracts.Admin;
+using MediaHandler.API.Models;
+using MediaHandler.Application.Features.Admin.Commands.SetUserActive;
+using MediaHandler.Application.Features.Admin.Commands.SetUserRole;
+using MediaHandler.Application.Features.Admin.Queries.GetUsers;
+using MediaHandler.Application.Features.Auth.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MediaHandler.API.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
 [Authorize(Policy = "AdminOnly")]
+[EnableRateLimiting("fixed")]
 public class AdminController : ControllerBase
 {
     private readonly ISender _sender;
@@ -17,6 +22,9 @@ public class AdminController : ControllerBase
     public AdminController(ISender sender) => _sender = sender;
 
     [HttpGet("users")]
+    [ProducesResponseType<ApiResponse<IEnumerable<UserDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, CancellationToken ct = default)
     {
         var result = await _sender.Send(new GetUsersQuery(page, pageSize, search), ct);
@@ -25,19 +33,28 @@ public class AdminController : ControllerBase
     }
 
     [HttpPut("users/{userId:guid}/role")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> SetRole(Guid userId, [FromBody] SetRoleRequest request, CancellationToken ct)
     {
-        await _sender.Send(new SetUserRoleCommand(userId, request.Role), ct);
-        return NoContent();
+        var result = await _sender.Send(new SetUserRoleCommand(userId, request.Role), ct);
+        return result.IsSuccess
+            ? NoContent()
+            : NotFound(ApiResponse.Fail(result.Errors.Select(e => new ApiError("NOT_FOUND", e)).ToArray()));
     }
 
     [HttpPut("users/{userId:guid}/active")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> SetActive(Guid userId, [FromBody] SetActiveRequest request, CancellationToken ct)
     {
-        await _sender.Send(new SetUserActiveCommand(userId, request.IsActive), ct);
-        return NoContent();
+        var result = await _sender.Send(new SetUserActiveCommand(userId, request.IsActive), ct);
+        return result.IsSuccess
+            ? NoContent()
+            : NotFound(ApiResponse.Fail(result.Errors.Select(e => new ApiError("NOT_FOUND", e)).ToArray()));
     }
 }
-
-public record SetRoleRequest(UserRole Role);
-public record SetActiveRequest(bool IsActive);

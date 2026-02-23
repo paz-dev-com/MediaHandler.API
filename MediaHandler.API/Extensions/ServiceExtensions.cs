@@ -1,5 +1,8 @@
 using System.Threading.RateLimiting;
+using MediaHandler.API.Identity;
+using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Infrastructure.Options;
+using MediaHandler.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
@@ -82,4 +85,15 @@ public static class ServiceExtensions
 
         return services;
     }
+
+    public static IServiceCollection AddApiHealthChecks(this IServiceCollection services)
+    {
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        services.AddHealthChecks()
+            .AddDbContextCheck<MediaHandlerDbContext>("database");
+
+        return services;
+    }
 }
+

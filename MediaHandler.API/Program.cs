@@ -2,42 +2,70 @@ using MediaHandler.API.Extensions;
 using MediaHandler.API.Middleware;
 using MediaHandler.Application;
 using MediaHandler.Infrastructure;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddProblemDetails();
-
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
-
-builder.Services.AddApiAuthentication(builder.Configuration);
-builder.Services.AddApiRateLimiting();
-builder.Services.AddApiSwagger();
-
-builder.Services.AddCors(options =>
+try
 {
-    options.AddPolicy("AllowAll", policy =>
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
-});
+    var builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
+    builder.Host.UseSerilog((ctx, services, config) => config
+        .ReadFrom.Configuration(ctx.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithMachineName()
+        .Enrich.WithEnvironmentName()
+        .WriteTo.Console()
+        .WriteTo.File("logs/mediahandler-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7));
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "MediaHandler API v1"));
+    builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddProblemDetails();
+
+    builder.Services.AddApplication();
+    builder.Services.AddInfrastructure(builder.Configuration);
+
+    builder.Services.AddApiAuthentication(builder.Configuration);
+    builder.Services.AddApiRateLimiting();
+    builder.Services.AddApiSwagger();
+    builder.Services.AddApiHealthChecks();
+
+    builder.Services.AddCors(options =>
+    {
+        var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
+        options.AddPolicy("AllowFrontend", policy =>
+            policy.WithOrigins(allowedOrigins).AllowAnyMethod().AllowAnyHeader());
+    });
+
+    var app = builder.Build();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "MediaHandler API v1"));
+    }
+
+    app.UseExceptionHandler();
+    app.UseHttpsRedirection();
+    app.UseCors("AllowFrontend");
+    app.UseRateLimiter();
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.MapControllers();
+    app.MapHealthChecks("/health");
+
+    app.Run();
 }
-
-app.UseExceptionHandler();
-app.UseHttpsRedirection();
-app.UseCors("AllowAll");
-app.UseRateLimiter();
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapControllers();
-
-app.Run();
+catch (Exception ex) when (ex is not HostAbortedException)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

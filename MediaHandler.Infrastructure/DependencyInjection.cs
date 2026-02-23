@@ -1,12 +1,12 @@
 using MediaHandler.Application.Common.Interfaces;
-using MediaHandler.Domain.Interfaces;
-using MediaHandler.Infrastructure.Identity;
 using MediaHandler.Infrastructure.Nas;
 using MediaHandler.Infrastructure.Options;
 using MediaHandler.Infrastructure.Persistence;
+using MediaHandler.Infrastructure.Tmdb;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 
 namespace MediaHandler.Infrastructure;
@@ -15,10 +15,19 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<MediaHandlerDbContext>(options =>
+        services.AddScoped<AuditableEntitySaveChangesInterceptor>();
+        services.AddScoped<DomainEventDispatchInterceptor>();
+        services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+
+        services.AddDbContext<MediaHandlerDbContext>((sp, options) =>
+        {
+            var auditInterceptor = sp.GetRequiredService<AuditableEntitySaveChangesInterceptor>();
+            var domainEventInterceptor = sp.GetRequiredService<DomainEventDispatchInterceptor>();
             options.UseSqlServer(
                 configuration.GetConnectionString("DefaultConnection"),
-                b => b.MigrationsAssembly(typeof(MediaHandlerDbContext).Assembly.FullName)));
+                b => b.MigrationsAssembly(typeof(MediaHandlerDbContext).Assembly.FullName))
+                .AddInterceptors(auditInterceptor, domainEventInterceptor);
+        });
 
         services.AddOptions<OktaOptions>()
             .Bind(configuration.GetSection(OktaOptions.Section))
@@ -36,16 +45,24 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<MediaHandlerDbContext>());
-        services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         services.AddHttpClient("Freebox")
             .ConfigureHttpClient((sp, client) =>
             {
                 var options = sp.GetRequiredService<IOptions<NasOptions>>().Value;
                 client.BaseAddress = new Uri(options.FreeboxUrl);
-            });
+            })
+            .AddStandardResilienceHandler();
 
         services.AddScoped<INasService, FreeboxNasService>();
+
+        services.AddHttpClient<ITmdbService, TmdbService>()
+            .ConfigureHttpClient((sp, client) =>
+            {
+                var options = sp.GetRequiredService<IOptions<TmdbOptions>>().Value;
+                client.BaseAddress = new Uri(options.BaseUrl);
+            })
+            .AddStandardResilienceHandler();
 
         return services;
     }

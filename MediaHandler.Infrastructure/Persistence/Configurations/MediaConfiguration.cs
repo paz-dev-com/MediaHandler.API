@@ -36,9 +36,6 @@ public class MediaConfiguration : IEntityTypeConfiguration<Media>
         builder.Property(m => m.VoteAverage)
             .HasPrecision(3, 1);
 
-        builder.Property(m => m.Genres)
-            .HasMaxLength(500);
-
         builder.Property(m => m.Language)
             .HasMaxLength(10);
 

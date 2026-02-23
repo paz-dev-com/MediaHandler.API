@@ -1,4 +1,4 @@
-using MediaHandler.Application.Common.Models;
+using MediaHandler.API.Models;
 using MediaHandler.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;

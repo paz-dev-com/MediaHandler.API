@@ -14,7 +14,7 @@ public record MediaDto(
     string? PosterPath,
     string? BackdropPath,
     decimal? VoteAverage,
-    string? Genres,
+    IReadOnlyList<string> Genres,
     int FileCount,
     bool? IsWatched);
 

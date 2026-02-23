@@ -1,5 +1,6 @@
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
+using MediaHandler.Domain.Entities;
 using MediaHandler.Domain.Enums;
 using MediatR;
 
@@ -17,18 +18,12 @@ public record CreateMediaCommand(
     string? BackdropPath,
     decimal? VoteAverage,
     int? VoteCount,
-    string? Genres,
+    IReadOnlyList<string>? Genres,
     string? Language) : IRequest<Result<Guid>>;
 
-public class CreateMediaCommandHandler : IRequestHandler<CreateMediaCommand, Result<Guid>>
+public class CreateMediaCommandHandler(IApplicationDbContext context)
+    : IRequestHandler<CreateMediaCommand, Result<Guid>>
 {
-    private readonly IApplicationDbContext _context;
-
-    public CreateMediaCommandHandler(IApplicationDbContext context)
-    {
-        _context = context;
-    }
-
     public async Task<Result<Guid>> Handle(CreateMediaCommand request, CancellationToken cancellationToken)
     {
         var media = new Domain.Entities.Media
@@ -44,12 +39,12 @@ public class CreateMediaCommandHandler : IRequestHandler<CreateMediaCommand, Res
             BackdropPath = request.BackdropPath,
             VoteAverage = request.VoteAverage,
             VoteCount = request.VoteCount,
-            Genres = request.Genres,
-            Language = request.Language
+            Language = request.Language,
+            Genres = request.Genres?.Select(name => new MediaGenre { Name = name }).ToList() ?? []
         };
 
-        _context.Medias.Add(media);
-        await _context.SaveChangesAsync(cancellationToken);
+        context.Medias.Add(media);
+        await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success(media.Id);
     }

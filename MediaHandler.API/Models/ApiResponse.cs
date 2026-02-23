@@ -1,4 +1,4 @@
-namespace MediaHandler.Application.Common.Models;
+namespace MediaHandler.API.Models;
 
 public class ApiResponse<T>
 {

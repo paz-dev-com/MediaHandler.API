@@ -16,9 +16,9 @@ public class Media : BaseEntity
     public string? BackdropPath { get; set; }
     public decimal? VoteAverage { get; set; }
     public int? VoteCount { get; set; }
-    public string? Genres { get; set; }
     public string? Language { get; set; }
 
+    public ICollection<MediaGenre> Genres { get; set; } = new List<MediaGenre>();
     public ICollection<MediaFile> MediaFiles { get; set; } = new List<MediaFile>();
     public ICollection<UserMedia> UserMedias { get; set; } = new List<UserMedia>();
     public ICollection<TvSeason> TvSeasons { get; set; } = new List<TvSeason>();

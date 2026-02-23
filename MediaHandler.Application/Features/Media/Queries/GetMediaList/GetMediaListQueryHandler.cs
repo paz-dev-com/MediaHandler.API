@@ -1,8 +1,8 @@
+using FluentValidation;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
 using MediaHandler.Application.Features.Media.DTOs;
 using MediaHandler.Domain.Enums;
-using MediaHandler.Domain.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,24 +13,35 @@ public record GetMediaListQuery(
     int PageSize = 20,
     string? Search = null,
     MediaType? Type = null,
-    bool? IsWatched = null) : IRequest<Result<PagedResult<MediaListItemDto>>>;
+    bool? IsWatched = null,
+    string? Genre = null) : IRequest<Result<PagedResult<MediaListItemDto>>>;
 
-public class GetMediaListQueryHandler : IRequestHandler<GetMediaListQuery, Result<PagedResult<MediaListItemDto>>>
+public class GetMediaListQueryValidator : AbstractValidator<GetMediaListQuery>
 {
-    private readonly IApplicationDbContext _context;
-    private readonly ICurrentUserService _currentUser;
-
-    public GetMediaListQueryHandler(IApplicationDbContext context, ICurrentUserService currentUser)
+    public GetMediaListQueryValidator()
     {
-        _context = context;
-        _currentUser = currentUser;
+        RuleFor(x => x.Page).GreaterThan(0);
+        RuleFor(x => x.PageSize).InclusiveBetween(1, 100);
     }
+}
 
+public class GetMediaListQueryHandler(IApplicationDbContext context, ICurrentUserService currentUser)
+    : IRequestHandler<GetMediaListQuery, Result<PagedResult<MediaListItemDto>>>
+{
     public async Task<Result<PagedResult<MediaListItemDto>>> Handle(GetMediaListQuery request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId;
+        var oktaId = currentUser.OktaId;
+        Guid? userId = null;
+        if (oktaId is not null)
+        {
+            userId = await context.Users
+                .AsNoTracking()
+                .Where(u => u.OktaId == oktaId)
+                .Select(u => (Guid?)u.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
 
-        var query = _context.Medias.AsNoTracking();
+        var query = context.Medias.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(request.Search))
             query = query.Where(m => m.Title.Contains(request.Search) || (m.OriginalTitle != null && m.OriginalTitle.Contains(request.Search)));
@@ -40,6 +51,9 @@ public class GetMediaListQueryHandler : IRequestHandler<GetMediaListQuery, Resul
 
         if (request.IsWatched.HasValue && userId.HasValue)
             query = query.Where(m => m.UserMedias.Any(um => um.UserId == userId.Value && um.IsWatched == request.IsWatched.Value));
+
+        if (!string.IsNullOrWhiteSpace(request.Genre))
+            query = query.Where(m => m.Genres.Any(g => g.Name == request.Genre));
 
         var total = await query.CountAsync(cancellationToken);
 
