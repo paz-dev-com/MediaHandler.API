@@ -1,4 +1,6 @@
-namespace MediaHandler.Domain.Interfaces;
+using MediaHandler.Application.Common.DTOs;
+
+namespace MediaHandler.Application.Common.Interfaces;
 
 public interface INasService
 {
@@ -6,11 +8,3 @@ public interface INasService
     Task<bool> FileExistsAsync(string filePath, CancellationToken cancellationToken = default);
     Task<NasFileInfo?> GetFileInfoAsync(string filePath, CancellationToken cancellationToken = default);
 }
-
-public record NasFileInfo(
-    string FilePath,
-    string FileName,
-    long SizeBytes,
-    string? Format,
-    DateTime CreatedAt,
-    DateTime ModifiedAt);

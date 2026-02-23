@@ -1,10 +1,13 @@
-using MediaHandler.Application.Common.Models;
+using MediaHandler.API.Contracts.Auth;
+using MediaHandler.API.Models;
 using MediaHandler.Application.Features.Auth.Commands.SyncUser;
 using MediaHandler.Application.Features.Auth.Commands.UpdatePreferences;
+using MediaHandler.Application.Features.Auth.DTOs;
 using MediaHandler.Application.Features.Auth.Queries.GetCurrentUser;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace MediaHandler.API.Controllers;
@@ -12,6 +15,7 @@ namespace MediaHandler.API.Controllers;
 [ApiController]
 [Route("api/v1/[controller]")]
 [Authorize]
+[EnableRateLimiting("fixed")]
 public class AuthController : ControllerBase
 {
     private readonly ISender _sender;
@@ -19,6 +23,9 @@ public class AuthController : ControllerBase
     public AuthController(ISender sender) => _sender = sender;
 
     [HttpPost("sync")]
+    [ProducesResponseType<ApiResponse<UserDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Sync(CancellationToken ct)
     {
         var oktaId = User.FindFirstValue("sub")!;
@@ -32,6 +39,9 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("me")]
+    [ProducesResponseType<ApiResponse<UserDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Me(CancellationToken ct)
     {
         var result = await _sender.Send(new GetCurrentUserQuery(), ct);
@@ -41,6 +51,9 @@ public class AuthController : ControllerBase
     }
 
     [HttpPut("preferences")]
+    [ProducesResponseType<ApiResponse<UserDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpdatePreferences([FromBody] UpdatePreferencesRequest request, CancellationToken ct)
     {
         var result = await _sender.Send(new UpdatePreferencesCommand(request.PreferredLanguage), ct);
@@ -49,5 +62,3 @@ public class AuthController : ControllerBase
             : BadRequest(ApiResponse<object>.Fail(result.Errors.Select(e => new ApiError("ERROR", e)).ToArray()));
     }
 }
-
-public record UpdatePreferencesRequest(string PreferredLanguage);

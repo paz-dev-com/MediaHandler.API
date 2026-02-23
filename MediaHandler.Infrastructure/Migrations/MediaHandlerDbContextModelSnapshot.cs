@@ -38,10 +38,6 @@ namespace MediaHandler.Infrastructure.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Genres")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("Language")
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
@@ -145,6 +141,23 @@ namespace MediaHandler.Infrastructure.Migrations
                     b.HasIndex("MediaId");
 
                     b.ToTable("MediaFiles");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.MediaGenre", b =>
+                {
+                    b.Property<Guid>("MediaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("MediaId", "Name");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("MediaGenres");
                 });
 
             modelBuilder.Entity("MediaHandler.Domain.Entities.TvEpisode", b =>
@@ -458,6 +471,17 @@ namespace MediaHandler.Infrastructure.Migrations
                     b.Navigation("Media");
                 });
 
+            modelBuilder.Entity("MediaHandler.Domain.Entities.MediaGenre", b =>
+                {
+                    b.HasOne("MediaHandler.Domain.Entities.Media", "Media")
+                        .WithMany("Genres")
+                        .HasForeignKey("MediaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Media");
+                });
+
             modelBuilder.Entity("MediaHandler.Domain.Entities.TvEpisode", b =>
                 {
                     b.HasOne("MediaHandler.Domain.Entities.TvSeason", "Season")
@@ -531,6 +555,8 @@ namespace MediaHandler.Infrastructure.Migrations
 
             modelBuilder.Entity("MediaHandler.Domain.Entities.Media", b =>
                 {
+                    b.Navigation("Genres");
+
                     b.Navigation("MediaFiles");
 
                     b.Navigation("TvSeasons");

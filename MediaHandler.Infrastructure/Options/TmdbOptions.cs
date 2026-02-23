@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace MediaHandler.Infrastructure.Options;
 
 public class TmdbOptions
@@ -6,5 +8,6 @@ public class TmdbOptions
 
     public string BaseUrl { get; set; } = "https://api.themoviedb.org/3";
     public string ImageBaseUrl { get; set; } = "https://image.tmdb.org/t/p";
+    [Required]
     public required string ApiKey { get; set; }
 }

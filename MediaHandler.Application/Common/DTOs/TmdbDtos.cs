@@ -1,11 +1,4 @@
-namespace MediaHandler.Domain.Interfaces;
-
-public interface ITmdbService
-{
-    Task<TmdbMediaDto?> SearchMediaAsync(string query, string language, CancellationToken cancellationToken = default);
-    Task<TmdbMediaDetailsDto?> GetMediaDetailsAsync(int tmdbId, string mediaType, string language, CancellationToken cancellationToken = default);
-    Task<IEnumerable<TmdbSeasonDto>> GetTvShowSeasonsAsync(int tmdbId, string language, CancellationToken cancellationToken = default);
-}
+namespace MediaHandler.Application.Common.DTOs;
 
 public record TmdbMediaDto(
     int Id,
@@ -30,7 +23,7 @@ public record TmdbMediaDetailsDto(
     string? BackdropPath,
     decimal? VoteAverage,
     int? VoteCount,
-    string? Genres,
+    IReadOnlyList<string>? Genres,
     string Language);
 
 public record TmdbSeasonDto(

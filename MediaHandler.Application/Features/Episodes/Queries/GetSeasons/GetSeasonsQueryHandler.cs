@@ -1,8 +1,6 @@
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
 using MediaHandler.Application.Features.Episodes.DTOs;
-using MediaHandler.Domain.Exceptions;
-using MediaHandler.Domain.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,26 +8,27 @@ namespace MediaHandler.Application.Features.Episodes.Queries.GetSeasons;
 
 public record GetSeasonsQuery(Guid MediaId) : IRequest<Result<IReadOnlyList<TvSeasonDto>>>;
 
-public class GetSeasonsQueryHandler : IRequestHandler<GetSeasonsQuery, Result<IReadOnlyList<TvSeasonDto>>>
+public class GetSeasonsQueryHandler(IApplicationDbContext context, ICurrentUserService currentUser)
+    : IRequestHandler<GetSeasonsQuery, Result<IReadOnlyList<TvSeasonDto>>>
 {
-    private readonly IApplicationDbContext _context;
-    private readonly ICurrentUserService _currentUser;
-
-    public GetSeasonsQueryHandler(IApplicationDbContext context, ICurrentUserService currentUser)
-    {
-        _context = context;
-        _currentUser = currentUser;
-    }
-
     public async Task<Result<IReadOnlyList<TvSeasonDto>>> Handle(GetSeasonsQuery request, CancellationToken cancellationToken)
     {
-        var mediaExists = await _context.Medias.AnyAsync(m => m.Id == request.MediaId, cancellationToken);
+        var mediaExists = await context.Medias.AnyAsync(m => m.Id == request.MediaId, cancellationToken);
         if (!mediaExists)
-            throw new NotFoundException(nameof(Domain.Entities.Media), request.MediaId);
+            return Result.Fail<IReadOnlyList<TvSeasonDto>>("Media not found.");
 
-        var userId = _currentUser.UserId;
+        var oktaId = currentUser.OktaId;
+        Guid? userId = null;
+        if (oktaId is not null)
+        {
+            userId = await context.Users
+                .AsNoTracking()
+                .Where(u => u.OktaId == oktaId)
+                .Select(u => (Guid?)u.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
 
-        var seasons = await _context.TvSeasons
+        var seasons = await context.TvSeasons
             .AsNoTracking()
             .Where(s => s.MediaId == request.MediaId)
             .Include(s => s.TvEpisodes)

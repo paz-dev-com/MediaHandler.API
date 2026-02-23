@@ -1,4 +1,4 @@
-namespace MediaHandler.Domain.Interfaces;
+namespace MediaHandler.Application.Common.Interfaces;
 
 public interface ICurrentUserService
 {

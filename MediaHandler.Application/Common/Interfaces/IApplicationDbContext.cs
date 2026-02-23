@@ -8,6 +8,7 @@ public interface IApplicationDbContext
     DbSet<User> Users { get; }
     DbSet<Domain.Entities.Media> Medias { get; }
     DbSet<MediaFile> MediaFiles { get; }
+    DbSet<MediaGenre> MediaGenres { get; }
     DbSet<UserMedia> UserMedias { get; }
     DbSet<WishlistItem> WishlistItems { get; }
     DbSet<TvSeason> TvSeasons { get; }

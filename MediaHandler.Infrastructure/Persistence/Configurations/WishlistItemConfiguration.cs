@@ -28,6 +28,6 @@ public class WishlistItemConfiguration : IEntityTypeConfiguration<WishlistItem>
             .HasForeignKey(wi => wi.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(wi => new { wi.UserId, wi.TmdbId });
+        builder.HasIndex(wi => new { wi.UserId, wi.TmdbId }).IsUnique();
     }
 }

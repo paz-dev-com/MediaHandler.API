@@ -1,8 +1,7 @@
+using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
 using MediaHandler.Domain.Enums;
-using MediaHandler.Domain.Exceptions;
-using MediaHandler.Domain.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,30 +9,23 @@ namespace MediaHandler.Application.Features.Tmdb.Commands.ImportFromTmdb;
 
 public record ImportFromTmdbCommand(int TmdbId, string MediaType, string? Language = null) : IRequest<Result<Guid>>;
 
-public class ImportFromTmdbCommandHandler : IRequestHandler<ImportFromTmdbCommand, Result<Guid>>
+public class ImportFromTmdbCommandHandler(IApplicationDbContext context, ITmdbService tmdb, ICurrentUserService currentUser)
+    : IRequestHandler<ImportFromTmdbCommand, Result<Guid>>
 {
-    private readonly IApplicationDbContext _context;
-    private readonly ITmdbService _tmdb;
-    private readonly ICurrentUserService _currentUser;
-
-    public ImportFromTmdbCommandHandler(IApplicationDbContext context, ITmdbService tmdb, ICurrentUserService currentUser)
-    {
-        _context = context;
-        _tmdb = tmdb;
-        _currentUser = currentUser;
-    }
-
     public async Task<Result<Guid>> Handle(ImportFromTmdbCommand request, CancellationToken cancellationToken)
     {
-        var existing = await _context.Medias
+        var existing = await context.Medias
             .FirstOrDefaultAsync(m => m.TmdbId == request.TmdbId, cancellationToken);
 
         if (existing is not null)
             return Result.Success(existing.Id);
 
         var language = request.Language ?? "en";
-        var details = await _tmdb.GetMediaDetailsAsync(request.TmdbId, request.MediaType, language, cancellationToken)
-            ?? throw new NotFoundException("TMDB media", request.TmdbId);
+
+        var details = await tmdb.GetMediaDetailsAsync(request.TmdbId, request.MediaType, language, cancellationToken);
+
+        if (details is null)
+            return Result.Fail<Guid>("Media not found on TMDB.");
 
         var mediaType = request.MediaType.Equals("tv", StringComparison.OrdinalIgnoreCase)
             ? MediaType.TvShow : MediaType.Film;
@@ -51,12 +43,12 @@ public class ImportFromTmdbCommandHandler : IRequestHandler<ImportFromTmdbComman
             BackdropPath = details.BackdropPath,
             VoteAverage = details.VoteAverage,
             VoteCount = details.VoteCount,
-            Genres = details.Genres,
-            Language = details.Language
+            Language = details.Language,
+            Genres = details.Genres?.Select(name => new Domain.Entities.MediaGenre { Name = name }).ToList() ?? []
         };
 
-        _context.Medias.Add(media);
-        await _context.SaveChangesAsync(cancellationToken);
+        context.Medias.Add(media);
+        await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success(media.Id);
     }
