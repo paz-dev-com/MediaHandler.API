@@ -30,7 +30,7 @@ try
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
 
-    builder.Services.AddApiAuthentication(builder.Configuration);
+    builder.Services.AddApiAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddApiRateLimiting();
     builder.Services.AddApiSwagger();
     builder.Services.AddApiHealthChecks();
@@ -58,6 +58,9 @@ try
     app.UseAuthorization();
     app.MapControllers();
     app.MapHealthChecks("/health");
+
+    if (app.Environment.IsDevelopment())
+        await app.InitialiseDatabaseAsync();
 
     app.Run();
 }

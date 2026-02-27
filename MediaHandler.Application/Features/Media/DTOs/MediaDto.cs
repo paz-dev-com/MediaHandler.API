@@ -2,6 +2,13 @@ using MediaHandler.Domain.Enums;
 
 namespace MediaHandler.Application.Features.Media.DTOs;
 
+public record MediaFileDto(
+    Guid Id,
+    string FilePath,
+    long? FileSizeBytes,
+    string? Format,
+    string? Resolution);
+
 public record MediaDto(
     Guid Id,
     int TmdbId,
@@ -15,7 +22,7 @@ public record MediaDto(
     string? BackdropPath,
     decimal? VoteAverage,
     IReadOnlyList<string> Genres,
-    int FileCount,
+    IReadOnlyList<MediaFileDto> Files,
     bool? IsWatched);
 
 public record MediaListItemDto(
@@ -28,3 +35,12 @@ public record MediaListItemDto(
     decimal? VoteAverage,
     int FileCount,
     bool? IsWatched);
+
+public record MediaStatsDto(
+    int TotalMedia,
+    int Films,
+    int TvShows,
+    int WatchedByCurrentUser,
+    int UnwatchedByCurrentUser,
+    int TotalFiles,
+    int UnlinkedFiles);

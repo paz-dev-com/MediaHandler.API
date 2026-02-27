@@ -1,5 +1,7 @@
+using MediaHandler.API.Contracts.Wishlist;
 using MediaHandler.API.Models;
 using MediaHandler.Application.Features.Wishlist.Commands.AddToWishlist;
+using MediaHandler.Application.Features.Wishlist.Commands.MarkWishlistAcquired;
 using MediaHandler.Application.Features.Wishlist.Commands.RemoveFromWishlist;
 using MediaHandler.Application.Features.Wishlist.DTOs;
 using MediaHandler.Application.Features.Wishlist.Queries.GetWishlist;
@@ -40,6 +42,18 @@ public class WishlistController : ControllerBase
         return result.IsSuccess
             ? CreatedAtAction(nameof(List), ApiResponse<object>.Success(new { id = result.Value }))
             : BadRequest(ApiResponse<object>.Fail(result.Errors.Select(e => new ApiError("ERROR", e)).ToArray()));
+    }
+
+    [HttpPut("{id:guid}/acquired")]
+    [ProducesResponseType<ApiResponse<WishlistItemDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> MarkAcquired(Guid id, [FromBody] MarkWishlistAcquiredRequest request, CancellationToken ct)
+    {
+        var result = await _sender.Send(new MarkWishlistAcquiredCommand(id, request.IsAcquired), ct);
+        return result.IsSuccess
+            ? Ok(ApiResponse<object>.Success(result.Value))
+            : NotFound(ApiResponse.Fail(result.Errors.Select(e => new ApiError("NOT_FOUND", e)).ToArray()));
     }
 
     [HttpDelete("{id:guid}")]

@@ -17,7 +17,7 @@ namespace MediaHandler.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.1")
+                .HasAnnotation("ProductVersion", "10.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -120,7 +120,7 @@ namespace MediaHandler.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<Guid>("MediaId")
+                    b.Property<Guid?>("MediaId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Resolution")
@@ -455,7 +455,8 @@ namespace MediaHandler.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "TmdbId");
+                    b.HasIndex("UserId", "TmdbId")
+                        .IsUnique();
 
                     b.ToTable("WishlistItems");
                 });
@@ -465,8 +466,8 @@ namespace MediaHandler.Infrastructure.Migrations
                     b.HasOne("MediaHandler.Domain.Entities.Media", "Media")
                         .WithMany("MediaFiles")
                         .HasForeignKey("MediaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .IsRequired(false);
 
                     b.Navigation("Media");
                 });

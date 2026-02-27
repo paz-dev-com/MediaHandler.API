@@ -1,25 +1,282 @@
 # MediaHandler API
 
-A personal media management API for organizing, tracking, and discovering TV shows and films stored on a Freebox NAS.
+A personal media management API for organising, tracking, and discovering TV shows and films stored on a Freebox NAS.
 
 ## Architecture
 
 Clean Architecture with .NET 10:
-- **Domain Layer**: Entities, enums, interfaces, exceptions (no dependencies)
-- **Application Layer**: CQRS with MediatR, business logic, DTOs
-- **Infrastructure Layer**: EF Core, external services (TMDB, Freebox NAS, Okta)
-- **API Layer**: ASP.NET Core Web API controllers
+
+| Layer | Project | Responsibility |
+|-------|---------|---------------|
+| **Domain** | `MediaHandler.Domain` | Entities, enums, exceptions, domain events — zero dependencies |
+| **Application** | `MediaHandler.Application` | CQRS handlers, DTOs, interfaces, validators, AutoMapper profiles |
+| **Infrastructure** | `MediaHandler.Infrastructure` | EF Core, TMDB API client, Freebox NAS client, options |
+| **API** | `MediaHandler.API` | ASP.NET Core controllers, auth, middleware, DI composition |
+| **Tests** | `MediaHandler.Tests` | Unit tests (xUnit, NSubstitute, EF InMemory) |
+| **Integration Tests** | `MediaHandler.IntegrationTests` | Integration tests (xUnit, Testcontainers.MsSql) |
 
 ## Technology Stack
 
-- **.NET 10** - Latest LTS runtime
-- **ASP.NET Core** - Web API framework
-- **Entity Framework Core 9** - ORM with SQL Server
-- **MediatR** - CQRS pattern implementation
-- **FluentValidation** - Request validation
-- **Okta OAuth 2.0** - Authentication
-- **TMDB API** - Media metadata
-- **Freebox API** - NAS file system access via local Freebox router
+- **.NET 10** — runtime
+- **ASP.NET Core** — Web API framework
+- **Entity Framework Core 9** — ORM with SQL Server
+- **MediatR 12** — CQRS pattern
+- **FluentValidation 11** — request validation
+- **AutoMapper 12** — entity → DTO mapping
+- **Serilog** — structured logging (console + rolling file)
+- **Okta OAuth 2.0** — JWT authentication
+- **TMDB API** — media metadata
+- **Freebox API** — NAS file system access via local Freebox router
+- **Microsoft.Extensions.Http.Resilience** — HTTP client resilience (standard retry + circuit-breaker)
+
+## Implementation Status
+
+### ✅ Phase 1 — Solution Setup
+- Solution structure: 4 production projects + 2 test projects
+- Project references enforcing Clean Architecture dependency rules
+- `.gitignore` configured; no secrets committed
+- `appsettings.json` with safe defaults only
+- User Secrets initialised for development
+
+### ✅ Phase 2 — Domain Layer
+- `BaseEntity` with audit fields (`CreatedAt`, `UpdatedAt`, `CreatedBy`, `UpdatedBy`) and domain event collection
+- `IDomainEvent` marker interface
+- Enums: `MediaType` (Film/TvShow), `UserRole` (User/Admin)
+- Entities: `User`, `Media`, `MediaFile`, `MediaGenre`, `UserMedia`, `WishlistItem`, `TvSeason`, `TvEpisode`, `UserEpisode`
+- Domain exceptions: `NotFoundException`, `ValidationException`
+
+### ✅ Phase 3 — Application Layer
+- `Result<T>` / `Result` pattern — no exceptions for business errors
+- `PagedResult<T>` for paginated responses
+- `ICurrentUserService` interface (implemented in API layer)
+- `IDomainEventDispatcher` / `IDomainEventNotification` interfaces
+- `CurrentUserExtensions.ResolveUserIdAsync()` — shared OktaId → UserId helper
+- AutoMapper profiles: `UserMappingProfile`, `WishlistMappingProfile`
+- MediatR, FluentValidation, AutoMapper registered via `DependencyInjection`
+
+### ✅ Phase 4 — Infrastructure Layer
+- `MediaHandlerDbContext` implementing `IApplicationDbContext`
+- Fluent API entity configurations for all 9 entities
+- EF Core migrations: `InitialCreate`, `AddMediaGenresTable`, `MakeMediaFileMediaIdNullable`
+- `AuditableEntitySaveChangesInterceptor` — auto-populates audit fields on save
+- `DomainEventDispatchInterceptor` — dispatches domain events post-save via MediatR
+- Strongly-typed options with `[Required]` DataAnnotations: `OktaOptions`, `TmdbOptions`, `NasOptions`
+- **`TmdbService`**: search, movie/TV details, seasons + episodes
+- **`FreeboxNasService`**: full Freebox API integration
+  - HMAC-SHA1 session authentication against local Freebox router
+  - Automatic session token renewal on 403 expiry
+  - Directory scanning via `/api/v8/fs/ls/`
+  - File info retrieval via `/api/v8/fs/info/`
+  - Base64 + URL-encoded path encoding
+- `.AddStandardResilienceHandler()` on all HTTP clients
+
+### ✅ Phase 5 — API Layer
+- Serilog configured with bootstrap logger, rolling file + console sinks, machine/environment enrichers
+- Swagger / OpenAPI with JWT Bearer security definition and `[ProducesResponseType]` on all actions
+- Okta JWT authentication (`AddApiAuthentication`)
+- `AdminOnly` policy for admin-restricted endpoints
+- Fixed-window rate limiting — 100 req/min
+- Global exception handler (`GlobalExceptionHandler`) — structured `ApiResponse` for all errors
+- CORS configured from `appsettings.json`
+- `HealthCheckService` with EF Core DB check — exposed at `/health` and `GET /api/v1/health`
+- `CurrentUserService` in API layer (reads JWT claims via `IHttpContextAccessor`)
+
+### ✅ Phase 6 — Features
+- **Auth**: sync on login, get current user, update language preference
+- **Media**: paginated+filtered list (search, type, genre, watched), detail with file paths, create, delete (admin), set watched
+- **Media Stats**: collection overview (totals, by type, watched/unwatched, files)
+- **Episodes**: seasons with per-episode watch progress, set episode watched
+- **TMDB**: search, import by TMDB ID (deduplication by `TmdbId`)
+- **Files**: Freebox NAS scan (admin-only) — scanned files are unlinked (`MediaId` nullable) until matched to imported media
+- **Wishlist**: paginated list, add, mark as acquired, remove
+- **Admin**: paginated user list, set role, enable/disable user
+
+### ✅ Phase 7 — Tests
+- **Unit tests** (`MediaHandler.Tests`): `SyncUser`, `DeleteMedia`, `AddToWishlist`, `GetUsers`, `SetUserRole`, `SetUserActive`
+- **Integration tests** (`MediaHandler.IntegrationTests`): Auth sync + Wishlist round-trip against real SQL Server via Testcontainers.MsSql
+
+---
+
+## Project Structure
+
+```
+MediaHandler.API/
+├── MediaHandler.Domain/
+│   ├── Common/               BaseEntity (with domain events), IDomainEvent
+│   ├── Entities/             User, Media, MediaFile, MediaGenre, UserMedia,
+│   │                         WishlistItem, TvSeason, TvEpisode, UserEpisode
+│   ├── Enums/                MediaType, UserRole
+│   └── Exceptions/           NotFoundException, ValidationException
+│
+├── MediaHandler.Application/
+│   ├── Common/
+│   │   ├── Behaviors/        ValidationBehavior<TRequest,TResponse>
+│   │   ├── DTOs/             TmdbDtos, NasDtos
+│   │   ├── Extensions/       CurrentUserExtensions
+│   │   ├── Interfaces/       IApplicationDbContext, ICurrentUserService,
+│   │   │                     ITmdbService, INasService,
+│   │   │                     IDomainEventDispatcher, IDomainEventNotification
+│   │   ├── Mappings/         UserMappingProfile, WishlistMappingProfile
+│   │   └── Models/           Result<T>, PagedResult<T>
+│   ├── Features/
+│   │   ├── Admin/            GetUsers, SetUserRole, SetUserActive
+│   │   ├── Auth/             SyncUser, UpdatePreferences, GetCurrentUser
+│   │   ├── Episodes/         GetSeasons, SetEpisodeWatched
+│   │   ├── Files/            ScanNas
+│   │   ├── Media/            GetMediaList, GetMediaById, GetMediaStats,
+│   │   │                     CreateMedia, DeleteMedia
+│   │   ├── Tmdb/             SearchTmdb, ImportFromTmdb
+│   │   ├── WatchStatus/      SetWatchStatus
+│   │   └── Wishlist/         GetWishlist, AddToWishlist,
+│   │                         MarkWishlistAcquired, RemoveFromWishlist
+│   └── DependencyInjection.cs
+│
+├── MediaHandler.Infrastructure/
+│   ├── Nas/                  FreeboxNasService
+│   ├── Options/              OktaOptions, TmdbOptions, NasOptions
+│   ├── Persistence/
+│   │   ├── Configurations/   One IEntityTypeConfiguration<T> per entity (9 files)
+│   │   ├── AuditableEntitySaveChangesInterceptor.cs
+│   │   ├── DomainEventDispatchInterceptor.cs
+│   │   ├── DomainEventDispatcher.cs
+│   │   └── MediaHandlerDbContext.cs
+│   ├── Tmdb/                 TmdbService
+│   └── DependencyInjection.cs
+│
+├── MediaHandler.API/
+│   ├── Contracts/            Request DTOs by feature
+│   ├── Controllers/          Health, Auth, Media, Episodes, Tmdb,
+│   │                         Files, Wishlist, Admin
+│   ├── Extensions/           ServiceExtensions
+│   ├── Identity/             CurrentUserService
+│   ├── Middleware/           GlobalExceptionHandler
+│   ├── Models/               ApiResponse<T>, ApiError, ApiResponseMeta
+│   ├── appsettings.json      Safe defaults only — no secrets
+│   └── Program.cs
+│
+├── MediaHandler.Tests/            Unit tests
+└── MediaHandler.IntegrationTests/ Integration tests (Testcontainers.MsSql)
+```
+
+---
+
+## API Endpoints
+
+| Method | Route | Description | Auth |
+|--------|-------|-------------|------|
+| `GET` | `/health` | Health check (DB ping) | Public |
+| `GET` | `/api/v1/health` | Health check with status response | Public |
+| `POST` | `/api/v1/auth/sync` | Sync Okta user to local DB on login | User |
+| `GET` | `/api/v1/auth/me` | Current user profile | User |
+| `PUT` | `/api/v1/auth/preferences` | Update language preference | User |
+| `GET` | `/api/v1/media` | List media (page, search, type, genre, watched) | User |
+| `GET` | `/api/v1/media/stats` | Collection statistics | User |
+| `GET` | `/api/v1/media/{id}` | Media detail with file paths | User |
+| `POST` | `/api/v1/media` | Add media to collection | User |
+| `DELETE` | `/api/v1/media/{id}` | Remove media | Admin |
+| `PUT` | `/api/v1/media/{id}/watched` | Set watch status | User |
+| `GET` | `/api/v1/media/{id}/seasons` | TV seasons with per-episode watch progress | User |
+| `PUT` | `/api/v1/media/{id}/seasons/{s}/episodes/{e}/watched` | Set episode watched | User |
+| `GET` | `/api/v1/tmdb/search` | Search TMDB | User |
+| `POST` | `/api/v1/tmdb/import/{tmdbId}` | Import media from TMDB | User |
+| `GET` | `/api/v1/wishlist` | Wishlist (paginated) | User |
+| `POST` | `/api/v1/wishlist` | Add to wishlist | User |
+| `PUT` | `/api/v1/wishlist/{id}/acquired` | Mark wishlist item as acquired | User |
+| `DELETE` | `/api/v1/wishlist/{id}` | Remove from wishlist | User |
+| `POST` | `/api/v1/files/scan` | Trigger Freebox NAS scan | Admin |
+| `GET` | `/api/v1/admin/users` | List all users (paginated) | Admin |
+| `PUT` | `/api/v1/admin/users/{id}/role` | Set user role | Admin |
+| `PUT` | `/api/v1/admin/users/{id}/active` | Enable / disable user | Admin |
+
+---
+
+## Configuration
+
+`appsettings.json` holds only safe, non-secret values. All secrets are stored outside source control via **User Secrets** (dev) or **Environment Variables** (production).
+
+### User Secrets — Development Setup
+
+```bash
+dotnet user-secrets set "Okta:Domain"        "https://dev-xxxxx.okta.com" --project MediaHandler.API
+dotnet user-secrets set "Okta:ClientId"      "your-client-id"             --project MediaHandler.API
+dotnet user-secrets set "Okta:ClientSecret"  "your-client-secret"         --project MediaHandler.API
+dotnet user-secrets set "Tmdb:ApiKey"        "your-tmdb-api-key"          --project MediaHandler.API
+dotnet user-secrets set "Nas:AppId"          "mediahandler"               --project MediaHandler.API
+dotnet user-secrets set "Nas:AppToken"       "your-freebox-app-token"     --project MediaHandler.API
+dotnet user-secrets set "Nas:BasePaths:0"    "/Disk/Media/Films"          --project MediaHandler.API
+dotnet user-secrets set "Nas:BasePaths:1"    "/Disk/Media/Series"         --project MediaHandler.API
+```
+
+### Environment Variables — Production
+
+```sh
+OKTA__DOMAIN=https://dev-xxxxx.okta.com
+OKTA__CLIENTSECRET=your-secret
+TMDB__APIKEY=your-key
+NAS__APPID=mediahandler
+NAS__APPTOKEN=your-freebox-app-token
+NAS__BASEPATHS__0=/Disk/Media/Films
+NAS__BASEPATHS__1=/Disk/Media/Series
+```
+
+### Freebox App Token
+
+The `AppToken` is a one-time token granted by Freebox OS. To obtain it:
+1. POST to `http://mafreebox.freebox.fr/api/v8/login/authorize/` with your app info
+2. Press `✓` on the Freebox front panel
+3. Poll the authorization endpoint until `status` is `granted`
+4. Store the returned `app_token` in User Secrets
+
+---
+
+## Getting Started
+
+### Prerequisites
+- .NET 10 SDK
+- SQL Server / SQL Server LocalDB
+- Okta Developer account
+- TMDB API key
+- Freebox router at `http://mafreebox.freebox.fr`
+
+### Build & Run
+
+```bash
+dotnet restore
+dotnet build
+dotnet run --project MediaHandler.API
+```
+
+### Database
+
+```bash
+dotnet ef database update --project MediaHandler.Infrastructure --startup-project MediaHandler.API
+```
+
+### Run Tests
+
+```bash
+# Unit tests (no external dependencies)
+dotnet test MediaHandler.Tests
+
+# Integration tests (requires Docker for SQL Server container)
+dotnet test MediaHandler.IntegrationTests
+```
+
+---
+
+## Development Guidelines
+
+- File-scoped namespaces, primary constructors, `record` types for DTOs
+- `#nullable enable` throughout
+- EF Core: Fluent API only, one `IEntityTypeConfiguration<T>` per entity
+- CQRS: `Result<T>` returns for business errors, one handler per file, validators in separate files
+- Domain events: raise via `entity.AddDomainEvent(new MyEvent(...))`, implement `IDomainEventNotification`
+- No secrets in source code — User Secrets for dev, environment variables for production
+
+## License
+
+Private project for personal use.
+
 
 ## Implementation Progress
 

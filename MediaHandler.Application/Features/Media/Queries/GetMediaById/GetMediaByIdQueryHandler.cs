@@ -27,12 +27,17 @@ public class GetMediaByIdQueryHandler(IApplicationDbContext context, ICurrentUse
 
         var userMedia = media.UserMedias.FirstOrDefault();
 
+        var files = media.MediaFiles
+            .Select(f => new MediaFileDto(f.Id, f.FilePath, f.FileSizeBytes, f.Format, f.Resolution))
+            .ToList()
+            .AsReadOnly();
+
         return Result.Success(new MediaDto(
             media.Id, media.TmdbId, media.Title, media.OriginalTitle, media.Overview,
             media.Type, media.ReleaseDate, media.Runtime, media.PosterPath, media.BackdropPath,
             media.VoteAverage,
             media.Genres.Select(g => g.Name).ToList().AsReadOnly(),
-            media.MediaFiles.Count,
+            files,
             userMedia?.IsWatched));
     }
 }

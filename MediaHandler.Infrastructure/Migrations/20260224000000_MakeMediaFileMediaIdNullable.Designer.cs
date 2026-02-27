@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MediaHandler.Infrastructure.Migrations
 {
     [DbContext(typeof(MediaHandlerDbContext))]
-    [Migration("20260223000000_AddMediaGenresTable")]
-    partial class AddMediaGenresTable
+    [Migration("20260224000000_MakeMediaFileMediaIdNullable")]
+    partial class MakeMediaFileMediaIdNullable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -123,7 +123,7 @@ namespace MediaHandler.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<Guid>("MediaId")
+                    b.Property<Guid?>("MediaId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Resolution")
@@ -468,8 +468,8 @@ namespace MediaHandler.Infrastructure.Migrations
                     b.HasOne("MediaHandler.Domain.Entities.Media", "Media")
                         .WithMany("MediaFiles")
                         .HasForeignKey("MediaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .IsRequired(false);
 
                     b.Navigation("Media");
                 });
