@@ -30,7 +30,6 @@ public class ScanNasCommandHandler(IApplicationDbContext context, INasService na
 
             context.MediaFiles.Add(new MediaFile
             {
-                MediaId = Guid.Empty,
                 FilePath = file.FilePath,
                 FileSizeBytes = file.SizeBytes,
                 Format = file.Format

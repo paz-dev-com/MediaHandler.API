@@ -23,7 +23,8 @@ public class MediaFileConfiguration : IEntityTypeConfiguration<MediaFile>
         builder.HasOne(mf => mf.Media)
             .WithMany(m => m.MediaFiles)
             .HasForeignKey(mf => mf.MediaId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(mf => mf.FilePath)
             .IsUnique();

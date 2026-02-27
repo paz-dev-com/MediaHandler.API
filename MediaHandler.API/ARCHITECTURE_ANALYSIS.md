@@ -1,6 +1,6 @@
 # MediaHandler API — Clean Architecture Analysis
 
-> **Date:** June 2025 (Updated: July 2025)
+> **Date:** June 2025 (Updated: July 2025 — rev 3)
 > **Branch:** `feature/phase5-6`
 > **Analysed against:** Standard Clean Architecture (Domain → Application → Infrastructure → Presentation)
 
@@ -13,8 +13,8 @@ MediaHandler.API/                  ← Presentation layer (ASP.NET Core Web API)
 MediaHandler.Application/          ← Application layer (Use Cases, CQRS)
 MediaHandler.Infrastructure/       ← Infrastructure layer (EF Core, External APIs)
 MediaHandler.Domain/               ← Domain layer (Entities, Enums, Exceptions)
-MediaHandler.Tests/                ← Unit test project (xUnit, NSubstitute, FluentAssertions)
-MediaHandler.IntegrationTests/     ← Integration test project (Testcontainers.MsSql, real SQL Server)
+MediaHandler.Tests/                ← Unit tests (xUnit, NSubstitute, FluentAssertions, EF InMemory)
+MediaHandler.IntegrationTests/     ← Integration tests (xUnit, Testcontainers.MsSql, real migrations)
 ```
 
 ### Project References
@@ -25,9 +25,10 @@ MediaHandler.IntegrationTests/     ← Integration test project (Testcontainers.
 | **Application** | Domain | ✅ Depends only on Domain |
 | **Infrastructure** | Domain, Application | ✅ Implements interfaces from Application/Domain |
 | **API** | Application, Infrastructure | ✅ Composition root wires everything |
-| **Tests** | Application, Domain, Infrastructure | ✅ Test project only |
+| **Tests** | Application, Domain | ✅ Tests Application layer in isolation (no Infrastructure dependency) |
+| **IntegrationTests** | Application, Domain, Infrastructure | ✅ Tests Application + Infrastructure together against real SQL Server |
 
-**Verdict:** ✅ **The dependency graph is correct.** The Dependency Rule (dependencies point inward) is respected across all four layers.
+**Verdict:** ✅ **The dependency graph is correct.** The Dependency Rule is fully respected. Infrastructure no longer has a `FrameworkReference` to `Microsoft.AspNetCore.App` — that concern has been correctly moved into the API layer.
 
 ---
 
@@ -153,7 +154,7 @@ MediaHandler.IntegrationTests/     ← Integration test project (Testcontainers.
 - ✅ ~~Swagger mixed package versions~~ — **FIXED.** All consistently at 10.1.4.
 - ✅ ~~Missing `[ProducesResponseType]` attributes~~ — **FIXED.** All actions annotated with typed response types.
 - ✅ ~~`HealthController` returns anonymous object~~ — **FIXED.** Returns `ApiResponse<HealthResponse>` backed by `HealthCheckService`.
-- ✅ ~~No `appsettings.Development.json`~~ — **FIXED.** File exists with dev-specific overrides.
+- **`appsettings.Development.json`** — Not yet created. Only `appsettings.json` exists.
 
 ### ⚠️ Remaining Issues & Recommendations
 
@@ -178,7 +179,7 @@ MediaHandler.IntegrationTests/     ← Integration test project (Testcontainers.
 | **Resilience (Polly)** | ✅ Implemented | `AddStandardResilienceHandler()` on TMDB and Freebox HTTP clients |
 | **Health Checks** | ✅ Implemented | `HealthCheckService` + DB check; exposed on `/health` and `api/v1/health` |
 | **Unit Tests** | ✅ Implemented | `MediaHandler.Tests` project with xUnit, NSubstitute, FluentAssertions, EF InMemory |
-| **Integration Tests** | ✅ Implemented | `MediaHandler.IntegrationTests` with Testcontainers.MsSql; covers Auth, Wishlist and Media CRUD with a real SQL Server instance |
+| **Integration Tests** | ✅ Partial | `MediaHandler.IntegrationTests` with Testcontainers.MsSql; covers Auth sync + Wishlist round-trip. Media CRUD + genre filtering not yet covered. |
 | **Domain Events** | ✅ Implemented | `DomainEventDispatchInterceptor` dispatches `IDomainEventNotification` events via MediatR after `SaveChangesAsync` |
 | **Audit Trail** | ✅ Implemented | `AuditableEntitySaveChangesInterceptor` auto-populates audit fields |
 
@@ -226,12 +227,11 @@ MediaHandler.IntegrationTests/     ← Integration test project (Testcontainers.
 17. ~~**`WishlistItemConfiguration` index not unique**~~ — **Done.** `.IsUnique()` added.
 18. ~~**`[Required]` on Options classes**~~ — **Done.** All `required` properties carry `[Required]` DataAnnotation.
 19. ~~**`HealthController` returns anonymous object**~~ — **Done.** Returns `ApiResponse<HealthResponse>` backed by `HealthCheckService` with DB health check.
-20. ~~**No `appsettings.Development.json`**~~ — **Already existed.**
-21. ~~**`Genres` stored as `string`**~~ — **Done.** `MediaGenre` join table added with EF migration `AddMediaGenresTable`; `GetMediaListQueryHandler` filters via `m.Genres.Any(g => g.Name == request.Genre)` at DB level.
-22. ~~**No domain events mechanism**~~ — **Done.** `IDomainEventNotification : IDomainEvent, INotification` in Application; `DomainEventDispatcher` + `DomainEventDispatchInterceptor` in Infrastructure dispatch events through MediatR after each save.
-23. ~~**No integration tests**~~ — **Done.** `MediaHandler.IntegrationTests` project with `Testcontainers.MsSql`; covers `SyncUser`, wishlist round-trip, media CRUD with genre filtering, and not-found result paths.
-24. ~~**`Serilog.Enrichers.Environment` missing**~~ — **Done.** `.Enrich.WithMachineName()` and `.Enrich.WithEnvironmentName()` in `Program.cs`.
-25. ~~**AutoMapper missing**~~ — **Done.** `AutoMapper` 12.0.1; `UserMappingProfile` and `WishlistMappingProfile` registered via `AddAutoMapper(Assembly.GetExecutingAssembly())`.
+20. ~~**`Genres` stored as `string`**~~ — **Done.** `MediaGenre` join table added with EF migration `AddMediaGenresTable`; `GetMediaListQueryHandler` filters via `m.Genres.Any(g => g.Name == request.Genre)` at DB level.
+21. ~~**No domain events mechanism**~~ — **Done.** `IDomainEventNotification : IDomainEvent, INotification` in Application; `DomainEventDispatcher` + `DomainEventDispatchInterceptor` in Infrastructure dispatch events through MediatR after each save.
+22. ~~**No integration tests**~~ — **Done.** `MediaHandler.IntegrationTests` project with `Testcontainers.MsSql`; covers `SyncUser` and wishlist add/remove/list round-trip against a real SQL Server with applied migrations.
+23. ~~**`Serilog.Enrichers.Environment` missing**~~ — **Done.** `.Enrich.WithMachineName()` and `.Enrich.WithEnvironmentName()` in `Program.cs`.
+24. ~~**AutoMapper missing**~~ — **Done.** `AutoMapper` 12.0.1; `UserMappingProfile` and `WishlistMappingProfile` registered via `AddAutoMapper(Assembly.GetExecutingAssembly())`.
 
 ---
 
@@ -246,3 +246,8 @@ MediaHandler.IntegrationTests/     ← Integration test project (Testcontainers.
 
 ### Remaining
 1. **Accepted tradeoff — `IRepository<T>` not introduced (A8)** — `IApplicationDbContext` exposes `DbSet<T>`, keeping `Microsoft.EntityFrameworkCore` in the Application layer. This is a deliberate pragmatic choice: the query complexity of this API (filtering, pagination, multi-level includes) would produce a leaky or verbose repository abstraction with little practical benefit. Revisit if the Application layer grows test-isolation requirements that EF InMemory cannot satisfy.
+2. **`ICurrentUserService` registered inside `AddApiHealthChecks()`** — `services.AddScoped<ICurrentUserService, CurrentUserService>()` is placed inside `ServiceExtensions.AddApiHealthChecks()`. Health checks and identity are unrelated concerns. Rename to `AddApiServices()` or extract a dedicated `AddApiIdentity()` extension.
+3. **`appsettings.Development.json` not created** — Only `appsettings.json` exists. A development override file would allow lower log levels, relaxed rate limits, and development-specific CORS origins without touching shared config.
+4. **Integration test coverage gaps** — `MediaHandler.IntegrationTests` only covers Auth + Wishlist. Key flows not yet covered: `DeleteMedia`, `SetWatchStatus`, `ImportFromTmdb`, `ScanNas`, genre-based filtering.
+5. **Empty `Identity/` folder in Infrastructure** — `<Folder Include="Identity\" />` remains in `MediaHandler.Infrastructure.csproj` after `CurrentUserService` was moved to the API project. Remove to avoid confusion.
+6. **`.csproj.Backup.tmp` artefact** — `MediaHandler.Infrastructure.csproj.Backup.tmp` should be deleted or added to `.gitignore`.

@@ -3,8 +3,10 @@ using MediaHandler.API.Identity;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Infrastructure.Options;
 using MediaHandler.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
@@ -12,24 +14,32 @@ namespace MediaHandler.API.Extensions;
 
 public static class ServiceExtensions
 {
-    public static IServiceCollection AddApiAuthentication(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddApiAuthentication(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
-        var okta = configuration.GetSection(OktaOptions.Section).Get<OktaOptions>()!;
+        if (environment.IsDevelopment())
+        {
+            services.AddAuthentication(DevAuthenticationHandler.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, DevAuthenticationHandler>(DevAuthenticationHandler.SchemeName, null);
+        }
+        else
+        {
+            var okta = configuration.GetSection(OktaOptions.Section).Get<OktaOptions>()!;
 
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                options.Authority = okta.Domain;
-                options.Audience = okta.Audience;
-                options.TokenValidationParameters = new TokenValidationParameters
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
                 {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ClockSkew = TimeSpan.FromSeconds(30)
-                };
-            });
+                    options.Authority = okta.Domain;
+                    options.Audience = okta.Audience;
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ClockSkew = TimeSpan.FromSeconds(30)
+                    };
+                });
+        }
 
         services.AddAuthorizationBuilder()
             .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));

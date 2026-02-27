@@ -5,6 +5,7 @@ using MediaHandler.Application.Features.Media.Commands.DeleteMedia;
 using MediaHandler.Application.Features.Media.DTOs;
 using MediaHandler.Application.Features.Media.Queries.GetMediaById;
 using MediaHandler.Application.Features.Media.Queries.GetMediaList;
+using MediaHandler.Application.Features.Media.Queries.GetMediaStats;
 using MediaHandler.Application.Features.WatchStatus.Commands.SetWatchStatus;
 using MediaHandler.Domain.Enums;
 using MediatR;
@@ -23,6 +24,15 @@ public class MediaController : ControllerBase
     private readonly ISender _sender;
 
     public MediaController(ISender sender) => _sender = sender;
+
+    [HttpGet("stats")]
+    [ProducesResponseType<ApiResponse<MediaStatsDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Stats(CancellationToken ct)
+    {
+        var result = await _sender.Send(new GetMediaStatsQuery(), ct);
+        return Ok(ApiResponse<object>.Success(result.Value));
+    }
 
     [HttpGet]
     [ProducesResponseType<ApiResponse<IEnumerable<MediaListItemDto>>>(StatusCodes.Status200OK)]
