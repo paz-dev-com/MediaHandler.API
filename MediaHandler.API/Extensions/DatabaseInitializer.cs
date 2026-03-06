@@ -16,7 +16,18 @@ public static class DatabaseInitializer
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MediaHandlerDbContext>();
 
-        await db.Database.MigrateAsync();
+        if (!await db.Database.CanConnectAsync())
+        {
+            // Database does not exist yet — create it by applying all migrations.
+            await db.Database.MigrateAsync();
+        }
+        else
+        {
+            var pending = await db.Database.GetPendingMigrationsAsync();
+            if (pending.Any())
+                await db.Database.MigrateAsync();
+        }
+
         await SeedDevUserAsync(db);
     }
 
