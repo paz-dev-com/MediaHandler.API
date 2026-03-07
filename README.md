@@ -24,7 +24,7 @@ Clean Architecture with .NET 10:
 - **FluentValidation 11** — request validation
 - **AutoMapper 12** — entity → DTO mapping
 - **Serilog** — structured logging (console + rolling file)
-- **Okta OAuth 2.0** — JWT authentication
+- **Auth0 OAuth 2.0** — JWT authentication
 - **TMDB API** — media metadata
 - **Freebox API** — NAS file system access via local Freebox router
 - **Microsoft.Extensions.Http.Resilience** — HTTP client resilience (standard retry + circuit-breaker)
@@ -73,7 +73,7 @@ Clean Architecture with .NET 10:
 ### ✅ Phase 5 — API Layer
 - Serilog configured with bootstrap logger, rolling file + console sinks, machine/environment enrichers
 - Swagger / OpenAPI with JWT Bearer security definition and `[ProducesResponseType]` on all actions
-- Okta JWT authentication (`AddApiAuthentication`)
+- Auth0 JWT authentication (`AddApiAuthentication`)
 - `AdminOnly` policy for admin-restricted endpoints
 - Fixed-window rate limiting — 100 req/min
 - Global exception handler (`GlobalExceptionHandler`) — structured `ApiResponse` for all errors
@@ -166,7 +166,7 @@ MediaHandler.API/
 |--------|-------|-------------|------|
 | `GET` | `/health` | Health check (DB ping) | Public |
 | `GET` | `/api/v1/health` | Health check with status response | Public |
-| `POST` | `/api/v1/auth/sync` | Sync Okta user to local DB on login | User |
+| `POST` | `/api/v1/auth/sync` | Sync Auth0 user to local DB on login | User |
 | `GET` | `/api/v1/auth/me` | Current user profile | User |
 | `PUT` | `/api/v1/auth/preferences` | Update language preference | User |
 | `GET` | `/api/v1/media` | List media (page, search, type, genre, watched) | User |
@@ -197,7 +197,7 @@ MediaHandler.API/
 ### User Secrets — Development Setup
 
 ```bash
-dotnet user-secrets set "Okta:Domain"        "https://dev-xxxxx.okta.com" --project MediaHandler.API
+dotnet user-secrets set "Okta:Domain"        "https://dev-xxxxx.eu.auth0.com/" --project MediaHandler.API
 dotnet user-secrets set "Okta:ClientId"      "your-client-id"             --project MediaHandler.API
 dotnet user-secrets set "Okta:ClientSecret"  "your-client-secret"         --project MediaHandler.API
 dotnet user-secrets set "Tmdb:ApiKey"        "your-tmdb-api-key"          --project MediaHandler.API
@@ -210,7 +210,7 @@ dotnet user-secrets set "Nas:BasePaths:1"    "/Disk/Media/Series"         --proj
 ### Environment Variables — Production
 
 ```sh
-OKTA__DOMAIN=https://dev-xxxxx.okta.com
+OKTA__DOMAIN=https://dev-xxxxx.eu.auth0.com/
 OKTA__CLIENTSECRET=your-secret
 TMDB__APIKEY=your-key
 NAS__APPID=mediahandler
@@ -234,7 +234,7 @@ The `AppToken` is a one-time token granted by Freebox OS. To obtain it:
 ### Prerequisites
 - .NET 10 SDK
 - SQL Server / SQL Server LocalDB
-- Okta Developer account
+- Auth0 account (with API and Application configured)
 - TMDB API key
 - Freebox router at `http://mafreebox.freebox.fr`
 
@@ -304,7 +304,7 @@ Private project for personal use.
 - [x] `MediaHandlerDbContext` with all `DbSet<T>` properties
 - [x] Fluent API entity configurations for all 8 entities (unique indexes, constraints, relations)
 - [x] EF Core migration: `InitialCreate`
-- [x] `CurrentUserService` resolving user identity from Okta JWT claims
+- [x] `CurrentUserService` resolving user identity from Auth0 JWT claims
 - [x] Strongly-typed options: `OktaOptions`, `TmdbOptions`, `NasOptions`
 - [x] **`FreeboxNasService`**: Full Freebox API integration
   - HMAC-SHA1 session authentication against local Freebox router
@@ -317,7 +317,7 @@ Private project for personal use.
 - [x] `HealthController` — `GET /api/v1/health`
 - [x] Swagger / OpenAPI with JWT Bearer security definition
 - [x] CORS configured
-- [x] Okta JWT authentication middleware (`AddApiAuthentication`)
+- [x] Auth0 JWT authentication middleware (`AddApiAuthentication`)
 - [x] Global exception handler middleware (`GlobalExceptionHandler`)
 - [x] Rate limiting — fixed window, 100 req/min (`AddApiRateLimiting`)
 
@@ -388,7 +388,7 @@ MediaHandler.API/
 
 ```bash
 # Okta
-dotnet user-secrets set "Okta:Domain"        "https://dev-xxxxx.okta.com" --project MediaHandler.API
+dotnet user-secrets set "Okta:Domain"        "https://dev-xxxxx.eu.auth0.com/" --project MediaHandler.API
 dotnet user-secrets set "Okta:ClientId"      "your-client-id"             --project MediaHandler.API
 dotnet user-secrets set "Okta:ClientSecret"  "your-client-secret"         --project MediaHandler.API
 
@@ -405,7 +405,7 @@ dotnet user-secrets set "Nas:BasePaths:1"    "/Disk/Media/Series"         --proj
 ### Environment Variables — Production
 
 ```sh
-OKTA__DOMAIN=https://dev-xxxxx.okta.com
+OKTA__DOMAIN=https://dev-xxxxx.eu.auth0.com/
 OKTA__CLIENTSECRET=your-secret
 TMDB__APIKEY=your-key
 NAS__APPID=mediahandler
@@ -429,7 +429,7 @@ The `AppToken` is a one-time token granted by the Freebox OS UI. To obtain it:
 ### Prerequisites
 - .NET 10 SDK
 - SQL Server / SQL Server LocalDB
-- Okta Developer account
+- Auth0 account (with API and Application configured)
 - TMDB API key
 - Freebox router accessible at `http://mafreebox.freebox.fr`
 
@@ -455,7 +455,7 @@ dotnet ef database update --project MediaHandler.Infrastructure --startup-projec
 | Status | Method | Route | Description | Auth |
 |--------|--------|-------|-------------|------|
 | ✅ | `GET` | `/api/v1/health` | Health check | Public |
-| ✅ | `POST` | `/api/v1/auth/sync` | Sync Okta user on login | User |
+| ✅ | `POST` | `/api/v1/auth/sync` | Sync Auth0 user on login | User |
 | ✅ | `GET` | `/api/v1/auth/me` | Current user profile | User |
 | ✅ | `PUT` | `/api/v1/auth/preferences` | Update language preference | User |
 | ✅ | `GET` | `/api/v1/media` | List media (page, search, type, watched filter) | User |
@@ -495,7 +495,7 @@ Private project for personal use.
 Clean Architecture with .NET 10:
 - **Domain Layer**: Entities, enums, interfaces, exceptions (no dependencies)
 - **Application Layer**: CQRS with MediatR, business logic, DTOs
-- **Infrastructure Layer**: EF Core, external services (TMDB, NAS, Okta)
+- **Infrastructure Layer**: EF Core, external services (TMDB, NAS, Auth0)
 - **API Layer**: ASP.NET Core Web API controllers
 
 ## Technology Stack
@@ -505,7 +505,7 @@ Clean Architecture with .NET 10:
 - **Entity Framework Core 10** - ORM with SQL Server
 - **MediatR** - CQRS pattern implementation
 - **FluentValidation** - Request validation
-- **Okta OAuth 2.0** - Authentication (to be configured)
+- **Auth0 OAuth 2.0** - Authentication (configured)
 - **TMDB API** - Media metadata (to be configured)
 
 ## Features

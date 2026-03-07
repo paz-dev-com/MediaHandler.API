@@ -23,7 +23,7 @@ public class DevAuthenticationHandler(
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var oktaId = Request.Headers["X-Dev-OktaId"].FirstOrDefault() ?? "okta|devuser1";
+        var oktaId = Request.Headers["X-Dev-OktaId"].FirstOrDefault() ?? "auth0|devuser1";
         var email = Request.Headers["X-Dev-Email"].FirstOrDefault() ?? "dev@local.com";
         var isAdmin = !string.Equals(
             Request.Headers["X-Dev-IsAdmin"].FirstOrDefault(),

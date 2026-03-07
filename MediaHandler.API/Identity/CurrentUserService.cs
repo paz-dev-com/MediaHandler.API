@@ -6,26 +6,10 @@ namespace MediaHandler.API.Identity;
 
 public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICurrentUserService
 {
+    public string? Email => httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Email);
 
-    public Guid? UserId
-    {
-        get
-        {
-            var userIdClaim = httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value;
-            return userIdClaim != null && Guid.TryParse(userIdClaim, out var userId) ? userId : null;
-        }
-    }
+    public string? OktaId => httpContextAccessor.HttpContext?.User?.FindFirstValue("sub");
 
-    public string? Email => httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Email)?.Value;
-
-    public string? OktaId => httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value;
-
-    public bool IsAdmin
-    {
-        get
-        {
-            var roleClaim = httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value;
-            return roleClaim == UserRole.Admin.ToString();
-        }
-    }
+    public bool IsAdmin =>
+        httpContextAccessor.HttpContext?.User?.IsInRole(UserRole.Admin.ToString()) ?? false;
 }

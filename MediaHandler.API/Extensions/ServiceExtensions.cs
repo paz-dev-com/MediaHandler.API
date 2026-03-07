@@ -28,7 +28,8 @@ public static class ServiceExtensions
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    options.Authority = okta.Domain;
+                    // Auth0 requires a trailing slash on the authority URL for OIDC discovery
+                    options.Authority = okta.Domain.TrimEnd('/') + '/';
                     options.Audience = okta.Audience;
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
@@ -36,7 +37,9 @@ public static class ServiceExtensions
                         ValidateAudience = true,
                         ValidateLifetime = true,
                         ValidateIssuerSigningKey = true,
-                        ClockSkew = TimeSpan.FromSeconds(30)
+                        ClockSkew = TimeSpan.FromSeconds(30),
+                        // Auth0 places roles in a namespaced custom claim
+                        RoleClaimType = "https://mediahandler.com/roles"
                     };
                 });
         }
@@ -81,7 +84,7 @@ public static class ServiceExtensions
                 Type = SecuritySchemeType.Http,
                 Scheme = "bearer",
                 BearerFormat = "JWT",
-                Description = "Enter your Okta JWT token"
+                Description = "Enter your Auth0 JWT token"
             });
 
             options.AddSecurityRequirement(doc => new OpenApiSecurityRequirement
