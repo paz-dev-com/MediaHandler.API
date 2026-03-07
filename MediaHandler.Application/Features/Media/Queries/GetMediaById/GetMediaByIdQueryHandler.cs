@@ -13,7 +13,12 @@ public class GetMediaByIdQueryHandler(IApplicationDbContext context, ICurrentUse
 {
     public async Task<Result<MediaDto>> Handle(GetMediaByIdQuery request, CancellationToken cancellationToken)
     {
-        var userId = currentUser.UserId;
+        var userId = currentUser.OktaId is not null
+            ? await context.Users
+                .Where(u => u.OktaId == currentUser.OktaId)
+                .Select(u => (Guid?)u.Id)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
 
         var media = await context.Medias
             .AsNoTracking()

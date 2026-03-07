@@ -49,7 +49,6 @@ public class AuthAndWishlistIntegrationTests : IntegrationTestBase
 
         var currentUser = Substitute.For<ICurrentUserService>();
         currentUser.OktaId.Returns("okta|wish1");
-        currentUser.UserId.Returns((Guid?)user.Id);
 
         var addHandler = new AddToWishlistCommandHandler(DbContext, currentUser);
         var addResult = await addHandler.Handle(

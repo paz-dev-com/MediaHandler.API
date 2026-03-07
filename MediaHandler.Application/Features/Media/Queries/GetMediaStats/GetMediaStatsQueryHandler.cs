@@ -21,7 +21,13 @@ public class GetMediaStatsQueryHandler(IApplicationDbContext context, ICurrentUs
         var totalFiles = await context.MediaFiles.CountAsync(cancellationToken);
         var unlinkedFiles = await context.MediaFiles.CountAsync(f => f.MediaId == null, cancellationToken);
 
-        var userId = currentUser.UserId;
+        var userId = currentUser.OktaId is not null
+            ? await context.Users
+                .Where(u => u.OktaId == currentUser.OktaId)
+                .Select(u => (Guid?)u.Id)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
         var watchedByUser = 0;
         if (userId.HasValue)
         {
