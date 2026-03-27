@@ -3,12 +3,13 @@ using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
 using MediaHandler.Application.Features.Auth.DTOs;
 using MediaHandler.Domain.Entities;
+using MediaHandler.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediaHandler.Application.Features.Auth.Commands.SyncUser;
 
-public record SyncUserCommand(string OktaId, string Email, string? DisplayName) : IRequest<Result<UserDto>>;
+public record SyncUserCommand(string OktaId, string Email, string? DisplayName, bool IsAdmin) : IRequest<Result<UserDto>>;
 
 public class SyncUserCommandHandler(IApplicationDbContext context, IMapper mapper)
     : IRequestHandler<SyncUserCommand, Result<UserDto>>
@@ -24,7 +25,8 @@ public class SyncUserCommandHandler(IApplicationDbContext context, IMapper mappe
             {
                 OktaId = request.OktaId,
                 Email = request.Email,
-                DisplayName = request.DisplayName
+                DisplayName = request.DisplayName,
+                Role = request.IsAdmin ? UserRole.Admin : UserRole.User
             };
             context.Users.Add(user);
         }

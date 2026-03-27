@@ -31,8 +31,9 @@ public class AuthController : ControllerBase
         var oktaId = User.FindFirstValue("sub")!;
         var email = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email")!;
         var name = User.FindFirstValue("name");
+        var isAdmin = User.IsInRole("Admin");
 
-        var result = await _sender.Send(new SyncUserCommand(oktaId, email, name), ct);
+        var result = await _sender.Send(new SyncUserCommand(oktaId, email, name, isAdmin), ct);
         return result.IsSuccess
             ? Ok(ApiResponse<object>.Success(result.Value))
             : BadRequest(ApiResponse<object>.Fail(result.Errors.Select(e => new ApiError("ERROR", e)).ToArray()));

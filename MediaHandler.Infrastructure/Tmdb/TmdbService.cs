@@ -2,20 +2,17 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
-using MediaHandler.Infrastructure.Options;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace MediaHandler.Infrastructure.Tmdb;
 
-public sealed class TmdbService(HttpClient httpClient, IOptions<TmdbOptions> options, ILogger<TmdbService> logger)
+public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logger)
     : ITmdbService
 {
-    private readonly TmdbOptions _options = options.Value;
 
     public async Task<TmdbMediaDto?> SearchMediaAsync(string query, string language, CancellationToken cancellationToken = default)
     {
-        var url = $"/3/search/multi?query={Uri.EscapeDataString(query)}&language={language}&api_key={_options.ApiKey}";
+        var url = $"/3/search/multi?query={Uri.EscapeDataString(query)}&language={language}";
         var response = await httpClient.GetFromJsonAsync<TmdbPagedResponse<TmdbSearchResultJson>>(url, cancellationToken);
         var first = response?.Results?.FirstOrDefault(r => r.MediaType is "movie" or "tv");
         if (first is null) return null;
@@ -38,7 +35,7 @@ public sealed class TmdbService(HttpClient httpClient, IOptions<TmdbOptions> opt
 
         if (isMovie)
         {
-            var url = $"/3/movie/{tmdbId}?language={language}&api_key={_options.ApiKey}";
+            var url = $"/3/movie/{tmdbId}?language={language}";
             var movie = await httpClient.GetFromJsonAsync<TmdbMovieDetailsJson>(url, cancellationToken);
             if (movie is null) return null;
 
@@ -59,7 +56,7 @@ public sealed class TmdbService(HttpClient httpClient, IOptions<TmdbOptions> opt
         }
         else
         {
-            var url = $"/3/tv/{tmdbId}?language={language}&api_key={_options.ApiKey}";
+            var url = $"/3/tv/{tmdbId}?language={language}";
             var tv = await httpClient.GetFromJsonAsync<TmdbTvDetailsJson>(url, cancellationToken);
             if (tv is null) return null;
 
@@ -82,14 +79,14 @@ public sealed class TmdbService(HttpClient httpClient, IOptions<TmdbOptions> opt
 
     public async Task<IEnumerable<TmdbSeasonDto>> GetTvShowSeasonsAsync(int tmdbId, string language, CancellationToken cancellationToken = default)
     {
-        var url = $"/3/tv/{tmdbId}?language={language}&api_key={_options.ApiKey}";
+        var url = $"/3/tv/{tmdbId}?language={language}";
         var tv = await httpClient.GetFromJsonAsync<TmdbTvDetailsJson>(url, cancellationToken);
         if (tv?.Seasons is null) return [];
 
         var seasons = new List<TmdbSeasonDto>();
         foreach (var season in tv.Seasons)
         {
-            var seasonUrl = $"/3/tv/{tmdbId}/season/{season.SeasonNumber}?language={language}&api_key={_options.ApiKey}";
+            var seasonUrl = $"/3/tv/{tmdbId}/season/{season.SeasonNumber}?language={language}";
             TmdbSeasonDetailsJson? details;
             try
             {
