@@ -23,7 +23,7 @@ public class MediaHandlerDbContext : DbContext, IApplicationDbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(MediaHandlerDbContext).Assembly);
     }
 }

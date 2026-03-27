@@ -16,7 +16,6 @@ public class MediaIntegrationTests : IntegrationTestBase
     private ICurrentUserService CurrentUser()
     {
         var svc = Substitute.For<ICurrentUserService>();
-        svc.UserId.Returns((Guid?)null);
         svc.OktaId.Returns((string?)null);
         return svc;
     }

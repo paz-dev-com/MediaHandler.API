@@ -22,7 +22,7 @@ public class DeleteMediaCommandHandlerTests
     {
         var media = new Domain.Entities.Media { TmdbId = 1, Title = "Test Movie", Type = Domain.Enums.MediaType.Film };
         _context.Medias.Add(media);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _handler.Handle(new DeleteMediaCommand(media.Id), CancellationToken.None);
 

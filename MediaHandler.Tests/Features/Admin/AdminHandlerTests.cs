@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Mappings;
 using MediaHandler.Application.Features.Admin.Commands.SetUserActive;
@@ -19,7 +20,11 @@ public class AdminHandlerTests
     public AdminHandlerTests()
     {
         _context = TestDbContext.Create();
-        _mapper = new MapperConfiguration(cfg => cfg.AddProfile<UserMappingProfile>()).CreateMapper();
+        _mapper = new ServiceCollection()
+            .AddLogging()
+            .AddAutoMapper(cfg => cfg.AddProfile<UserMappingProfile>())
+            .BuildServiceProvider()
+            .GetRequiredService<IMapper>();
     }
 
     [Fact]
@@ -29,7 +34,7 @@ public class AdminHandlerTests
             new User { OktaId = "okta-alice", Email = "alice@example.com" },
             new User { OktaId = "okta-bob", Email = "bob@example.com" },
             new User { OktaId = "okta-carol", Email = "carol@example.com" });
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new GetUsersQueryHandler(_context, _mapper);
         var result = await handler.Handle(new GetUsersQuery(Page: 1, PageSize: 2), CancellationToken.None);
@@ -44,7 +49,7 @@ public class AdminHandlerTests
     {
         var user = new User { OktaId = "okta-user", Email = "user@example.com", Role = UserRole.User };
         _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new SetUserRoleCommandHandler(_context);
         var result = await handler.Handle(new SetUserRoleCommand(user.Id, UserRole.Admin), CancellationToken.None);
@@ -68,7 +73,7 @@ public class AdminHandlerTests
     {
         var user = new User { OktaId = "okta-user", Email = "user@example.com", IsActive = true };
         _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new SetUserActiveCommandHandler(_context);
         var result = await handler.Handle(new SetUserActiveCommand(user.Id, false), CancellationToken.None);

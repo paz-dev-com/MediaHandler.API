@@ -45,7 +45,7 @@ public class AddToWishlistCommandHandlerTests
     public async Task Handle_DuplicateItem_ReturnsFailResult()
     {
         _context.WishlistItems.Add(new WishlistItem { UserId = TestUserId, TmdbId = 12345, Title = "Test Movie" });
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var command = new AddToWishlistCommand(12345, "Test Movie", null, null, null);
         var result = await _handler.Handle(command, CancellationToken.None);

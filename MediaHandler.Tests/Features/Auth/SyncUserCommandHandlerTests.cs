@@ -1,5 +1,6 @@
 using AutoMapper;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Mappings;
 using MediaHandler.Application.Features.Auth.Commands.SyncUser;
@@ -17,14 +18,18 @@ public class SyncUserCommandHandlerTests
     public SyncUserCommandHandlerTests()
     {
         _context = TestDbContext.Create();
-        var mapper = new MapperConfiguration(cfg => cfg.AddProfile<UserMappingProfile>()).CreateMapper();
+        var mapper = new ServiceCollection()
+            .AddLogging()
+            .AddAutoMapper(cfg => cfg.AddProfile<UserMappingProfile>())
+            .BuildServiceProvider()
+            .GetRequiredService<IMapper>();
         _handler = new SyncUserCommandHandler(_context, mapper);
     }
 
     [Fact]
     public async Task Handle_NewUser_CreatesAndReturnsUser()
     {
-        var command = new SyncUserCommand("okta|new123", "new@example.com", "New User");
+        var command = new SyncUserCommand("okta|new123", "new@example.com", "New User", IsAdmin: false);
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -35,12 +40,23 @@ public class SyncUserCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_NewAdminUser_CreatesUserWithAdminRole()
+    {
+        var command = new SyncUserCommand("okta|admin123", "admin@example.com", "Admin User", IsAdmin: true);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Role.Should().Be("Admin");
+    }
+
+    [Fact]
     public async Task Handle_ExistingActiveUser_UpdatesEmailAndDisplayName()
     {
         _context.Users.Add(new User { OktaId = "okta|existing", Email = "old@example.com", DisplayName = "Old Name" });
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var command = new SyncUserCommand("okta|existing", "new@example.com", "New Name");
+        var command = new SyncUserCommand("okta|existing", "new@example.com", "New Name", IsAdmin: false);
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -52,9 +68,9 @@ public class SyncUserCommandHandlerTests
     public async Task Handle_DeactivatedUser_ReturnsFailResult()
     {
         _context.Users.Add(new User { OktaId = "okta|inactive", Email = "inactive@example.com", IsActive = false });
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var command = new SyncUserCommand("okta|inactive", "inactive@example.com", null);
+        var command = new SyncUserCommand("okta|inactive", "inactive@example.com", null, IsAdmin: false);
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();

@@ -18,7 +18,7 @@ public class AuthAndWishlistIntegrationTests : IntegrationTestBase
         var handler = new SyncUserCommandHandler(DbContext, Mapper);
 
         var result = await handler.Handle(
-            new SyncUserCommand("okta|int1", "integration@test.com", "Integration User"),
+            new SyncUserCommand("okta|int1", "integration@test.com", "Integration User", false),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -29,11 +29,11 @@ public class AuthAndWishlistIntegrationTests : IntegrationTestBase
     public async Task SyncUser_ExistingUser_UpdatesEmail()
     {
         DbContext.Users.Add(new User { OktaId = "okta|existing", Email = "old@test.com" });
-        await DbContext.SaveChangesAsync();
+        await DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         var handler = new SyncUserCommandHandler(DbContext, Mapper);
 
         var result = await handler.Handle(
-            new SyncUserCommand("okta|existing", "new@test.com", null),
+            new SyncUserCommand("okta|existing", "new@test.com", null, false),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -45,7 +45,7 @@ public class AuthAndWishlistIntegrationTests : IntegrationTestBase
     {
         var user = new User { OktaId = "okta|wish1", Email = "wish@test.com" };
         DbContext.Users.Add(user);
-        await DbContext.SaveChangesAsync();
+        await DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var currentUser = Substitute.For<ICurrentUserService>();
         currentUser.OktaId.Returns("okta|wish1");

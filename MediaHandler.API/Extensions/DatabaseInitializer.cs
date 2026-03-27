@@ -27,25 +27,5 @@ public static class DatabaseInitializer
             if (pending.Any())
                 await db.Database.MigrateAsync();
         }
-
-        await SeedDevUserAsync(db);
-    }
-
-    private static async Task SeedDevUserAsync(MediaHandlerDbContext db)
-    {
-        const string devOktaId = "okta|devuser1";
-
-        if (!await db.Users.AnyAsync(u => u.OktaId == devOktaId))
-        {
-            db.Users.Add(new User
-            {
-                OktaId = devOktaId,
-                Email = "dev@local.com",
-                DisplayName = "Dev User",
-                Role = UserRole.Admin
-            });
-
-            await db.SaveChangesAsync();
-        }
     }
 }

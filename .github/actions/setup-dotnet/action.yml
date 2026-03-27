@@ -1,0 +1,14 @@
+name: "Setup .NET 10"
+description: "Downloads and installs the .NET 10 preview SDK using the official dotnet-install script"
+
+runs:
+  using: composite
+  steps:
+    - name: Install .NET 10 SDK
+      shell: bash
+      run: |
+        curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh
+        chmod +x dotnet-install.sh
+        ./dotnet-install.sh --channel 10.0 --quality preview --install-dir "$HOME/.dotnet"
+        echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+        echo "DOTNET_ROOT=$HOME/.dotnet" >> "$GITHUB_ENV"

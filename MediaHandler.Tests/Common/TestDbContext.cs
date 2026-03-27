@@ -18,6 +18,14 @@ public class TestDbContext : DbContext, IApplicationDbContext
     public DbSet<TvEpisode> TvEpisodes => Set<TvEpisode>();
     public DbSet<UserEpisode> UserEpisodes => Set<UserEpisode>();
 
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        // MediaGenre uses a composite PK (MediaId, Name) that EF Core InMemory
+        // cannot infer by convention — must be configured explicitly.
+        modelBuilder.Entity<MediaGenre>().HasKey(g => new { g.MediaId, g.Name });
+    }
+
     public static TestDbContext Create()
     {
         var options = new DbContextOptionsBuilder<TestDbContext>()

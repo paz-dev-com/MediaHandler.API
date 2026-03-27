@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Infrastructure.Nas;
 using MediaHandler.Infrastructure.Options;
@@ -61,6 +62,8 @@ public static class DependencyInjection
             {
                 var options = sp.GetRequiredService<IOptions<TmdbOptions>>().Value;
                 client.BaseAddress = new Uri(options.BaseUrl);
+                client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", options.ReadAccessToken);
             })
             .AddStandardResilienceHandler();
 
