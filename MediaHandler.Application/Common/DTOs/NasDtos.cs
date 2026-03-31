@@ -6,4 +6,5 @@ public record NasFileInfo(
     long SizeBytes,
     string? Format,
     DateTime CreatedAt,
-    DateTime ModifiedAt);
+    DateTime ModifiedAt,
+    bool IsDirectory = false);

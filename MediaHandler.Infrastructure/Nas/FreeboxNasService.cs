@@ -20,8 +20,24 @@ public sealed class FreeboxNasService(
     private readonly SemaphoreSlim _sessionLock = new(1, 1);
     private string? _sessionToken;
 
-    public async Task<IEnumerable<NasFileInfo>> ScanDirectoryAsync(string basePath, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<NasFileInfo>> ScanDirectoryAsync(string? basePath, CancellationToken cancellationToken = default)
     {
+        // When no path is given, scan every configured base path and aggregate
+        if (string.IsNullOrWhiteSpace(basePath))
+        {
+            if (_options.BasePaths.Count == 0)
+            {
+                logger.LogWarning("No base paths configured for NAS scan.");
+                return [];
+            }
+
+            var all = new List<NasFileInfo>();
+            foreach (var bp in _options.BasePaths)
+                all.AddRange(await ScanSinglePathAsync(bp, cancellationToken));
+            return all;
+        }
+
+        // Guard: requested path must start with a configured base path
         if (_options.BasePaths.Count > 0 &&
             !_options.BasePaths.Any(bp => basePath.StartsWith(bp, StringComparison.OrdinalIgnoreCase)))
         {
@@ -29,17 +45,11 @@ public sealed class FreeboxNasService(
             throw new UnauthorizedAccessException("The requested path is not within the allowed base paths.");
         }
 
-        var response = await GetFreeboxAsync<FreeboxResponse<List<FreeboxFileEntry>>>(
-            $"/api/{_options.ApiVersion}/fs/ls/{EncodePath(basePath)}", cancellationToken);
-
-        if (response?.Success != true || response.Result is null)
-        {
-            logger.LogWarning("Failed to scan directory {Path}: {Message}", basePath, response?.Msg);
-            return [];
-        }
-
-        return response.Result.Where(e => e.Type == "file").Select(MapToNasFileInfo);
+        return await ScanSinglePathAsync(basePath, cancellationToken);
     }
+
+    public Task<IReadOnlyList<string>> GetConfiguredPathsAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<string>>(_options.BasePaths.AsReadOnly());
 
     public async Task<bool> FileExistsAsync(string filePath, CancellationToken cancellationToken = default) =>
         await GetFileInfoAsync(filePath, cancellationToken) is not null;
@@ -128,14 +138,31 @@ public sealed class FreeboxNasService(
     {
         var modified = DateTimeOffset.FromUnixTimeSeconds(entry.Modification).UtcDateTime;
         var extension = Path.GetExtension(entry.Name).TrimStart('.').ToUpperInvariant();
+        var isDirectory = entry.Type == "dir";
 
         return new NasFileInfo(
             FilePath: entry.Path,
             FileName: entry.Name,
             SizeBytes: entry.Size ?? 0,
-            Format: string.IsNullOrEmpty(extension) ? null : extension,
+            Format: isDirectory || string.IsNullOrEmpty(extension) ? null : extension,
             CreatedAt: modified,
-            ModifiedAt: modified);
+            ModifiedAt: modified,
+            IsDirectory: isDirectory);
+    }
+
+    private async Task<IEnumerable<NasFileInfo>> ScanSinglePathAsync(string path, CancellationToken cancellationToken)
+    {
+        var response = await GetFreeboxAsync<FreeboxResponse<List<FreeboxFileEntry>>>(
+            $"/api/{_options.ApiVersion}/fs/ls/{EncodePath(path)}", cancellationToken);
+
+        if (response?.Success != true || response.Result is null)
+        {
+            logger.LogWarning("Failed to scan directory {Path}: {Message}", path, response?.Msg);
+            return [];
+        }
+
+        // Return both files AND directories so the handler can count them separately
+        return response.Result.Select(MapToNasFileInfo);
     }
 
     private record FreeboxResponse<T>(
