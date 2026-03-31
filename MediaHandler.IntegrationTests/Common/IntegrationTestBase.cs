@@ -9,7 +9,7 @@ namespace MediaHandler.IntegrationTests.Common;
 
 public abstract class IntegrationTestBase : IAsyncLifetime
 {
-    private readonly MsSqlContainer _db = new MsSqlBuilder().Build();
+    private readonly MsSqlContainer _db = new MsSqlBuilder().WithImage("mcr.microsoft.com/mssql/server:2022-latest").Build();
     private ServiceProvider? _serviceProvider;
 
     protected MediaHandlerDbContext DbContext { get; private set; } = null!;

@@ -1,5 +1,6 @@
 using MediaHandler.API.Models;
 using MediaHandler.Application.Features.Files.Commands.ScanNas;
+using MediaHandler.Application.Features.Files.Queries.GetNasLocations;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,16 @@ public class FilesController : ControllerBase
     private readonly ISender _sender;
 
     public FilesController(ISender sender) => _sender = sender;
+
+    [HttpGet("locations")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType<ApiResponse<IReadOnlyList<string>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetLocations(CancellationToken ct = default)
+    {
+        var result = await _sender.Send(new GetNasLocationsQuery(), ct);
+        return Ok(ApiResponse<object>.Success(result.Value));
+    }
 
     [HttpPost("scan")]
     [Authorize(Policy = "AdminOnly")]
