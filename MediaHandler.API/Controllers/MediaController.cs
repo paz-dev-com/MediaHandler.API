@@ -19,18 +19,14 @@ namespace MediaHandler.API.Controllers;
 [Route("api/v1/[controller]")]
 [Authorize]
 [EnableRateLimiting("fixed")]
-public class MediaController : ControllerBase
+public class MediaController(ISender sender) : ControllerBase
 {
-    private readonly ISender _sender;
-
-    public MediaController(ISender sender) => _sender = sender;
-
     [HttpGet("stats")]
     [ProducesResponseType<ApiResponse<MediaStatsDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Stats(CancellationToken ct)
     {
-        var result = await _sender.Send(new GetMediaStatsQuery(), ct);
+        var result = await sender.Send(new GetMediaStatsQuery(), ct);
         return Ok(ApiResponse<object>.Success(result.Value));
     }
 
@@ -46,7 +42,7 @@ public class MediaController : ControllerBase
         [FromQuery] string? genre = null,
         CancellationToken ct = default)
     {
-        var result = await _sender.Send(new GetMediaListQuery(page, pageSize, search, type, isWatched, genre), ct);
+        var result = await sender.Send(new GetMediaListQuery(page, pageSize, search, type, isWatched, genre), ct);
         var meta = new ApiResponseMeta(result.Value.Page, result.Value.PageSize, result.Value.TotalCount, result.Value.TotalPages);
         return Ok(ApiResponse<object>.Success(result.Value.Items, meta));
     }
@@ -57,7 +53,7 @@ public class MediaController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Get(Guid id, CancellationToken ct)
     {
-        var result = await _sender.Send(new GetMediaByIdQuery(id), ct);
+        var result = await sender.Send(new GetMediaByIdQuery(id), ct);
         return result.IsSuccess
             ? Ok(ApiResponse<object>.Success(result.Value))
             : NotFound(ApiResponse.Fail(result.Errors.Select(e => new ApiError("NOT_FOUND", e)).ToArray()));
@@ -69,7 +65,7 @@ public class MediaController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Create([FromBody] CreateMediaCommand command, CancellationToken ct)
     {
-        var result = await _sender.Send(command, ct);
+        var result = await sender.Send(command, ct);
         return result.IsSuccess
             ? CreatedAtAction(nameof(Get), new { id = result.Value }, ApiResponse<object>.Success(new { id = result.Value }))
             : BadRequest(ApiResponse<object>.Fail(result.Errors.Select(e => new ApiError("ERROR", e)).ToArray()));
@@ -83,7 +79,7 @@ public class MediaController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var result = await _sender.Send(new DeleteMediaCommand(id), ct);
+        var result = await sender.Send(new DeleteMediaCommand(id), ct);
         return result.IsSuccess
             ? NoContent()
             : NotFound(ApiResponse.Fail(result.Errors.Select(e => new ApiError("NOT_FOUND", e)).ToArray()));
@@ -95,7 +91,7 @@ public class MediaController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SetWatched(Guid id, [FromBody] SetWatchedRequest request, CancellationToken ct)
     {
-        var result = await _sender.Send(new SetWatchStatusCommand(id, request.IsWatched), ct);
+        var result = await sender.Send(new SetWatchStatusCommand(id, request.IsWatched), ct);
         return result.IsSuccess
             ? NoContent()
             : NotFound(ApiResponse.Fail(result.Errors.Select(e => new ApiError("NOT_FOUND", e)).ToArray()));

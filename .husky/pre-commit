@@ -1,0 +1,7 @@
+#!/bin/sh
+# Auto-fix formatting issues before committing (equivalent of eslint --fix)
+dotnet husky run --name "format-fix"
+
+# Re-stage any files that were auto-fixed by dotnet format
+git add -u
+
