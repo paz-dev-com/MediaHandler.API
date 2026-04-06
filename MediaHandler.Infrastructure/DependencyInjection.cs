@@ -55,6 +55,7 @@ public static class DependencyInjection
             .AddStandardResilienceHandler();
 
         services.AddScoped<INasService, FreeboxNasService>();
+        services.AddScoped<IMediaFileNameParser, MediaFileNameParser>();
 
         services.AddHttpClient<ITmdbService, TmdbService>()
             .ConfigureHttpClient((sp, client) =>

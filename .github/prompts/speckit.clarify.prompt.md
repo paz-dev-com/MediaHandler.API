@@ -57,34 +57,34 @@ When clarifying specifications, assume these defaults unless the spec explicitly
 When analyzing MediaHandler specs, prioritize these areas for clarification:
 
 1. **Watch Progress Granularity**
-   - Binary (watched/unwatched) vs percentage progress?
-   - Per-episode tracking for TV shows?
-   - Resume position storage?
+    - Binary (watched/unwatched) vs percentage progress?
+    - Per-episode tracking for TV shows?
+    - Resume position storage?
 
 2. **TMDB Data Caching Strategy**
-   - Cache duration for metadata?
-   - Refresh strategy for ongoing TV shows?
-   - Fallback when TMDB unavailable?
+    - Cache duration for metadata?
+    - Refresh strategy for ongoing TV shows?
+    - Fallback when TMDB unavailable?
 
 3. **Multi-User Scenarios**
-   - Shared media library vs isolated collections?
-   - Can users see what others have watched?
-   - Family/household sharing model?
+    - Shared media library vs isolated collections?
+    - Can users see what others have watched?
+    - Family/household sharing model?
 
 4. **NAS Path Handling**
-   - Relative vs absolute paths?
-   - Path format normalization?
-   - Handling moved/renamed files?
+    - Relative vs absolute paths?
+    - Path format normalization?
+    - Handling moved/renamed files?
 
 5. **Search & Discovery**
-   - Local collection search only?
-   - TMDB search for new media?
-   - Combined search across owned + wishlist?
+    - Local collection search only?
+    - TMDB search for new media?
+    - Combined search across owned + wishlist?
 
 6. **Offline/Disconnected Mode**
-   - Behavior when TMDB unavailable?
-   - Behavior when NAS disconnected?
-   - Cached data availability?
+    - Behavior when TMDB unavailable?
+    - Behavior when NAS disconnected?
+    - Cached data availability?
 
 ### Common Ambiguities to Detect
 
@@ -125,18 +125,18 @@ Do NOT ask clarification questions about:
 When formulating questions for MediaHandler:
 
 1. **Prefer concrete options over open-ended questions**
-   - ✅ "Watch status: A) Binary B) Percentage C) Episode-level"
-   - ❌ "How should watch status work?"
+    - ✅ "Watch status: A) Binary B) Percentage C) Episode-level"
+    - ❌ "How should watch status work?"
 
 2. **Include default recommendation with rationale**
-   - ✅ "**Recommended:** Option A - simpler and matches common media apps"
+    - ✅ "**Recommended:** Option A - simpler and matches common media apps"
 
 3. **Focus on decisions that impact data model or API contracts**
-   - Data model changes are expensive later
-   - API contract changes affect potential consumers
+    - Data model changes are expensive later
+    - API contract changes affect potential consumers
 
 4. **Defer implementation details to planning phase**
-   - Don't ask about specific libraries
-   - Don't ask about exact SQL schema design
-   - Don't ask about deployment specifics
+    - Don't ask about specific libraries
+    - Don't ask about exact SQL schema design
+    - Don't ask about deployment specifics
 

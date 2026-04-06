@@ -14,10 +14,10 @@ agent: speckit.plan
 ### Architecture
 - **Pattern**: Clean Architecture (Onion Architecture)
 - **Layers**:
-  - `MediaHandler.Domain` - Entities, value objects, domain events, interfaces
-  - `MediaHandler.Application` - Use cases, DTOs, validators, CQRS handlers
-  - `MediaHandler.Infrastructure` - EF Core, external services (TMDB, NAS), Okta
-  - `MediaHandler.API` - Controllers, middleware, configuration
+    - `MediaHandler.Domain` - Entities, value objects, domain events, interfaces
+    - `MediaHandler.Application` - Use cases, DTOs, validators, CQRS handlers
+    - `MediaHandler.Infrastructure` - EF Core, external services (TMDB, NAS), Okta
+    - `MediaHandler.API` - Controllers, middleware, configuration
 
 ### Database
 - **DBMS**: SQL Server (LocalDB for development, SQL Server for production)
