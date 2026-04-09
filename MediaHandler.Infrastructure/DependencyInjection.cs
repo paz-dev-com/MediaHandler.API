@@ -3,6 +3,7 @@ using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Infrastructure.Nas;
 using MediaHandler.Infrastructure.Options;
 using MediaHandler.Infrastructure.Persistence;
+using MediaHandler.Infrastructure.Services;
 using MediaHandler.Infrastructure.Tmdb;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -56,6 +57,8 @@ public static class DependencyInjection
 
         services.AddScoped<INasService, FreeboxNasService>();
         services.AddScoped<IMediaFileNameParser, MediaFileNameParser>();
+        services.AddScoped<IMediaImportService, MediaImportService>();
+        services.AddScoped<IMediaAutoMatchService, MediaAutoMatchService>();
 
         services.AddHttpClient<ITmdbService, TmdbService>()
             .ConfigureHttpClient((sp, client) =>
