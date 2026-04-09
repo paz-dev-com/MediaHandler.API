@@ -47,9 +47,10 @@ public sealed class MediaAutoMatchService(
                 if (parsed is null)
                 {
                     logger.LogWarning(
-                        "Could not parse filename for MediaFile {FileId} ('{FilePath}'). Skipping.",
+                        "Could not parse filename for MediaFile {FileId} ('{FilePath}'). Counting as failed.",
                         file.Id, file.FilePath);
-                    skipped++;
+                    errors.Add($"[{file.FilePath}] Unable to extract a usable title from the filename.");
+                    failed++;
                     continue;
                 }
 
