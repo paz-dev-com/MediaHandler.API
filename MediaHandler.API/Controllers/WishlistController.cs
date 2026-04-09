@@ -16,18 +16,14 @@ namespace MediaHandler.API.Controllers;
 [Route("api/v1/[controller]")]
 [Authorize]
 [EnableRateLimiting("fixed")]
-public class WishlistController : ControllerBase
+public class WishlistController(ISender sender) : ControllerBase
 {
-    private readonly ISender _sender;
-
-    public WishlistController(ISender sender) => _sender = sender;
-
     [HttpGet]
     [ProducesResponseType<ApiResponse<IEnumerable<WishlistItemDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await _sender.Send(new GetWishlistQuery(page, pageSize), ct);
+        var result = await sender.Send(new GetWishlistQuery(page, pageSize), ct);
         var meta = new ApiResponseMeta(result.Value.Page, result.Value.PageSize, result.Value.TotalCount, result.Value.TotalPages);
         return Ok(ApiResponse<object>.Success(result.Value.Items, meta));
     }
@@ -38,7 +34,7 @@ public class WishlistController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Add([FromBody] AddToWishlistCommand command, CancellationToken ct)
     {
-        var result = await _sender.Send(command, ct);
+        var result = await sender.Send(command, ct);
         return result.IsSuccess
             ? CreatedAtAction(nameof(List), ApiResponse<object>.Success(new { id = result.Value }))
             : BadRequest(ApiResponse<object>.Fail(result.Errors.Select(e => new ApiError("ERROR", e)).ToArray()));
@@ -50,7 +46,7 @@ public class WishlistController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> MarkAcquired(Guid id, [FromBody] MarkWishlistAcquiredRequest request, CancellationToken ct)
     {
-        var result = await _sender.Send(new MarkWishlistAcquiredCommand(id, request.IsAcquired), ct);
+        var result = await sender.Send(new MarkWishlistAcquiredCommand(id, request.IsAcquired), ct);
         return result.IsSuccess
             ? Ok(ApiResponse<object>.Success(result.Value))
             : NotFound(ApiResponse.Fail(result.Errors.Select(e => new ApiError("NOT_FOUND", e)).ToArray()));
@@ -62,7 +58,7 @@ public class WishlistController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Remove(Guid id, CancellationToken ct)
     {
-        var result = await _sender.Send(new RemoveFromWishlistCommand(id), ct);
+        var result = await sender.Send(new RemoveFromWishlistCommand(id), ct);
         return result.IsSuccess
             ? NoContent()
             : NotFound(ApiResponse.Fail(result.Errors.Select(e => new ApiError("NOT_FOUND", e)).ToArray()));
