@@ -14,18 +14,14 @@ namespace MediaHandler.API.Controllers;
 [Route("api/v1/media/{mediaId:guid}/seasons")]
 [Authorize]
 [EnableRateLimiting("fixed")]
-public class EpisodesController : ControllerBase
+public class EpisodesController(ISender sender) : ControllerBase
 {
-    private readonly ISender _sender;
-
-    public EpisodesController(ISender sender) => _sender = sender;
-
     [HttpGet]
     [ProducesResponseType<ApiResponse<IEnumerable<TvSeasonDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetSeasons(Guid mediaId, CancellationToken ct)
     {
-        var result = await _sender.Send(new GetSeasonsQuery(mediaId), ct);
+        var result = await sender.Send(new GetSeasonsQuery(mediaId), ct);
         return Ok(ApiResponse<object>.Success(result.Value));
     }
 
@@ -33,9 +29,9 @@ public class EpisodesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ApiResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> SetEpisodeWatched(Guid episodeId, [FromBody] SetEpisodeWatchedRequest request, CancellationToken ct)
+    public async Task<IActionResult> SetEpisodeWatched(Guid episodeId, [FromBody] SetEpisodeWatchedRequest request, CancellationToken ct, Guid mediaId, Guid seasonId)
     {
-        var result = await _sender.Send(new SetEpisodeWatchedCommand(episodeId, request.IsWatched), ct);
+        var result = await sender.Send(new SetEpisodeWatchedCommand(episodeId, request.IsWatched), ct);
         return result.IsSuccess
             ? NoContent()
             : NotFound(ApiResponse.Fail(result.Errors.Select(e => new ApiError("NOT_FOUND", e)).ToArray()));

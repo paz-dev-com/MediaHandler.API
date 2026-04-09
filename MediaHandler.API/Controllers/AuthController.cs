@@ -16,12 +16,8 @@ namespace MediaHandler.API.Controllers;
 [Route("api/v1/[controller]")]
 [Authorize]
 [EnableRateLimiting("fixed")]
-public class AuthController : ControllerBase
+public class AuthController(ISender sender) : ControllerBase
 {
-    private readonly ISender _sender;
-
-    public AuthController(ISender sender) => _sender = sender;
-
     [HttpPost("sync")]
     [ProducesResponseType<ApiResponse<UserDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
@@ -33,7 +29,7 @@ public class AuthController : ControllerBase
         var name = User.FindFirstValue("name");
         var isAdmin = User.IsInRole("Admin");
 
-        var result = await _sender.Send(new SyncUserCommand(oktaId, email, name, isAdmin), ct);
+        var result = await sender.Send(new SyncUserCommand(oktaId, email, name, isAdmin), ct);
         return result.IsSuccess
             ? Ok(ApiResponse<object>.Success(result.Value))
             : BadRequest(ApiResponse<object>.Fail(result.Errors.Select(e => new ApiError("ERROR", e)).ToArray()));
@@ -45,7 +41,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Me(CancellationToken ct)
     {
-        var result = await _sender.Send(new GetCurrentUserQuery(), ct);
+        var result = await sender.Send(new GetCurrentUserQuery(), ct);
         return result.IsSuccess
             ? Ok(ApiResponse<object>.Success(result.Value))
             : NotFound(ApiResponse<object>.Fail(new ApiError("NOT_FOUND", result.Errors.FirstOrDefault() ?? "User not found")));
@@ -57,7 +53,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpdatePreferences([FromBody] UpdatePreferencesRequest request, CancellationToken ct)
     {
-        var result = await _sender.Send(new UpdatePreferencesCommand(request.PreferredLanguage), ct);
+        var result = await sender.Send(new UpdatePreferencesCommand(request.PreferredLanguage), ct);
         return result.IsSuccess
             ? Ok(ApiResponse<object>.Success(result.Value))
             : BadRequest(ApiResponse<object>.Fail(result.Errors.Select(e => new ApiError("ERROR", e)).ToArray()));

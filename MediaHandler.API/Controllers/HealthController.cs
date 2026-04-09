@@ -8,19 +8,14 @@ public record HealthResponse(string Status, DateTime Timestamp, string Version);
 
 [ApiController]
 [Route("api/v1/[controller]")]
-public class HealthController : ControllerBase
+public class HealthController(HealthCheckService healthCheckService) : ControllerBase
 {
-    private readonly HealthCheckService _healthCheckService;
-
-    public HealthController(HealthCheckService healthCheckService)
-        => _healthCheckService = healthCheckService;
-
     [HttpGet]
     [ProducesResponseType<ApiResponse<HealthResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiResponse<HealthResponse>>(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Get(CancellationToken ct)
     {
-        var report = await _healthCheckService.CheckHealthAsync(ct);
+        var report = await healthCheckService.CheckHealthAsync(ct);
         var status = report.Status == HealthStatus.Healthy ? "Healthy" : "Unhealthy";
         var response = ApiResponse<HealthResponse>.Success(new HealthResponse(status, DateTime.UtcNow, "1.0.0"));
 

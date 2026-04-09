@@ -1,4 +1,5 @@
 using MediaHandler.API.Models;
+using MediaHandler.Application.Features.Files.Commands.AutoImportMediaFiles;
 using MediaHandler.Application.Features.Files.Commands.ScanAndImportNas;
 using MediaHandler.Application.Features.Files.Commands.ScanNas;
 using MediaHandler.Application.Features.Files.Queries.GetNasLocations;
@@ -13,19 +14,15 @@ namespace MediaHandler.API.Controllers;
 [Route("api/v1/[controller]")]
 [Authorize]
 [EnableRateLimiting("fixed")]
-public class FilesController : ControllerBase
+public class FilesController(ISender sender) : ControllerBase
 {
-    private readonly ISender _sender;
-
-    public FilesController(ISender sender) => _sender = sender;
-
     [HttpGet("locations")]
     [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType<ApiResponse<IReadOnlyList<string>>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetLocations(CancellationToken ct = default)
     {
-        var result = await _sender.Send(new GetNasLocationsQuery(), ct);
+        var result = await sender.Send(new GetNasLocationsQuery(), ct);
         return Ok(ApiResponse<object>.Success(result.Value));
     }
 
@@ -36,7 +33,7 @@ public class FilesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Scan([FromQuery] string? basePath = null, CancellationToken ct = default)
     {
-        var result = await _sender.Send(new ScanNasCommand(basePath), ct);
+        var result = await sender.Send(new ScanNasCommand(basePath), ct);
         return Ok(ApiResponse<object>.Success(result.Value));
     }
 
@@ -55,8 +52,26 @@ public class FilesController : ControllerBase
         [FromQuery] string? language = null,
         CancellationToken ct = default)
     {
-        var result = await _sender.Send(new ScanAndImportNasCommand(basePath, language), ct);
+        var result = await sender.Send(new ScanAndImportNasCommand(basePath, language), ct);
         return Ok(ApiResponse<ScanAndImportNasResult>.Success(result.Value));
+    }
+
+    /// <summary>
+    /// Attempts TMDB matching and import for all existing <c>MediaFile</c> records
+    /// where <c>MediaId IS NULL</c>, without triggering a new NAS scan.
+    /// Useful for retrying previously failed or skipped files.
+    /// </summary>
+    [HttpPost("auto-import")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType<ApiResponse<AutoImportResult>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> AutoImport(
+        [FromQuery] string? language = null,
+        CancellationToken ct = default)
+    {
+        var result = await sender.Send(new AutoImportMediaFilesCommand(language), ct);
+        return Ok(ApiResponse<AutoImportResult>.Success(result.Value));
     }
 }
 
