@@ -30,6 +30,7 @@
   <ItemGroup>
     <ProjectReference Include="..\MediaHandler.Application\MediaHandler.Application.csproj" />
     <ProjectReference Include="..\MediaHandler.Domain\MediaHandler.Domain.csproj" />
+    <ProjectReference Include="..\MediaHandler.Infrastructure\MediaHandler.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
