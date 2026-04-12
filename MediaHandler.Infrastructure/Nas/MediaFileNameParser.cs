@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using MediaHandler.Application.Common;
 using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
 
@@ -19,13 +20,8 @@ namespace MediaHandler.Infrastructure.Nas;
 /// </remarks>
 public sealed class MediaFileNameParser : IMediaFileNameParser
 {
-    // Video file extensions we recognise as media
-    private static readonly HashSet<string> VideoExtensions =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            ".mkv", ".mp4", ".avi", ".mov", ".wmv", ".m4v",
-            ".flv", ".ts", ".m2ts", ".mpg", ".mpeg", ".webm"
-        };
+    // Video file extensions we recognize as media — single source of truth in MediaFileConstants
+    private static readonly HashSet<string> VideoExtensions = MediaFileConstants.VideoExtensions;
 
     // Path segments that indicate a movie folder
     private static readonly string[] MovieSegments =
@@ -33,7 +29,7 @@ public sealed class MediaFileNameParser : IMediaFileNameParser
 
     // Path segments that indicate a TV show folder
     private static readonly string[] TvSegments =
-        ["series", "tv", "tv shows", "tvshows", "shows", "anime"];
+        ["series", "séries", "tv", "tv shows", "tvshows", "shows", "anime"];
 
     // Strips quality/codec/source tags and everything after them
     // e.g., "The Matrix 1999 1080p BluRay x264" → "The Matrix 1999"

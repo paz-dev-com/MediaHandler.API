@@ -140,8 +140,13 @@ public sealed class FreeboxNasService(
         var extension = Path.GetExtension(entry.Name).TrimStart('.').ToUpperInvariant();
         var isDirectory = entry.Type == "dir";
 
+        // The Freebox API returns 'path' as a Base64-encoded UTF-8 string.
+        // Decode it so that FilePath is always a human-readable plain-text path,
+        // which can be safely re-encoded by EncodePath() for subsequent API calls.
+        var plainPath = DecodeFreeboxPath(entry.Path);
+
         return new NasFileInfo(
-            FilePath: entry.Path,
+            FilePath: plainPath,
             FileName: entry.Name,
             SizeBytes: entry.Size ?? 0,
             Format: isDirectory || string.IsNullOrEmpty(extension) ? null : extension,
@@ -150,8 +155,37 @@ public sealed class FreeboxNasService(
             IsDirectory: isDirectory);
     }
 
-    private async Task<IEnumerable<NasFileInfo>> ScanSinglePathAsync(string path, CancellationToken cancellationToken)
+    /// <summary>
+    /// Decodes a Freebox path from its Base64 representation to a plain-text UTF-8 string.
+    /// Falls back to returning the input unchanged if it is not valid Base64.
+    /// </summary>
+    private static string DecodeFreeboxPath(string encodedPath)
     {
+        try
+        {
+            return Encoding.UTF8.GetString(Convert.FromBase64String(encodedPath));
+        }
+        catch
+        {
+            // Already plain text (e.g., in unit tests or future API versions)
+            return encodedPath;
+        }
+    }
+
+    private async Task<IEnumerable<NasFileInfo>> ScanSinglePathAsync(
+        string path,
+        CancellationToken cancellationToken,
+        int depth = 0)
+    {
+        const int maxDepth = 10;
+
+        if (depth > maxDepth)
+        {
+            logger.LogWarning(
+                "Maximum scan depth ({MaxDepth}) reached at '{Path}'. Stopping recursion.", maxDepth, path);
+            return [];
+        }
+
         var response = await GetFreeboxAsync<FreeboxResponse<List<FreeboxFileEntry>>>(
             $"/api/{_options.ApiVersion}/fs/ls/{EncodePath(path)}", cancellationToken);
 
@@ -161,8 +195,18 @@ public sealed class FreeboxNasService(
             return [];
         }
 
-        // Return both files AND directories so the handler can count them separately
-        return response.Result.Select(MapToNasFileInfo);
+        var entries = response.Result.Select(MapToNasFileInfo).ToList();
+        var result = new List<NasFileInfo>(entries);
+
+        // Recurse into visible subdirectories (skip hidden dirs like .Recycle_Bin, .Spotlight-V100)
+        foreach (var dir in entries.Where(e => e.IsDirectory && !e.FileName.StartsWith('.')))
+        {
+            logger.LogDebug("Recursing into subdirectory '{DirPath}' (depth={Depth}).", dir.FilePath, depth + 1);
+            var subEntries = await ScanSinglePathAsync(dir.FilePath, cancellationToken, depth + 1);
+            result.AddRange(subEntries);
+        }
+
+        return result;
     }
 
     private record FreeboxResponse<T>(

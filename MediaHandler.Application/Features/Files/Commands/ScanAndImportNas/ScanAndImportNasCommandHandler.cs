@@ -1,3 +1,4 @@
+using MediaHandler.Application.Common;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
 using MediaHandler.Domain.Entities;
@@ -32,11 +33,22 @@ public class ScanAndImportNasCommandHandler(
 
         var entries = (await nasService.ScanDirectoryAsync(request.BasePath, cancellationToken)).ToList();
 
-        var files = entries.Where(e => !e.IsDirectory).ToList();
         var foldersFound = entries.Count(e => e.IsDirectory);
+        var allFiles = entries.Where(e => !e.IsDirectory).ToList();
+
+        // Only retain recognized video files — skip system files, PDFs, executables, etc.
+        var files = allFiles
+            .Where(e => MediaFileConstants.IsVideoFile(e.FileName))
+            .ToList();
+
+        var skippedNonMedia = allFiles.Count - files.Count;
+        if (skippedNonMedia > 0)
+            logger.LogInformation(
+                "Ignored {SkippedNonMedia} non-video file(s) returned by the NAS scan.",
+                skippedNonMedia);
 
         logger.LogInformation(
-            "NAS scan complete. Files={FileCount}, Folders={FolderCount}.",
+            "NAS scan complete. VideoFiles={FileCount}, Folders={FolderCount}.",
             files.Count, foldersFound);
 
         // 2. Dedup by FilePath — only add genuinely new files
