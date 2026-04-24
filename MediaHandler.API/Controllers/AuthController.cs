@@ -22,12 +22,37 @@ public class AuthController(ISender sender) : ControllerBase
     [ProducesResponseType<ApiResponse<UserDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Sync(CancellationToken ct)
+    public async Task<IActionResult> Sync([FromBody] SyncUserRequest? body, CancellationToken ct)
     {
-        var oktaId = User.FindFirstValue("sub")!;
-        var email = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email")!;
-        var name = User.FindFirstValue("name");
-        var isAdmin = User.IsInRole("Admin");
+        // JWT bearer (production) always provides the authoritative sub.
+        // In development with an opaque token (no audience configured), the sub is null
+        // so we fall back to the value sent by the frontend from the Auth0 ID token.
+        var oktaId = User.FindFirstValue("sub") ?? body?.Sub;
+        if (string.IsNullOrEmpty(oktaId))
+            return Unauthorized();
+
+        // Auth0 access tokens do NOT include email/name by default — those live in the
+        // ID token only. The frontend sends them in the request body (sourced from auth0.user$)
+        // as a reliable fallback. JWT claims always take priority when present (e.g. when an
+        // Auth0 Action explicitly adds them to the access token).
+        var email = User.FindFirstValue(ClaimTypes.Email)
+            ?? User.FindFirstValue("email")
+            ?? User.FindFirstValue("preferred_username")
+            ?? body?.Email;
+
+        if (string.IsNullOrEmpty(email))
+            return BadRequest(ApiResponse<object>.Fail(new ApiError("MISSING_CLAIM",
+                "Could not determine the user's email address from the token or request body.")));
+
+        // Display name: JWT claims first, then request body fallback
+        var name = User.FindFirstValue("name")
+            ?? User.FindFirstValue("given_name")
+            ?? body?.Name;
+
+        // Accept both "Admin" and "Administrator" as admin role names to be resilient
+        // to differences in how the role is named in the identity provider.
+        // RoleClaimType is configured to "https://mediahandler.com/roles" in JwtBearer options.
+        var isAdmin = User.IsInRole("Admin") || User.IsInRole("Administrator");
 
         var result = await sender.Send(new SyncUserCommand(oktaId, email, name, isAdmin), ct);
         return result.IsSuccess
