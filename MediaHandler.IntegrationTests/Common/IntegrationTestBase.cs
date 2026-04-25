@@ -38,7 +38,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         Mapper = _serviceProvider.GetRequiredService<IMapper>();
     }
 
-    public async ValueTask DisposeAsync()
+    public virtual async ValueTask DisposeAsync()
     {
         await DbContext.DisposeAsync();
         await _db.DisposeAsync();
