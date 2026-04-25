@@ -2,6 +2,7 @@ using MediaHandler.Application.Common;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
 using MediaHandler.Domain.Entities;
+using MediaHandler.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -59,11 +60,15 @@ public class ScanAndImportNasCommandHandler(
         var newFiles = 0;
         foreach (var file in files.Where(file => !existingPaths.Contains(file.FilePath)))
         {
+            // Legacy handler — placeholders per data-model §3.2 until T115 retires this code.
             context.MediaFiles.Add(new MediaFile
             {
                 FilePath = file.FilePath,
                 FileSizeBytes = file.SizeBytes,
-                Format = file.Format
+                Format = file.Format,
+                Fingerprint = $"{file.FilePath}|{file.SizeBytes}|0",
+                LibraryRootId = Guid.Empty,   // sentinel "Legacy" root; corrected by migration
+                Role = MediaFileRole.Main
             });
             newFiles++;
         }
