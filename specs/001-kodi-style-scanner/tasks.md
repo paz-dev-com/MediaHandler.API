@@ -45,31 +45,31 @@ description: "Task list for Kodi-Style NAS Library Scanner"
 
 ### Domain — Enums (all `MediaHandler.Domain/Enums/`)
 
-- [ ] T005 [P] Create `LibraryRootKind.cs` (`Movies | TvShows | Mixed`).
-- [ ] T006 [P] Create `ScanMode.cs` (`Full | Incremental`).
-- [ ] T007 [P] Create `ScanStatus.cs` (`Pending | Running | Completed | Failed | Cancelled`).
-- [ ] T008 [P] Create `ScanDecisionKind.cs` (`Added | Updated | Unchanged | Removed | Excluded | NeedsReview`).
-- [ ] T009 [P] Create `ReviewStatus.cs` (`Open | Resolved | Dismissed`).
-- [ ] T010 [P] Create `ReviewReason.cs` (`NoTmdbResult | MultipleCandidates | YearMismatch | UnparseableEpisode | NfoMalformed | UnknownFormat`).
-- [ ] T011 [P] Create `MediaFileRole.cs` (`Main | StackedPart | Episode`).
-- [ ] T012 [P] Create `ReviewResolutionAction.cs` (`Assign | Dismiss | Delete`) — referenced by review-items contract.
+- [X] T005 [P] Create `LibraryRootKind.cs` (`Movies | TvShows | Mixed`).
+- [X] T006 [P] Create `ScanMode.cs` (`Full | Incremental`).
+- [X] T007 [P] Create `ScanStatus.cs` (`Pending | Running | Completed | Failed | Cancelled`).
+- [X] T008 [P] Create `ScanDecisionKind.cs` (`Added | Updated | Unchanged | Removed | Excluded | NeedsReview`).
+- [X] T009 [P] Create `ReviewStatus.cs` (`Open | Resolved | Dismissed`).
+- [X] T010 [P] Create `ReviewReason.cs` (`NoTmdbResult | MultipleCandidates | YearMismatch | UnparseableEpisode | NfoMalformed | UnknownFormat`).
+- [X] T011 [P] Create `MediaFileRole.cs` (`Main | StackedPart | Episode`).
+- [X] T012 [P] Create `ReviewResolutionAction.cs` (`Assign | Dismiss | Delete`) — referenced by review-items contract.
 
 ### Domain — New Entities (all `MediaHandler.Domain/Entities/`, inheriting `BaseEntity`)
 
-- [ ] T013 [P] Create `LibraryRoot.cs` per data-model.md (Path, Kind, Label, IsEnabled).
-- [ ] T014 [P] Create `ScanRun.cs` (Mode, Status, StartedAt, FinishedAt, FailureReason, LibraryRootIds JSON, denormalised count columns).
-- [ ] T015 [P] Create `ScanItemDecision.cs` (ScanRunId FK, FilePath, Kind, Reason, RuleId, MediaFileId?).
-- [ ] T016 [P] Create `ReviewItem.cs` (FilePath, Reason, Status, ParsedTitle/Year/Season/Episode, Candidates JSON, ResolvedTmdbId, ResolvedKind, ResolvedBy, ResolvedAt, FirstSeenScanRunId).
-- [ ] T017 [P] Create `ExclusionRule.cs` (Pattern, Kind, RuleId, Origin, IsEnabled).
-- [ ] T018 [P] Create `StackGroup.cs` (MediaId, FolderPath, Discriminator, PartCount).
-- [ ] T019 [P] Create `NfoMetadata.cs` (SourcePath, RawXml hash, ParsedTitle, ParsedYear, TmdbId, Kind, ParsedAt).
-- [ ] T020 [P] Create `EpisodeFileLink.cs` (TvEpisodeId, MediaFileId, OrdinalInFile) — many-to-many for multi-episode files.
+- [X] T013 [P] Create `LibraryRoot.cs` per data-model.md (Path, Kind, Label, IsEnabled).
+- [X] T014 [P] Create `ScanRun.cs` (Mode, Status, StartedAt, FinishedAt, FailureReason, LibraryRootIds JSON, denormalised count columns).
+- [X] T015 [P] Create `ScanItemDecision.cs` (ScanRunId FK, FilePath, Kind, Reason, RuleId, MediaFileId?).
+- [X] T016 [P] Create `ReviewItem.cs` (FilePath, Reason, Status, ParsedTitle/Year/Season/Episode, Candidates JSON, ResolvedTmdbId, ResolvedKind, ResolvedBy, ResolvedAt, FirstSeenScanRunId).
+- [X] T017 [P] Create `ExclusionRule.cs` (Pattern, Kind, RuleId, Origin, IsEnabled).
+- [X] T018 [P] Create `StackGroup.cs` (MediaId, FolderPath, Discriminator, PartCount).
+- [X] T019 [P] Create `NfoMetadata.cs` (SourcePath, RawXml hash, ParsedTitle, ParsedYear, TmdbId, Kind, ParsedAt).
+- [X] T020 [P] Create `EpisodeFileLink.cs` (TvEpisodeId, MediaFileId, OrdinalInFile) — many-to-many for multi-episode files.
 
 ### Domain — Modified Entities
 
-- [ ] T021 Modify `MediaHandler.Domain/Entities/Media.cs` — add `Year?`, `NfoMetadataId?`, `ReviewState` (nullable enum reference to ReviewStatus). No behaviour beyond data shape.
-- [ ] T022 Modify `MediaHandler.Domain/Entities/MediaFile.cs` — add `Fingerprint` (SHA-256 hex of size+mtime+absolute path normalised), `MtimeUtc`, `StackGroupId?`, `Role`, `LibraryRootId?`, `FirstSeenScanRunId`, `LastSeenScanRunId`, `MissingSince?`.
-- [ ] T023 Modify `MediaHandler.Domain/Entities/TvEpisode.cs` — expose navigation collection `EpisodeFileLinks` (replaces single `MediaFileId`), keep convenience `PrimaryFile` resolver.
+- [X] T021 Modify `MediaHandler.Domain/Entities/Media.cs` — add `Year?`, `NfoMetadataId?`, `ReviewState` (nullable enum reference to ReviewStatus). No behaviour beyond data shape.
+- [X] T022 Modify `MediaHandler.Domain/Entities/MediaFile.cs` — add `Fingerprint` (SHA-256 hex of size+mtime+absolute path normalised), `MtimeUtc`, `StackGroupId?`, `Role`, `LibraryRootId?`, `FirstSeenScanRunId`, `LastSeenScanRunId`, `MissingSince?`.
+- [X] T023 Modify `MediaHandler.Domain/Entities/TvEpisode.cs` — expose navigation collection `EpisodeFileLinks` (replaces single `MediaFileId`), keep convenience `PrimaryFile` resolver.
 
 ### Application — Interfaces (all `MediaHandler.Application/Common/Interfaces/`)
 
