@@ -3,6 +3,7 @@ using MediaHandler.API.Middleware;
 using MediaHandler.Application;
 using MediaHandler.Infrastructure;
 using Serilog;
+using static MediaHandler.Infrastructure.DependencyInjection;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -61,6 +62,9 @@ try
 
     if (app.Environment.IsDevelopment())
         await app.InitialiseDatabaseAsync();
+
+    // Recover any ScanRun rows stuck in Running status after a crash/restart
+    await ApplyScanRunRecoveryAsync(app.Services);
 
     app.Run();
 }

@@ -18,7 +18,7 @@ public class Media : BaseEntity
     public int? VoteCount { get; set; }
     public string? Language { get; set; }
 
-    // ── Scanner additions (T021) ─────────────────────────────────────────────
+    // ── Scanner additions ────────────────────────────────────────────────────
 
     /// <summary>
     /// Release year parsed from the filename or NFO, distinct from

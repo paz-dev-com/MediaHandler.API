@@ -11,13 +11,14 @@ public class MediaFile : BaseEntity
     public string? Format { get; set; }
     public string? Resolution { get; set; }
 
-    // ── Scanner additions (T022) ─────────────────────────────────────────────
+    // ── Scanner additions ────────────────────────────────────────────────────
 
     /// <summary>
     /// SHA-256 hex digest of <c>absPath|size|mtimeUnix</c> used for fast incremental
-    /// change detection (R-006). Indexed uniquely per <c>(LibraryRootId, Fingerprint)</c>.
+    /// change detection. Indexed uniquely per <c>(LibraryRootId, Fingerprint)</c>.
+    /// Computed by the scanner pipeline; empty string until first scan.
     /// </summary>
-    public required string Fingerprint { get; set; }
+    public string Fingerprint { get; set; } = string.Empty;
 
     /// <summary>Last-modified timestamp of the physical file on the NAS, in UTC.</summary>
     public DateTime? MtimeUtc { get; set; }
@@ -31,14 +32,15 @@ public class MediaFile : BaseEntity
     /// <summary>Stack descriptor; populated when <see cref="StackGroupId"/> is set.</summary>
     public StackGroup? StackGroup { get; set; }
 
-    /// <summary>The <see cref="LibraryRoot"/> under which this file lives.</summary>
-    public required Guid LibraryRootId { get; set; }
+    /// <summary>The <see cref="LibraryRoot"/> under which this file lives.
+    /// <c>null</c> when the owning root has been deleted (soft-delete cascade).</summary>
+    public Guid? LibraryRootId { get; set; }
 
     /// <summary>Navigation to the owning <see cref="LibraryRoot"/>.</summary>
-    public LibraryRoot LibraryRoot { get; set; } = null!;
+    public LibraryRoot? LibraryRoot { get; set; }
 
     /// <summary>Functional role of this file within its logical media item.</summary>
-    public required MediaFileRole Role { get; set; }
+    public MediaFileRole Role { get; set; } = MediaFileRole.Main;
 
     /// <summary>The <see cref="ScanRun"/> in which this file was first discovered.</summary>
     public Guid FirstSeenScanRunId { get; set; }

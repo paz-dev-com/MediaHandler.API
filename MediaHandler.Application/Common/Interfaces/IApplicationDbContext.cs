@@ -15,5 +15,15 @@ public interface IApplicationDbContext
     DbSet<TvEpisode> TvEpisodes { get; }
     DbSet<UserEpisode> UserEpisodes { get; }
 
+    // ── Scanner entities ─────────────────────────────────────────────────────
+    DbSet<LibraryRoot> LibraryRoots { get; }
+    DbSet<ScanRun> ScanRuns { get; }
+    DbSet<ScanItemDecision> ScanItemDecisions { get; }
+    DbSet<ReviewItem> ReviewItems { get; }
+    DbSet<ExclusionRule> ExclusionRules { get; }
+    DbSet<StackGroup> StackGroups { get; }
+    DbSet<NfoMetadata> NfoMetadata { get; }
+    DbSet<EpisodeFileLink> EpisodeFileLinks { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

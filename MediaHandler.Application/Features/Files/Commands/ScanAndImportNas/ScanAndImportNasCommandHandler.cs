@@ -60,14 +60,14 @@ public class ScanAndImportNasCommandHandler(
         var newFiles = 0;
         foreach (var file in files.Where(file => !existingPaths.Contains(file.FilePath)))
         {
-            // Legacy handler — placeholders per data-model §3.2 until T115 retires this code.
+            // Legacy handler — placeholders until the new scanner pipeline replaces this.
             context.MediaFiles.Add(new MediaFile
             {
                 FilePath = file.FilePath,
                 FileSizeBytes = file.SizeBytes,
                 Format = file.Format,
-                Fingerprint = $"{file.FilePath}|{file.SizeBytes}|0",
-                LibraryRootId = Guid.Empty,   // sentinel "Legacy" root; corrected by migration
+                // Fingerprint and LibraryRootId left as defaults (empty / null):
+                // the new scanner pipeline populates these via LibraryRoot registration.
                 Role = MediaFileRole.Main
             });
             newFiles++;

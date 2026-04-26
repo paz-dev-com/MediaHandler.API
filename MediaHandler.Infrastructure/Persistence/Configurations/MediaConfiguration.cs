@@ -42,5 +42,14 @@ public class MediaConfiguration : IEntityTypeConfiguration<Media>
         builder.HasIndex(m => m.TmdbId);
         builder.HasIndex(m => m.Title);
         builder.HasIndex(m => m.Type);
+
+        // ── Scanner additions ────────────────────────────────────────────────
+        builder.Property(m => m.Year);
+
+        builder.HasOne(m => m.NfoMetadata)
+            .WithOne()
+            .HasForeignKey<Domain.Entities.Media>(m => m.NfoMetadataId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
