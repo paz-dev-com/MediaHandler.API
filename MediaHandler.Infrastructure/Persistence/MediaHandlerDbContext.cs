@@ -20,6 +20,16 @@ public class MediaHandlerDbContext : DbContext, IApplicationDbContext
     public DbSet<TvEpisode> TvEpisodes => Set<TvEpisode>();
     public DbSet<UserEpisode> UserEpisodes => Set<UserEpisode>();
 
+    // ── Scanner entities ─────────────────────────────────────────────────────
+    public DbSet<LibraryRoot> LibraryRoots => Set<LibraryRoot>();
+    public DbSet<ScanRun> ScanRuns => Set<ScanRun>();
+    public DbSet<ScanItemDecision> ScanItemDecisions => Set<ScanItemDecision>();
+    public DbSet<ReviewItem> ReviewItems => Set<ReviewItem>();
+    public DbSet<ExclusionRule> ExclusionRules => Set<ExclusionRule>();
+    public DbSet<StackGroup> StackGroups => Set<StackGroup>();
+    public DbSet<NfoMetadata> NfoMetadata => Set<NfoMetadata>();
+    public DbSet<EpisodeFileLink> EpisodeFileLinks => Set<EpisodeFileLink>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
