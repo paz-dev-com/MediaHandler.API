@@ -44,6 +44,16 @@ public sealed class KodiRegexCatalog
     };
 
     // =========================================================================
+    // Explicit TMDB id token in filename
+    // SOURCE: Kodi wiki — {tmdb=NNN} or {tmdbid=NNN} tokens allow bypassing search
+    // SOURCE: observed Kodi behaviour with imdbid/tmdb tokens in filenames
+    // =========================================================================
+
+    // SOURCE: Kodi wiki — explicit TMDB id token: "{tmdb=12345}" or "{tmdbid=12345}"
+    public static readonly Regex ExplicitTmdbIdToken =
+        new(@"\{tmdb(?:id)?=(\d+)\}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // =========================================================================
     // Year extraction
     // SOURCE: Kodi wiki — "(YEAR)" in folder/filename identifies the release year
     // SOURCE: advancedsettings moviecleanDatestamp — "(\d{4})" pattern

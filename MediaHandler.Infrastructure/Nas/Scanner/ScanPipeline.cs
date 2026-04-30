@@ -1,8 +1,7 @@
 #nullable enable
 // ScanPipeline — orchestrates the full scanner pipeline:
-// enumerate → exclude → group(stacks) → parse → classify → fingerprint → persist.
-// The TMDB stage is currently a stub that records items with TmdbId=null.
-// A real ITmdbMatcher call will replace the stub when TMDB matching is implemented.
+// enumerate → exclude → group(stacks) → parse → classify → TMDB-match → fingerprint → persist.
+// Files that cannot be unambiguously matched to TMDB become ReviewItems rather than silent mis-mappings.
 
 using System.Security.Cryptography;
 using System.Text;
@@ -147,6 +146,29 @@ public sealed class ScanPipeline(
             videoFiles.Add(entry);
         }
 
+        // ── Pre-load resolved ReviewItems for this batch of paths (T093 read-back) ──
+        var videoPaths = videoFiles.Select(f => f.AbsolutePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var videoPathsList = videoPaths.ToList(); // List<string> is reliably translated to SQL IN clause
+
+        var resolvedReviewItems = await db.ReviewItems
+            .Where(r => r.Status == ReviewStatus.Resolved
+                        && r.ResolvedTmdbId.HasValue
+                        && videoPathsList.Contains(r.FilePath))
+            .ToDictionaryAsync(r => r.FilePath, r => r, StringComparer.OrdinalIgnoreCase, ct);
+
+        // Pre-load existing open ReviewItems to avoid per-file duplicate checks
+        var existingOpenReviewPaths = (await db.ReviewItems
+            .Where(r => r.Status == ReviewStatus.Open
+                        && videoPathsList.Contains(r.FilePath))
+            .Select(r => r.FilePath)
+            .ToListAsync(ct))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Pre-load existing MediaFiles for this root by LibraryRootId (indexed) — much faster than IN clause
+        var existingMediaFiles = await db.MediaFiles
+            .Where(mf => mf.LibraryRootId == root.Id)
+            .ToDictionaryAsync(mf => mf.FilePath, mf => mf, StringComparer.OrdinalIgnoreCase, ct);
+
         // ── Group by folder for stacking detection ──────────────────────────
         var byFolder = videoFiles
             .GroupBy(f => System.IO.Path.GetDirectoryName(f.AbsolutePath) ?? string.Empty);
@@ -173,6 +195,9 @@ public sealed class ScanPipeline(
         // ── Classification & persistence stage ──────────────────────────────
         await EmitProgressAsync(scanRun.Id, "Classifying", 0, videoFiles.Count, null, progress, ct);
 
+        // Track paths added in this batch to handle duplicate entries in the source (defensive check)
+        var inFlightPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         var processedInRoot = 0;
         foreach (var file in videoFiles)
         {
@@ -181,14 +206,14 @@ public sealed class ScanPipeline(
 
             var stack = allStacks.FirstOrDefault(s => s.Parts.Any(p => p.AbsolutePath == file.AbsolutePath));
             var isStackedPart = stackedPaths.Contains(file.AbsolutePath);
-            // Determine ordinal: parts after the first are StackedPart; first part stays Main
             var partIndex = stack is null ? 0
                 : stack.Parts.TakeWhile(p => p.AbsolutePath != file.AbsolutePath).Count();
             var role = isStackedPart && partIndex > 0
                 ? MediaFileRole.StackedPart
                 : MediaFileRole.Main;
 
-            await ClassifyAndPersistFileAsync(scanRun, root, file, role, stack, counters, ct);
+            await ClassifyAndPersistFileAsync(
+                scanRun, root, file, role, stack, counters, resolvedReviewItems, existingOpenReviewPaths, existingMediaFiles, inFlightPaths, ct);
 
             if (processedInRoot % 50 == 0)
                 await EmitProgressAsync(scanRun.Id, "Classifying", processedInRoot, videoFiles.Count,
@@ -197,12 +222,12 @@ public sealed class ScanPipeline(
 
         await db.SaveChangesAsync(ct);
         logger.LogInformation(
-            "ScanPipeline: root {RootId} done. Added={A} Updated={U} Unchanged={X} Excluded={E}",
-            root.Id, counters.Added, counters.Updated, counters.Unchanged, counters.Excluded);
+            "ScanPipeline: root {RootId} done. Added={A} Updated={U} Unchanged={X} Excluded={E} NeedsReview={R}",
+            root.Id, counters.Added, counters.Updated, counters.Unchanged, counters.Excluded, counters.NeedsReview);
     }
 
     // =========================================================================
-    // File classification + persistence
+    // File classification + TMDB matching + persistence
     // =========================================================================
 
     private async Task ClassifyAndPersistFileAsync(
@@ -212,15 +237,22 @@ public sealed class ScanPipeline(
         MediaFileRole role,
         StackGroupCandidate? stack,
         ScanCounters counters,
+        Dictionary<string, ReviewItem> resolvedReviewItems,
+        HashSet<string> existingOpenReviewPaths,
+        Dictionary<string, MediaFile> existingMediaFiles,
+        HashSet<string> inFlightPaths,
         CancellationToken ct)
     {
+        // Guard against duplicate paths within the same batch (defensive handling of fixture bugs or NAS oddities)
+        if (inFlightPaths.Contains(file.AbsolutePath))
+        {
+            logger.LogDebug("Skipping duplicate path in batch: {FilePath}", file.AbsolutePath);
+            return;
+        }
         var fingerprint = ComputeFingerprint(file.AbsolutePath, file.SizeBytes, file.MtimeUtc);
 
-        // Check for existing MediaFile by path (incremental idempotency)
-        var existing = await db.MediaFiles
-            .FirstOrDefaultAsync(mf => mf.FilePath == file.AbsolutePath, ct);
-
-        if (existing is not null)
+        // Check for existing MediaFile by path (incremental idempotency) — use pre-loaded batch
+        if (existingMediaFiles.TryGetValue(file.AbsolutePath, out var existing))
         {
             if (existing.Fingerprint == fingerprint)
             {
@@ -254,7 +286,66 @@ public sealed class ScanPipeline(
             return;
         }
 
-        // ── New file: classify & persist ────────────────────────────────────
+        // ── Determine classification (movie vs episode) ──────────────────────
+        var isFromTvRoot = root.Kind is LibraryRootKind.TvShows;
+        var hint = BuildEpisodeHint(file.AbsolutePath);
+        var episodeNumbers = !isFromTvRoot
+            ? (IReadOnlyList<EpisodeNumber>)[]
+            : episodeMatcher.Match(file.FileName, hint);
+
+        if (isFromTvRoot && episodeNumbers.Count > 0)
+            role = MediaFileRole.Episode;
+        else if (root.Kind == LibraryRootKind.Movies || episodeNumbers.Count == 0)
+            role = role == MediaFileRole.StackedPart ? MediaFileRole.StackedPart : MediaFileRole.Main;
+
+        // ── TMDB resolution stage ─────────────────────────────────────────────
+        // T093: Check for a previously resolved ReviewItem for this path first.
+        // If found, skip the TMDB title search and re-use the administrator's saved mapping.
+        if (resolvedReviewItems.TryGetValue(file.AbsolutePath, out var resolvedItem)
+            && resolvedItem.ResolvedTmdbId.HasValue)
+        {
+            logger.LogDebug(
+                "Re-using saved resolution (TmdbId={TmdbId}) for '{FilePath}'.",
+                resolvedItem.ResolvedTmdbId.Value, file.AbsolutePath);
+
+            inFlightPaths.Add(file.AbsolutePath);
+            await PersistNewMediaFileAsync(
+                scanRun, root, file, role, fingerprint, counters, ct);
+            return;
+        }
+
+        // Build the TMDB match query from parsed name data
+        var matchQuery = BuildMatchQuery(file, root, episodeNumbers, role);
+
+        // Resolve via matcher (handles precedence chain + cache + error tolerance)
+        var tmdbResult = await tmdbMatcher.ResolveAsync(matchQuery, ct);
+
+        if (tmdbResult.NeedsReview)
+        {
+            // The file cannot be confidently matched — create a ReviewItem
+            await CreateReviewItemAsync(
+                scanRun, file, tmdbResult, matchQuery, episodeNumbers, counters, existingOpenReviewPaths, ct);
+            return;
+        }
+
+        // Successful match — persist the new MediaFile
+        inFlightPaths.Add(file.AbsolutePath);
+        await PersistNewMediaFileAsync(scanRun, root, file, role, fingerprint, counters, ct);
+    }
+
+    // =========================================================================
+    // Persist a new MediaFile row for a successfully matched file
+    // =========================================================================
+
+    private async Task PersistNewMediaFileAsync(
+        ScanRun scanRun,
+        LibraryRoot root,
+        NasFileEntry file,
+        MediaFileRole role,
+        string fingerprint,
+        ScanCounters counters,
+        CancellationToken ct)
+    {
         var mediaFile = new MediaFile
         {
             FilePath = file.AbsolutePath,
@@ -268,38 +359,124 @@ public sealed class ScanPipeline(
             Role = role
         };
 
-        // ── Determine if this is a movie or a TV episode ─────────────────────
-        var isFromTvRoot = root.Kind is LibraryRootKind.TvShows;
-        var hint = BuildEpisodeHint(file.AbsolutePath);
-        var episodeNumbers = !isFromTvRoot
-            ? []
-            : episodeMatcher.Match(file.FileName, hint);
-
-        if (isFromTvRoot && episodeNumbers.Count > 0)
-        {
-            mediaFile.Role = MediaFileRole.Episode;
-        }
-        else if (root.Kind == LibraryRootKind.Movies || episodeNumbers.Count == 0)
-        {
-            // Treat as movie
-            mediaFile.Role = role == MediaFileRole.StackedPart ? MediaFileRole.StackedPart : MediaFileRole.Main;
-        }
-
         db.MediaFiles.Add(mediaFile);
-        await db.SaveChangesAsync(ct);
+        // Defer the save — the outer loop calls SaveChangesAsync once per root batch
 
         counters.Added++;
-        await db.ScanItemDecisions.AddAsync(new ScanItemDecision
+        var decision = new ScanItemDecision
         {
             ScanRunId = scanRun.Id,
             FilePath = file.AbsolutePath,
             Kind = ScanDecisionKind.Added,
-            MediaFileId = mediaFile.Id
-        }, ct);
+            // Set navigation property explicitly so EF Core orders the inserts correctly
+            // when saving a large batch (MediaFile must be inserted before ScanItemDecision)
+            MediaFile = mediaFile
+        };
+        await db.ScanItemDecisions.AddAsync(decision, ct);
 
         logger.LogDebug(
             "{ScanRunId}: Added {FilePath} [role={Role}]",
-            scanRun.Id, file.AbsolutePath, mediaFile.Role);
+            scanRun.Id, file.AbsolutePath, role);
+    }
+
+    // =========================================================================
+    // Create a ReviewItem for an ambiguous / unmatched file
+    // =========================================================================
+
+    private async Task CreateReviewItemAsync(
+        ScanRun scanRun,
+        NasFileEntry file,
+        TmdbMatchResult tmdbResult,
+        MatchQuery matchQuery,
+        IReadOnlyList<EpisodeNumber> episodeNumbers,
+        ScanCounters counters,
+        HashSet<string> existingOpenReviewPaths,
+        CancellationToken ct)
+    {
+        // Avoid creating duplicate Open ReviewItems for the same path (use pre-loaded set)
+        if (!existingOpenReviewPaths.Contains(file.AbsolutePath))
+        {
+            var candidatesJson = JsonSerializer.Serialize(
+                tmdbResult.Candidates.Select(c => new
+                {
+                    tmdbId = c.TmdbId,
+                    kind = c.Kind.ToString(),
+                    title = c.Title,
+                    year = c.Year,
+                    score = c.Score,
+                    posterPath = c.PosterPath
+                }));
+
+            var reviewItem = new ReviewItem
+            {
+                FilePath = file.AbsolutePath,
+                Reason = tmdbResult.ReviewReason ?? ReviewReason.NoTmdbResult,
+                Status = ReviewStatus.Open,
+                ParsedTitle = matchQuery.Title,
+                ParsedYear = matchQuery.Year,
+                ParsedSeason = episodeNumbers.Count > 0 ? episodeNumbers[0].Season : null,
+                ParsedEpisode = episodeNumbers.Count > 0 ? episodeNumbers[0].Episode : null,
+                CandidatesJson = candidatesJson,
+                FirstSeenScanRunId = scanRun.Id
+            };
+
+            db.ReviewItems.Add(reviewItem);
+            existingOpenReviewPaths.Add(file.AbsolutePath); // prevent future duplicates in same batch
+        }
+
+        counters.NeedsReview++;
+        await db.ScanItemDecisions.AddAsync(new ScanItemDecision
+        {
+            ScanRunId = scanRun.Id,
+            FilePath = file.AbsolutePath,
+            Kind = ScanDecisionKind.NeedsReview,
+            Reason = tmdbResult.ReviewReason?.ToString()
+        }, ct);
+
+        logger.LogDebug(
+            "{ScanRunId}: NeedsReview {FilePath} [reason={Reason}]",
+            scanRun.Id, file.AbsolutePath, tmdbResult.ReviewReason);
+    }
+
+    // =========================================================================
+    // Build a MatchQuery from file path and parsed episode data
+    // =========================================================================
+
+    private MatchQuery BuildMatchQuery(
+        NasFileEntry file,
+        LibraryRoot root,
+        IReadOnlyList<EpisodeNumber> episodeNumbers,
+        MediaFileRole role)
+    {
+        // Check for explicit TMDB id token in the file or folder name
+        int? explicitTokenId = null;
+        var tokenMatch = KodiRegexCatalog.ExplicitTmdbIdToken.Match(file.AbsolutePath);
+        if (tokenMatch.Success && int.TryParse(tokenMatch.Groups[1].Value, out var parsedId))
+            explicitTokenId = parsedId;
+
+        // Parse the title and year from the filename using the Kodi name parser
+        var kindHint = role == MediaFileRole.Episode || root.Kind == LibraryRootKind.TvShows
+            ? MediaType.TvShow
+            : MediaType.Film;
+
+        if (kindHint == MediaType.Film)
+        {
+            var movieResult = nameParser.ParseMovie(file.AbsolutePath);
+            return new MatchQuery(
+                Title: movieResult.Title ?? System.IO.Path.GetFileNameWithoutExtension(file.FileName),
+                Year: movieResult.Year,
+                KindHint: MediaType.Film,
+                ExplicitTokenId: explicitTokenId);
+        }
+        else
+        {
+            var episodeResult = nameParser.ParseEpisode(file.AbsolutePath, BuildEpisodeHint(file.AbsolutePath));
+            return new MatchQuery(
+                Title: episodeResult.Title ?? System.IO.Path.GetFileNameWithoutExtension(file.FileName),
+                Year: null,
+                KindHint: MediaType.TvShow,
+                ExplicitTokenId: explicitTokenId);
+        }
     }
 
     // =========================================================================
