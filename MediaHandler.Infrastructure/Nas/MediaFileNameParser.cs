@@ -10,6 +10,14 @@ namespace MediaHandler.Infrastructure.Nas;
 /// and optional TMDB media-type hint (<c>"movie"</c> or <c>"tv"</c>).
 /// </summary>
 /// <remarks>
+/// <para>
+/// <b>DEPRECATED</b>: This parser is superseded by the Kodi-style scanner pipeline
+/// (<see cref="Scanner.KodiNameParser"/>, <see cref="Scanner.ScanPipeline"/>).
+/// It remains only because the legacy <c>ScanAndImportNas</c> and <c>AutoImportMediaFiles</c>
+/// handlers in <c>FilesController</c> still depend on <c>IMediaFileNameParser</c> via
+/// <c>MediaAutoMatchService</c>. Once those legacy endpoints are removed, this file
+/// and its interface should be deleted along with the DI registration.
+/// </para>
 /// <para>Supported filename patterns:</para>
 /// <list type="bullet">
 ///   <item>Dot-separated: <c>The.Matrix.1999.1080p.BluRay.mkv</c></item>
@@ -18,6 +26,7 @@ namespace MediaHandler.Infrastructure.Nas;
 ///   <item>Plain title: <c>Inception.mkv</c></item>
 /// </list>
 /// </remarks>
+[Obsolete("Use KodiNameParser from the Kodi-style scanner pipeline instead. This parser is retained only for legacy FilesController compatibility.")]
 public sealed class MediaFileNameParser : IMediaFileNameParser
 {
     // Video file extensions we recognize as media — single source of truth in MediaFileConstants

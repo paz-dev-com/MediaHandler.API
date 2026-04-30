@@ -130,10 +130,79 @@ MediaHandler.API/
 | `GET` | `/api/v1/admin/users` | List all users (paginated) | Admin |
 | `PUT` | `/api/v1/admin/users/{id}/role` | Set user role | Admin |
 | `PUT` | `/api/v1/admin/users/{id}/active` | Enable / disable user | Admin |
+| `POST` | `/api/v1/admin/scan` | Start a new Kodi-style NAS scan | Admin |
+| `GET` | `/api/v1/admin/scan/{id}` | Get scan run details | Admin |
+| `GET` | `/api/v1/admin/scan/active` | Get currently running scan | Admin |
+| `POST` | `/api/v1/admin/scan/{id}/cancel` | Cancel a running scan | Admin |
+| `GET` | `/api/v1/admin/library-roots` | List configured NAS library roots | Admin |
+| `POST` | `/api/v1/admin/library-roots` | Register a new library root | Admin |
+| `DELETE` | `/api/v1/admin/library-roots/{id}` | Remove a library root | Admin |
+| `GET` | `/api/v1/admin/review-items` | List review queue items | Admin |
+| `POST` | `/api/v1/admin/review-items/{id}/resolve` | Resolve/dismiss a review item | Admin |
 
 ---
 
-## NAS Auto-Import Feature
+## Kodi-Style NAS Library Scanner
+
+### Overview
+
+The scanner replaces the legacy best-effort NAS scanner with a **Kodi-parity classification pipeline** that:
+
+1. Walks configured library roots (typed `Movies` / `TvShows` / `Mixed`).
+2. Applies Kodi-equivalent inclusion/exclusion, NFO sidecar parsing, filename/folder parsing, season/episode detection, and multi-part stacking.
+3. Resolves each item to TMDB using a precedence chain (NFO id → explicit token → title+year → title), flagging ambiguous results to a review queue.
+4. Persists per-scan audit trails (`ScanRun`, `ScanItemDecision`) and file fingerprints for fast incremental scans.
+
+### Running a Scan Locally
+
+```bash
+# 1. Start the API in development mode
+dotnet run --project MediaHandler.API
+
+# 2. Register a library root (admin JWT auto-provided in dev)
+curl -X POST http://localhost:5000/api/v1/admin/library-roots \
+  -H "Content-Type: application/json" \
+  -d '{"path": "/Disk/Media/Films", "kind": "Movies", "label": "My Films"}'
+
+# 3. Trigger a full scan
+curl -X POST http://localhost:5000/api/v1/admin/scan \
+  -H "Content-Type: application/json" \
+  -d '{"libraryRootIds": [], "mode": "Full"}'
+
+# 4. Poll scan status
+curl http://localhost:5000/api/v1/admin/scan/active
+```
+
+### Adding a Failing Parser Test Case
+
+When a filename is not parsed correctly by the scanner:
+
+1. Open the relevant test file in `MediaHandler.Tests/Scanner/`:
+   - `KodiNameParserTests.cs` — for title/year extraction issues
+   - `ExclusionEvaluatorTests.cs` — for false inclusion/exclusion
+   - `StackingDetectorTests.cs` — for stacking grouping issues
+   - `TvEpisodeMatcherTests.cs` — for episode number extraction
+
+2. Add a new `[Theory]` / `[InlineData]` row with the failing filename and expected output.
+
+3. Run `dotnet test MediaHandler.Tests` — the new case should fail (TDD red).
+
+4. Fix the parser/regex in `MediaHandler.Infrastructure/Nas/Scanner/` to make the test pass.
+
+5. Every new regex **must** include a `// SOURCE:` comment citing a public, non-GPL source.
+
+### No-GPL-Paste Rule (R-001)
+
+All scanner heuristics are derived **clean-room** from documented Kodi behavior:
+
+- ✅ Kodi wiki, advancedsettings.xml docs, observed black-box behavior
+- ❌ **Never** copy strings or regexes from Kodi GPL-2.0 source files
+
+See [`MediaHandler.Infrastructure/Nas/Scanner/README.md`](MediaHandler.Infrastructure/Nas/Scanner/README.md) for the full policy.
+
+---
+
+## NAS Auto-Import Feature (Legacy)
 
 ### Overview
 

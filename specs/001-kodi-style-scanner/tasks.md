@@ -238,17 +238,17 @@ description: "Task list for Kodi-Style NAS Library Scanner"
 
 ### Logging (FR-023)
 
-- [ ] T107 Add structured Serilog enrichers in `ScanPipeline` — every per-file decision logs at `Information` with properties `{ScanRunId, FilePath, Kind, Reason?, RuleId?, TmdbId?}`. Stage transitions log at `Debug`. Confirm log volume is bounded for a 10 000-file scan (no per-file `Warning`+ unless actual problem).
+- [X] T107 Add structured Serilog enrichers in `ScanPipeline` — every per-file decision logs at `Information` with properties `{ScanRunId, FilePath, Kind, Reason?, RuleId?, TmdbId?}`. Stage transitions log at `Debug`. Confirm log volume is bounded for a 10 000-file scan (no per-file `Warning`+ unless actual problem).
 
 ### Success-criteria tests (remaining)
 
-- [ ] T108 [P] Implement `MediaHandler.IntegrationTests/Scanner/Sc003_ExclusionFidelity_NoFalsePositivesOrFalseNegatives` per quickstart §SC-003 (every `expected: excluded` path → `ScanItemDecision.Kind=Excluded` + zero `MediaFile`; every `expected: included` → `MediaFile` exists).
-- [ ] T109 [P] Implement `MediaHandler.IntegrationTests/Scanner/Sc004_KodiBehavioralParity` — runs scanner over a curated parity-fixture subset (paths annotated with the *observed* Kodi classification recorded out-of-band); asserts ≥ 99 % matching outcomes.
-- [ ] T110 [P] Implement `MediaHandler.IntegrationTests/Scanner/Sc007_ManualCorrectionReduction_AtLeast80Percent` — operates against the synthetic benchmark plus an injected baseline number representing the previous implementation's review count.
+- [X] T108 [P] Implement `MediaHandler.IntegrationTests/Scanner/Sc003_ExclusionFidelity_NoFalsePositivesOrFalseNegatives` per quickstart §SC-003 (every `expected: excluded` path → `ScanItemDecision.Kind=Excluded` + zero `MediaFile`; every `expected: included` → `MediaFile` exists).
+- [X] T109 [P] Implement `MediaHandler.IntegrationTests/Scanner/Sc004_KodiBehavioralParity` — runs scanner over a curated parity-fixture subset (paths annotated with the *observed* Kodi classification recorded out-of-band); asserts ≥ 99 % matching outcomes.
+- [X] T110 [P] Implement `MediaHandler.IntegrationTests/Scanner/Sc007_ManualCorrectionReduction_AtLeast80Percent` — operates against the synthetic benchmark plus an injected baseline number representing the previous implementation's review count.
 
 ### Authorisation (SC-008)
 
-- [ ] T111 Implement `MediaHandler.IntegrationTests/Scanner/AdminAuthorizationTests.cs` covering, for **every** endpoint in `contracts/scan.md`, `contracts/library-roots.md`, `contracts/review-items.md`:
+- [X] T111 Implement `MediaHandler.IntegrationTests/Scanner/AdminAuthorizationTests.cs` covering, for **every** endpoint in `contracts/scan.md`, `contracts/library-roots.md`, `contracts/review-items.md`:
   - Anonymous → 401.
   - Authenticated non-admin (`User` role) JWT → 403 (the explicit SC-008 case).
   - Admin JWT → 2xx.
@@ -256,11 +256,11 @@ description: "Task list for Kodi-Style NAS Library Scanner"
 
 ### Documentation & cleanup
 
-- [ ] T112 [P] Update `MediaHandler.Infrastructure/Nas/Scanner/README.md` (final pass) listing every regex/heuristic source citation accumulated in `KodiRegexCatalog.cs`, and the Kodi-version reference (commit hash from `/home/tpfeifer/Repos/xbmc-master/`).
-- [ ] T113 [P] Update top-level `README.md` / `CONTRIBUTING.md` with: how to run a scan locally, where to add a failing parser case, the no-GPL-paste rule.
-- [ ] T114 [P] If a Postman / Bruno collection exists in the repo, add the four new endpoint groups (scan, scan/{id}, scan/{id}/cancel, scan/active, library-roots CRUD, review-items list+resolve) with example admin JWT auth. If no such collection exists, skip and note in PR.
-- [ ] T115 Retire `MediaHandler.Infrastructure/Nas/MediaFileNameParser.cs`: confirm no callers remain in the `main` solution graph (only test fixtures may keep references during transition), then delete and remove DI registration. Run `dotnet build` and full test suite.
-- [ ] T116 Final benchmark pass — execute `quickstart.md` end-to-end against the Phase-3 fixture, capture SC-001..SC-008 numbers in a markdown report under `specs/001-kodi-style-scanner/benchmark-report.md`.
+- [X] T112 [P] Update `MediaHandler.Infrastructure/Nas/Scanner/README.md` (final pass) listing every regex/heuristic source citation accumulated in `KodiRegexCatalog.cs`, and the Kodi-version reference (commit hash from `/home/tpfeifer/Repos/xbmc-master/`).
+- [X] T113 [P] Update top-level `README.md` / `CONTRIBUTING.md` with: how to run a scan locally, where to add a failing parser case, the no-GPL-paste rule.
+- [X] T114 [P] If a Postman / Bruno collection exists in the repo, add the four new endpoint groups (scan, scan/{id}, scan/{id}/cancel, scan/active, library-roots CRUD, review-items list+resolve) with example admin JWT auth. If no such collection exists, skip and note in PR.
+- [X] T115 Retire `MediaHandler.Infrastructure/Nas/MediaFileNameParser.cs`: confirm no callers remain in the `main` solution graph (only test fixtures may keep references during transition), then delete and remove DI registration. Run `dotnet build` and full test suite.
+- [X] T116 Final benchmark pass — execute `quickstart.md` end-to-end against the Phase-3 fixture, capture SC-001..SC-008 numbers in a markdown report under `specs/001-kodi-style-scanner/benchmark-report.md`.
 
 ---
 

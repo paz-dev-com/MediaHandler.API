@@ -2,16 +2,55 @@
   "info": {
     "name": "MediaHandler API",
     "_postman_id": "mediahandler-api-collection",
-    "description": "Full collection for MediaHandler API.\n\nAuthentication uses the DevAuth handler (Development only).\nSet `X-Dev-IsAdmin` to `false` on individual requests to test non-admin access.\n\nVariables automatically captured by test scripts:\n- `mediaId` — set by POST /media or POST /tmdb/import\n- `wishlistId` — set by POST /wishlist\n- `userId` — set by GET /admin/users",
+    "description": "Full collection for MediaHandler API.\n\nAuthentication uses the DevAuth handler (Development only).\nSet `X-Dev-IsAdmin` to `false` on individual requests to test non-admin access.\n\nVariables automatically captured by test scripts:\n- `mediaId` \u2014 set by POST /media or POST /tmdb/import\n- `wishlistId` \u2014 set by POST /wishlist\n- `userId` \u2014 set by GET /admin/users",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl",   "value": "http://localhost:5000", "type": "string" },
-    { "key": "mediaId",   "value": "", "type": "string" },
-    { "key": "seasonId",  "value": "", "type": "string" },
-    { "key": "episodeId", "value": "", "type": "string" },
-    { "key": "wishlistId","value": "", "type": "string" },
-    { "key": "userId",    "value": "", "type": "string" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "mediaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "seasonId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "episodeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "wishlistId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "scanRunId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "libraryRootId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reviewItemId",
+      "value": "",
+      "type": "string"
+    }
   ],
   "auth": {
     "type": "noauth"
@@ -24,7 +63,17 @@
           "name": "GET Health",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/v1/health", "host": ["{{baseUrl}}"], "path": ["api","v1","health"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ]
+            }
           }
         }
       ]
@@ -37,11 +86,31 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/sync", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","sync"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "sync"
+              ]
+            }
           }
         },
         {
@@ -49,11 +118,31 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/me", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","me"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            }
           }
         },
         {
@@ -61,16 +150,39 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"preferredLanguage\": \"fr\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/preferences", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","preferences"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "preferences"
+              ]
+            }
           }
         }
       ]
@@ -83,11 +195,31 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
-            "url": { "raw": "{{baseUrl}}/api/v1/media/stats", "host": ["{{baseUrl}}"], "path": ["api","v1","media","stats"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "stats"
+              ]
+            }
           }
         },
         {
@@ -95,21 +227,58 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/media?page=1&pageSize=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["api","v1","media"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media"
+              ],
               "query": [
-                { "key": "page",     "value": "1" },
-                { "key": "pageSize", "value": "20" },
-                { "key": "search",   "value": "", "disabled": true },
-                { "key": "type",     "value": "Movie", "disabled": true },
-                { "key": "isWatched","value": "false", "disabled": true },
-                { "key": "genre",    "value": "Action", "disabled": true }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "Movie",
+                  "disabled": true
+                },
+                {
+                  "key": "isWatched",
+                  "value": "false",
+                  "disabled": true
+                },
+                {
+                  "key": "genre",
+                  "value": "Action",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -119,11 +288,31 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
-            "url": { "raw": "{{baseUrl}}/api/v1/media/{{mediaId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","media","{{mediaId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/{{mediaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "{{mediaId}}"
+              ]
+            }
           }
         },
         {
@@ -145,16 +334,38 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"tmdbId\": 550,\n  \"title\": \"Fight Club\",\n  \"originalTitle\": \"Fight Club\",\n  \"overview\": \"An insomniac office worker forms an underground fight club.\",\n  \"type\": \"Movie\",\n  \"releaseDate\": \"1999-10-15T00:00:00Z\",\n  \"runtime\": 139,\n  \"posterPath\": \"/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg\",\n  \"backdropPath\": \"/hZkgoQYus5vegHoetLkCJzVSiL2.jpg\",\n  \"voteAverage\": 8.4,\n  \"voteCount\": 26280,\n  \"genres\": [\"Drama\", \"Thriller\"],\n  \"language\": \"en\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/media", "host": ["{{baseUrl}}"], "path": ["api","v1","media"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media"
+              ]
+            }
           }
         },
         {
@@ -162,16 +373,40 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"isWatched\": true\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/media/{{mediaId}}/watched", "host": ["{{baseUrl}}"], "path": ["api","v1","media","{{mediaId}}","watched"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/{{mediaId}}/watched",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "{{mediaId}}",
+                "watched"
+              ]
+            }
           }
         },
         {
@@ -179,11 +414,31 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
-            "url": { "raw": "{{baseUrl}}/api/v1/media/{{mediaId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","media","{{mediaId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/{{mediaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "{{mediaId}}"
+              ]
+            }
           }
         }
       ]
@@ -196,11 +451,32 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
-            "url": { "raw": "{{baseUrl}}/api/v1/media/{{mediaId}}/seasons", "host": ["{{baseUrl}}"], "path": ["api","v1","media","{{mediaId}}","seasons"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/{{mediaId}}/seasons",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "{{mediaId}}",
+                "seasons"
+              ]
+            }
           }
         },
         {
@@ -208,16 +484,44 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"isWatched\": true\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/media/{{mediaId}}/seasons/{{seasonId}}/episodes/{{episodeId}}/watched", "host": ["{{baseUrl}}"], "path": ["api","v1","media","{{mediaId}}","seasons","{{seasonId}}","episodes","{{episodeId}}","watched"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/media/{{mediaId}}/seasons/{{seasonId}}/episodes/{{episodeId}}/watched",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "media",
+                "{{mediaId}}",
+                "seasons",
+                "{{seasonId}}",
+                "episodes",
+                "{{episodeId}}",
+                "watched"
+              ]
+            }
           }
         }
       ]
@@ -230,17 +534,40 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/tmdb/search?query=Breaking+Bad",
-              "host": ["{{baseUrl}}"],
-              "path": ["api","v1","tmdb","search"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tmdb",
+                "search"
+              ],
               "query": [
-                { "key": "query",    "value": "Breaking Bad" },
-                { "key": "language", "value": "en", "disabled": true }
+                {
+                  "key": "query",
+                  "value": "Breaking Bad"
+                },
+                {
+                  "key": "language",
+                  "value": "en",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -264,17 +591,41 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/tmdb/import/550?mediaType=Movie&language=en",
-              "host": ["{{baseUrl}}"],
-              "path": ["api","v1","tmdb","import","550"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tmdb",
+                "import",
+                "550"
+              ],
               "query": [
-                { "key": "mediaType", "value": "Movie" },
-                { "key": "language",  "value": "en", "disabled": true }
+                {
+                  "key": "mediaType",
+                  "value": "Movie"
+                },
+                {
+                  "key": "language",
+                  "value": "en",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -289,17 +640,38 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/wishlist?page=1&pageSize=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["api","v1","wishlist"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wishlist"
+              ],
               "query": [
-                { "key": "page",     "value": "1" },
-                { "key": "pageSize", "value": "20" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
               ]
             }
           }
@@ -323,16 +695,38 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"tmdbId\": 238,\n  \"title\": \"The Godfather\",\n  \"posterPath\": \"/3bhkrj58Vtu7enYsLegHnDmRWTh.jpg\",\n  \"releaseDate\": \"1972-03-24T00:00:00Z\",\n  \"notes\": \"Must watch classic\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/wishlist", "host": ["{{baseUrl}}"], "path": ["api","v1","wishlist"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wishlist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wishlist"
+              ]
+            }
           }
         },
         {
@@ -340,16 +734,40 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"isAcquired\": true\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/wishlist/{{wishlistId}}/acquired", "host": ["{{baseUrl}}"], "path": ["api","v1","wishlist","{{wishlistId}}","acquired"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wishlist/{{wishlistId}}/acquired",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wishlist",
+                "{{wishlistId}}",
+                "acquired"
+              ]
+            }
           }
         },
         {
@@ -357,11 +775,31 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
-            "url": { "raw": "{{baseUrl}}/api/v1/wishlist/{{wishlistId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","wishlist","{{wishlistId}}"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wishlist/{{wishlistId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wishlist",
+                "{{wishlistId}}"
+              ]
+            }
           }
         }
       ]
@@ -374,16 +812,36 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/files/scan",
-              "host": ["{{baseUrl}}"],
-              "path": ["api","v1","files","scan"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "files",
+                "scan"
+              ],
               "query": [
-                { "key": "basePath", "value": "/movies", "disabled": true }
+                {
+                  "key": "basePath",
+                  "value": "/movies",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -414,18 +872,44 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/admin/users?page=1&pageSize=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["api","v1","admin","users"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ],
               "query": [
-                { "key": "page",     "value": "1" },
-                { "key": "pageSize", "value": "20" },
-                { "key": "search",   "value": "", "disabled": true }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                }
               ]
             }
           }
@@ -435,16 +919,41 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"role\": \"User\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}/role", "host": ["{{baseUrl}}"], "path": ["api","v1","admin","users","{{userId}}","role"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}/role",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{userId}}",
+                "role"
+              ]
+            }
           }
         },
         {
@@ -452,16 +961,361 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Dev-OktaId",  "value": "okta|devuser1" },
-              { "key": "X-Dev-Email",   "value": "dev@local.com" },
-              { "key": "X-Dev-IsAdmin", "value": "true" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Dev-OktaId",
+                "value": "okta|devuser1"
+              },
+              {
+                "key": "X-Dev-Email",
+                "value": "dev@local.com"
+              },
+              {
+                "key": "X-Dev-IsAdmin",
+                "value": "true"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"isActive\": true\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}/active", "host": ["{{baseUrl}}"], "path": ["api","v1","admin","users","{{userId}}","active"] }
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users/{{userId}}/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users",
+                "{{userId}}",
+                "active"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Scan",
+      "description": "Kodi-style NAS scan management endpoints. All require AdminOnly policy.",
+      "item": [
+        {
+          "name": "Start Scan (Full)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/scan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "scan"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"libraryRootIds\": [],\n  \"mode\": \"Full\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.id) { pm.collectionVariables.set('scanRunId', jsonData.data.id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Scan Run",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/scan/{{scanRunId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "scan",
+                "{{scanRunId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Scan Run (with Review)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/scan/{{scanRunId}}?includeReview=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "scan",
+                "{{scanRunId}}"
+              ],
+              "query": [
+                {
+                  "key": "includeReview",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Active Scan",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/scan/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "scan",
+                "active"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Scan",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/scan/{{scanRunId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "scan",
+                "{{scanRunId}}",
+                "cancel"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Library Roots",
+      "description": "NAS library root CRUD endpoints. All require AdminOnly policy.",
+      "item": [
+        {
+          "name": "List Library Roots",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/library-roots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "library-roots"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Library Root",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/library-roots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "library-roots"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"path\": \"/Disk/Media/Films\",\n  \"kind\": \"Movies\",\n  \"label\": \"Films\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.id) { pm.collectionVariables.set('libraryRootId', jsonData.data.id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove Library Root",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/library-roots/{{libraryRootId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "library-roots",
+                "{{libraryRootId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Review Items",
+      "description": "Review queue management endpoints. All require AdminOnly policy.",
+      "item": [
+        {
+          "name": "List Review Items",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/review-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "review-items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Review Items (by Scan Run)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/review-items?scanRunId={{scanRunId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "review-items"
+              ],
+              "query": [
+                {
+                  "key": "scanRunId",
+                  "value": "{{scanRunId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resolve Review Item (Assign)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/review-items/{{reviewItemId}}/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "review-items",
+                "{{reviewItemId}}",
+                "resolve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"Assign\",\n  \"tmdbId\": 27205,\n  \"kind\": \"Film\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Resolve Review Item (Dismiss)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/review-items/{{reviewItemId}}/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "review-items",
+                "{{reviewItemId}}",
+                "resolve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"Dismiss\"\n}"
+            }
           }
         }
       ]

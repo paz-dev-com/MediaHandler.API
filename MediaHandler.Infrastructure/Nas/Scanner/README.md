@@ -18,6 +18,9 @@ behavior. They are implemented entirely from:
 > the Kodi source tree** (`/home/tpfeifer/Repos/xbmc-master/` or any other GPL-2.0 source).
 > Doing so would bind this project to GPL-2.0 terms, which is incompatible with its licence.
 
+**Kodi reference version**: The behavioral observations were made against the *xbmc-master*
+checkout at `/home/tpfeifer/Repos/xbmc-master/` (Kodi v21 "Omega" development branch).
+
 ---
 
 ## R-001 Attribution Requirements
@@ -35,6 +38,40 @@ private static readonly string[] CleanTokens = [ "1080p", "720p", "BluRay", ... 
 
 Reviewers **must reject** any PR where a `// SOURCE:` comment is absent or cites an
 internal Kodi `.cpp`/`.h` file.
+
+---
+
+## Regex & Heuristic Source Citations (KodiRegexCatalog.cs)
+
+The following table lists every regex/heuristic in `KodiRegexCatalog.cs` with its
+documented source:
+
+| Pattern / Constant | Source |
+|---|---|
+| `VideoExtensions` | Kodi wiki advancedsettings `<videoextensions>` — observed defaults |
+| `ExplicitTmdbIdToken` | Kodi wiki — `{tmdb=NNN}` / `{tmdbid=NNN}` tokens in filenames |
+| `YearInParens` | Kodi wiki — `(YEAR)` in folder/filename for release year |
+| `YearDotSeparated` | advancedsettings `moviecleanDatestamp` — dot-separated year pattern |
+| `YearAtEnd` | Kodi wiki — year at end of title after last dot or space |
+| `MovieCleanupTokens[]` | advancedsettings `moviecleanString` — quality/codec/source tokens removed from titles |
+| `SxxExx` | Kodi wiki — canonical `S01E01` TV episode naming |
+| `SxxExxToEyy` | Kodi wiki — multi-episode `S01E01-E02` / `S01E01E02` ranges |
+| `SeasonXEpisode` | Kodi wiki — alternate `1x05` episode numbering |
+| `DateBased` | Kodi wiki — `YYYY.MM.DD` date-based episode naming for daily shows |
+| `AbsoluteEpisode` | Kodi wiki — `E042` without season prefix (anime) |
+| `AbsoluteNumber` | Kodi wiki — 3-digit zero-padded absolute episode number |
+| `SeasonFolderName` | Observed Kodi behaviour — `Season XX`, `Serie`, `Saison`, `Staffel` patterns |
+| `SpecialsFolderName` | Observed Kodi behaviour — `Specials` / `Season 00` / `S00` folder names |
+| `StackSuffixCd` | advancedsettings `stackingregex` — `cd1`/`cd2` stacking suffix |
+| `StackSuffixDisc` | advancedsettings `stackingregex` — `disc1`/`disk1` stacking suffix |
+| `StackSuffixPart` | advancedsettings `stackingregex` — `part1`/`part2` stacking suffix |
+| `StackSuffixPt` | advancedsettings `stackingregex` — `pt1`/`pt2` stacking suffix |
+| `StackSuffixLetter` | advancedsettings `stackingregex` — `(a)`/`(b)` bracketed letter |
+| `SampleFilenamePattern` | Kodi wiki — files with `-sample` suffix are excluded |
+| `TrailerFilenamePattern` | Kodi advancedsettings `<trailerextensions>` — `-trailer` suffix |
+| `ExcludedFolderNames` | Kodi wiki — `Sample`, `Extras`, `Featurettes`, `Trailers` folders excluded |
+| `HiddenFolderPattern` | Observed Kodi behaviour — folder names starting with `.` are hidden/excluded |
+| `DefaultExclusionRules` | Composite: all of the above exclusion patterns, plus `.nomedia` marker (advancedsettings) |
 
 ---
 
@@ -71,4 +108,3 @@ Every pull request that modifies files in this directory must satisfy all items 
 The `INasFileEnumerator` implementation lives one level up in `MediaHandler.Infrastructure/Nas/`
 (not in this sub-folder) because it wraps the existing `INasService` and is not a
 scanner-specific heuristic.
-
