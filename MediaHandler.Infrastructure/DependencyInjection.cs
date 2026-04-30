@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Domain.Enums;
 using MediaHandler.Infrastructure.Nas;
+using MediaHandler.Infrastructure.Nas.Scanner;
 using MediaHandler.Infrastructure.Options;
 using MediaHandler.Infrastructure.Persistence;
 using MediaHandler.Infrastructure.Services;
@@ -69,10 +70,13 @@ public static class DependencyInjection
 
         // Scoped scanner services (infrastructure-side)
         services.AddScoped<INasFileEnumerator, NasFileEnumerator>();
+        services.AddScoped<IKodiNameParser, KodiNameParser>();
+        services.AddScoped<IExclusionEvaluator, ExclusionEvaluator>();
+        services.AddScoped<IStackingDetector, StackingDetector>();
+        services.AddScoped<ITvEpisodeMatcher, TvEpisodeMatcher>();
 
-        // Application-layer scanner interfaces (KodiNameParser, NfoParser, StackingDetector,
-        // ExclusionEvaluator, TvEpisodeMatcher, TmdbMatcher) are registered in the US1/US2
-        // implementation phase once their concrete classes exist.
+        // TmdbMatcher: scoped so its per-scan LRU cache is isolated per request/scan run
+        services.AddScoped<ITmdbMatcher, TmdbMatcher>();
 
         services.AddHttpClient<ITmdbService, TmdbService>()
             .ConfigureHttpClient((sp, client) =>

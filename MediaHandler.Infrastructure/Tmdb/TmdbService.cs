@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
+using MediaHandler.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace MediaHandler.Infrastructure.Tmdb;
@@ -122,6 +123,126 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
     private static DateTime? ParseDate(string? date) =>
         DateTime.TryParse(date, out var result) ? result : null;
 
+    // =========================================================================
+    // Scanner: id-based lookups
+    // =========================================================================
+
+    /// <inheritdoc/>
+    public async Task<TmdbIdLookupResult?> GetMovieByIdAsync(
+        int tmdbId, string language = "en-US", CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var url = $"/3/movie/{tmdbId}?language={language}";
+            var movie = await httpClient.GetFromJsonAsync<TmdbMovieDetailsJson>(url, cancellationToken);
+            if (movie is null) return null;
+
+            return new TmdbIdLookupResult(
+                movie.Id,
+                MediaType.Film,
+                movie.Title ?? string.Empty,
+                ParseDate(movie.ReleaseDate)?.Year,
+                movie.PosterPath);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "TMDB id-based movie lookup failed for id {TmdbId}.", tmdbId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<TmdbIdLookupResult?> GetTvShowByIdAsync(
+        int tmdbId, string language = "en-US", CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var url = $"/3/tv/{tmdbId}?language={language}";
+            var tv = await httpClient.GetFromJsonAsync<TmdbTvDetailsJson>(url, cancellationToken);
+            if (tv is null) return null;
+
+            return new TmdbIdLookupResult(
+                tv.Id,
+                MediaType.TvShow,
+                tv.Name ?? string.Empty,
+                ParseDate(tv.FirstAirDate)?.Year,
+                tv.PosterPath);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "TMDB id-based TV show lookup failed for id {TmdbId}.", tmdbId);
+            throw;
+        }
+    }
+
+    // =========================================================================
+    // Scanner: multi-candidate search
+    // =========================================================================
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<TmdbSearchCandidate>> SearchCandidatesAsync(
+        string query,
+        int? year,
+        MediaType? kindHint,
+        string language = "en-US",
+        CancellationToken cancellationToken = default)
+    {
+        // Build the search URL — use /search/movie, /search/tv, or /search/multi based on kindHint
+        string url;
+        if (kindHint == MediaType.Film)
+        {
+            url = $"/3/search/movie?query={Uri.EscapeDataString(query)}&language={language}";
+            if (year.HasValue) url += $"&year={year.Value}";
+        }
+        else if (kindHint == MediaType.TvShow)
+        {
+            url = $"/3/search/tv?query={Uri.EscapeDataString(query)}&language={language}";
+            if (year.HasValue) url += $"&first_air_date_year={year.Value}";
+        }
+        else
+        {
+            // No hint: search both via /search/multi
+            url = $"/3/search/multi?query={Uri.EscapeDataString(query)}&language={language}";
+        }
+
+        TmdbPagedResponse<TmdbSearchResultJson>? response;
+        try
+        {
+            response = await httpClient.GetFromJsonAsync<TmdbPagedResponse<TmdbSearchResultJson>>(url, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "TMDB candidate search failed for query '{Query}'.", query);
+            throw;
+        }
+
+        if (response?.Results is null) return [];
+
+        // Convert to TmdbSearchCandidate, apply type filter, then take top 5 by popularity
+        var candidates = response.Results
+            .Where(r => r.MediaType is null or "movie" or "tv") // filter out "person"
+            .Select(r => new TmdbSearchCandidate(
+                r.Id,
+                r.MediaType == "tv" ? MediaType.TvShow : MediaType.Film,
+                r.Title ?? r.Name ?? string.Empty,
+                ParseDate(r.ReleaseDate ?? r.FirstAirDate)?.Year,
+                (decimal)(r.Popularity ?? r.VoteAverage ?? 0),
+                r.PosterPath))
+            .OrderByDescending(c => c.PopularityScore)
+            .Take(5)
+            .ToList();
+
+        return candidates;
+    }
+
     private record TmdbPagedResponse<T>(
         [property: JsonPropertyName("results")] List<T>? Results,
         [property: JsonPropertyName("total_results")] int TotalResults,
@@ -139,7 +260,8 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
         [property: JsonPropertyName("first_air_date")] string? FirstAirDate,
         [property: JsonPropertyName("poster_path")] string? PosterPath,
         [property: JsonPropertyName("backdrop_path")] string? BackdropPath,
-        [property: JsonPropertyName("vote_average")] double? VoteAverage);
+        [property: JsonPropertyName("vote_average")] double? VoteAverage,
+        [property: JsonPropertyName("popularity")] double? Popularity);
 
     private record TmdbGenreJson(
         [property: JsonPropertyName("id")] int Id,
