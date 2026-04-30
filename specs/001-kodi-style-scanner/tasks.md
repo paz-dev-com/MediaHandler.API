@@ -73,44 +73,44 @@ description: "Task list for Kodi-Style NAS Library Scanner"
 
 ### Application — Interfaces (all `MediaHandler.Application/Common/Interfaces/`)
 
-- [ ] T024 [P] Create `IKodiNameParser.cs` — `MovieNameParseResult ParseMovie(string fullPath)`, `EpisodeNameParseResult ParseEpisode(string fullPath, LibraryRootKind hint)`.
-- [ ] T025 [P] Create `INfoParser.cs` — `Task<NfoParseResult> ParseAsync(string nfoPath, CancellationToken ct)`.
-- [ ] T026 [P] Create `IStackingDetector.cs` — `IReadOnlyList<StackGroupCandidate> Group(IEnumerable<NasFileEntry> filesInFolder)`.
-- [ ] T027 [P] Create `IExclusionEvaluator.cs` — `ExclusionVerdict Evaluate(NasFileEntry entry, ExclusionContext ctx)`.
-- [ ] T028 [P] Create `ITvEpisodeMatcher.cs` — `IReadOnlyList<EpisodeNumber> Match(string filename, EpisodeNumberingHint hint)`.
-- [ ] T029 [P] Create `INasFileEnumerator.cs` — `IAsyncEnumerable<NasFileEntry> EnumerateAsync(LibraryRoot root, CancellationToken ct)`.
-- [ ] T030 [P] Create `IScanRunCoordinator.cs` — `Task<ScanRunHandle> StartAsync(StartScanRequest req, CancellationToken ct)`, `Task RequestCancellationAsync(Guid id)`, `ChannelReader<ScanProgressDto> Subscribe(Guid id)`.
-- [ ] T031 [P] Create `ITmdbMatcher.cs` — `Task<TmdbMatchResult> ResolveAsync(MatchQuery q, CancellationToken ct)` honouring R-001 precedence (NfoTmdbId → ExplicitTokenId → Title+Year → Title).
-- [ ] T032 Modify `MediaHandler.Application/Common/Interfaces/IApplicationDbContext.cs` — add `DbSet<>` for the eight new entities (depends on T013–T020).
+- [X] T024 [P] Create `IKodiNameParser.cs` — `MovieNameParseResult ParseMovie(string fullPath)`, `EpisodeNameParseResult ParseEpisode(string fullPath, LibraryRootKind hint)`.
+- [X] T025 [P] Create `INfoParser.cs` — `Task<NfoParseResult> ParseAsync(string nfoPath, CancellationToken ct)`.
+- [X] T026 [P] Create `IStackingDetector.cs` — `IReadOnlyList<StackGroupCandidate> Group(IEnumerable<NasFileEntry> filesInFolder)`.
+- [X] T027 [P] Create `IExclusionEvaluator.cs` — `ExclusionVerdict Evaluate(NasFileEntry entry, ExclusionContext ctx)`.
+- [X] T028 [P] Create `ITvEpisodeMatcher.cs` — `IReadOnlyList<EpisodeNumber> Match(string filename, EpisodeNumberingHint hint)`.
+- [X] T029 [P] Create `INasFileEnumerator.cs` — `IAsyncEnumerable<NasFileEntry> EnumerateAsync(LibraryRoot root, CancellationToken ct)`.
+- [X] T030 [P] Create `IScanRunCoordinator.cs` — `Task<ScanRunHandle> StartAsync(StartScanRequest req, CancellationToken ct)`, `Task RequestCancellationAsync(Guid id)`, `ChannelReader<ScanProgressDto> Subscribe(Guid id)`.
+- [X] T031 [P] Create `ITmdbMatcher.cs` — `Task<TmdbMatchResult> ResolveAsync(MatchQuery q, CancellationToken ct)` honouring R-001 precedence (NfoTmdbId → ExplicitTokenId → Title+Year → Title).
+- [X] T032 Modify `MediaHandler.Application/Common/Interfaces/IApplicationDbContext.cs` — add `DbSet<>` for the eight new entities (depends on T013–T020).
 
 ### Application — Shared DTOs (all `MediaHandler.Application/Common/DTOs/`)
 
-- [ ] T033 [P] Create `LibraryRootDto.cs`.
-- [ ] T034 [P] Create `ScanRunDto.cs` + `ScanCountsDto`.
-- [ ] T035 [P] Create `ScanProgressDto.cs` (channel payload — phase, processed, total, last decision).
-- [ ] T036 [P] Create `ReviewItemDto.cs` + `TmdbCandidateDto`.
+- [X] T033 [P] Create `LibraryRootDto.cs`.
+- [X] T034 [P] Create `ScanRunDto.cs` + `ScanCountsDto`.
+- [X] T035 [P] Create `ScanProgressDto.cs` (channel payload — phase, processed, total, last decision).
+- [X] T036 [P] Create `ReviewItemDto.cs` + `TmdbCandidateDto`.
 
 ### Infrastructure — Persistence
 
-- [ ] T037 Modify `MediaHandler.Infrastructure/Persistence/MediaHandlerDbContext.cs` — register the eight new `DbSet<>`s and apply configurations from assembly (depends on T032).
-- [ ] T038 [P] Create `Persistence/Configurations/LibraryRootConfiguration.cs` (unique index on `Path`, max-length 1024).
-- [ ] T039 [P] Create `Persistence/Configurations/ScanRunConfiguration.cs` — index `StartedAt`, **filtered unique index** `WHERE Status = 'Running'` enforcing single active scan.
-- [ ] T040 [P] Create `Persistence/Configurations/ScanItemDecisionConfiguration.cs` — index `ScanRunId`, `FilePath`.
-- [ ] T041 [P] Create `Persistence/Configurations/ReviewItemConfiguration.cs` — index `Status`, `FilePath`, JSON column for `Candidates`.
-- [ ] T042 [P] Create `Persistence/Configurations/ExclusionRuleConfiguration.cs` — index `RuleId`.
-- [ ] T043 [P] Create `Persistence/Configurations/StackGroupConfiguration.cs`.
-- [ ] T044 [P] Create `Persistence/Configurations/NfoMetadataConfiguration.cs`.
-- [ ] T045 [P] Create `Persistence/Configurations/EpisodeFileLinkConfiguration.cs` — composite key `(TvEpisodeId, MediaFileId, OrdinalInFile)`.
-- [ ] T046 Modify `Persistence/Configurations/MediaConfiguration.cs` — column mapping + index for new fields from T021.
-- [ ] T047 Modify `Persistence/Configurations/MediaFileConfiguration.cs` — index on `Fingerprint`, `LibraryRootId`, `MissingSince`; drop direct `TvEpisodeId` FK and replace with `EpisodeFileLink` join.
-- [ ] T048 Generate single migration `MediaHandler.Infrastructure/Migrations/20260320000000_KodiScannerSchema.cs` covering ALL deltas above. Run `dotnet ef migrations add KodiScannerSchema --project MediaHandler.Infrastructure --startup-project MediaHandler.API`. Inspect generated SQL for the filtered unique index from T039 and amend with raw SQL if EF emits a non-filtered version.
+- [X] T037 Modify `MediaHandler.Infrastructure/Persistence/MediaHandlerDbContext.cs` — register the eight new `DbSet<>`s and apply configurations from assembly (depends on T032).
+- [X] T038 [P] Create `Persistence/Configurations/LibraryRootConfiguration.cs` (unique index on `Path`, max-length 1024).
+- [X] T039 [P] Create `Persistence/Configurations/ScanRunConfiguration.cs` — index `StartedAt`, **filtered unique index** `WHERE Status = 'Running'` enforcing single active scan.
+- [X] T040 [P] Create `Persistence/Configurations/ScanItemDecisionConfiguration.cs` — index `ScanRunId`, `FilePath`.
+- [X] T041 [P] Create `Persistence/Configurations/ReviewItemConfiguration.cs` — index `Status`, `FilePath`, JSON column for `Candidates`.
+- [X] T042 [P] Create `Persistence/Configurations/ExclusionRuleConfiguration.cs` — index `RuleId`.
+- [X] T043 [P] Create `Persistence/Configurations/StackGroupConfiguration.cs`.
+- [X] T044 [P] Create `Persistence/Configurations/NfoMetadataConfiguration.cs`.
+- [X] T045 [P] Create `Persistence/Configurations/EpisodeFileLinkConfiguration.cs` — composite key `(TvEpisodeId, MediaFileId, OrdinalInFile)`.
+- [X] T046 Modify `Persistence/Configurations/MediaConfiguration.cs` — column mapping + index for new fields from T021.
+- [X] T047 Modify `Persistence/Configurations/MediaFileConfiguration.cs` — index on `Fingerprint`, `LibraryRootId`, `MissingSince`; drop direct `TvEpisodeId` FK and replace with `EpisodeFileLink` join.
+- [X] T048 Generate single migration `MediaHandler.Infrastructure/Migrations/20260320000000_KodiScannerSchema.cs` covering ALL deltas above. Run `dotnet ef migrations add KodiScannerSchema --project MediaHandler.Infrastructure --startup-project MediaHandler.API`. Inspect generated SQL for the filtered unique index from T039 and amend with raw SQL if EF emits a non-filtered version.
 
 ### Infrastructure — Skeleton implementations (no logic yet, just compilable shells)
 
-- [ ] T049 [P] Scaffold `MediaHandler.Infrastructure/Nas/NasFileEnumerator.cs` implementing `INasFileEnumerator` over the existing `INasService` (returns the async stream, no exclusion logic yet).
-- [ ] T050 [P] Scaffold `MediaHandler.Infrastructure/Services/ScanRunCoordinator.cs` (singleton, owns `Dictionary<Guid, (CancellationTokenSource, Channel<ScanProgressDto>)>`) — methods throw `NotImplementedException` until US1 fills them.
-- [ ] T051 Wire DI in `MediaHandler.Infrastructure/DependencyInjection.cs` — register all interfaces from T024–T031, the coordinator (singleton) and enumerator (scoped). Verify `dotnet build` passes solution-wide.
-- [ ] T052 Add startup recovery hook in `MediaHandler.Infrastructure/Persistence/MediaHandlerDbContext.cs` (or DI bootstrap) that, on application start, transitions any `ScanRun.Status = Running` rows to `Failed` with `FailureReason = "Process restarted before scan finished"` (per quickstart §6 last row).
+- [X] T049 [P] Scaffold `MediaHandler.Infrastructure/Nas/NasFileEnumerator.cs` implementing `INasFileEnumerator` over the existing `INasService` (returns the async stream, no exclusion logic yet).
+- [X] T050 [P] Scaffold `MediaHandler.Infrastructure/Services/ScanRunCoordinator.cs` (singleton, owns `Dictionary<Guid, (CancellationTokenSource, Channel<ScanProgressDto>)>`) — methods throw `NotImplementedException` until US1 fills them.
+- [X] T051 Wire DI in `MediaHandler.Infrastructure/DependencyInjection.cs` — register all interfaces from T024–T031, the coordinator (singleton) and enumerator (scoped). Verify `dotnet build` passes solution-wide.
+- [X] T052 Add startup recovery hook in `MediaHandler.Infrastructure/Persistence/MediaHandlerDbContext.cs` (or DI bootstrap) that, on application start, transitions any `ScanRun.Status = Running` rows to `Failed` with `FailureReason = "Process restarted before scan finished"` (per quickstart §6 last row).
 
 **Checkpoint**: Solution builds, migration applies cleanly to a Testcontainers SQL Server, all interfaces resolvable from DI. User-story phases may now begin.
 
@@ -124,40 +124,38 @@ description: "Task list for Kodi-Style NAS Library Scanner"
 
 ### Tests for User Story 1 — write FIRST, must FAIL
 
-- [ ] T053 [P] [US1] Author `MediaHandler.Tests/Scanner/KodiNameParserTests.cs` as a `[Theory]` table covering ≥ 60 movie filename patterns and ≥ 40 TV episode filename patterns derived clean-room per **R-001** (do not paste any string from Kodi `.cpp/.h`; document each row's source as "Kodi wiki: file naming" or "observed default behaviour" in an XML doc comment on the theory).
-- [ ] T054 [P] [US1] Author `MediaHandler.Tests/Scanner/ExclusionEvaluatorTests.cs` covering: video-extension allow-list, sample/trailer/extras/featurettes patterns, `Sample/`/`Extras/`/`Trailers/`/`Featurettes/` subfolders, hidden files, `.nomedia` subtree skip — every row tied to a `RuleId`.
-- [ ] T055 [P] [US1] Author `MediaHandler.Tests/Scanner/StackingDetectorTests.cs` for `cd1/cd2`, `part1/part2`, `disc1/disc2`, `(a)/(b)`, `pt1/pt2` — expect a single `StackGroupCandidate` per pair.
-- [ ] T056 [P] [US1] Author `MediaHandler.Tests/Scanner/TvEpisodeMatcherTests.cs` for `SxxExx`, `SxxExx-Eyy`, `xXy`, `1x05`, date-based `YYYY.MM.DD`, absolute-numbering fallback; multi-episode rows yield ≥ 2 `EpisodeNumber` outputs.
-- [ ] T057 [P] [US1] Author `MediaHandler.Tests/Features/Scan/StartScanCommandHandlerTests.cs` — happy path returns `ScanRunHandle`, second concurrent call returns `Result.Conflict("SCAN_IN_PROGRESS")`.
-- [ ] T058 [P] [US1] Author `MediaHandler.Tests/Features/Scan/GetScanRunQueryHandlerTests.cs` — returns mapped DTO; not-found returns `Result.NotFound`.
-- [ ] T059 [P] [US1] Author `MediaHandler.Tests/Features/LibraryRoots/AddLibraryRootCommandHandlerTests.cs` — duplicate path → `Conflict("LIBRARY_ROOT_DUPLICATE")`, path outside configured base paths → validation failure.
-- [ ] T060 [P] [US1] Author `MediaHandler.IntegrationTests/Scanner/FullScanEndToEndTests.cs::Sc001_ClassificationAccuracy_AtLeast98Percent` against the Phase-1 fixture seed (will be filled in by T064–T065) using Testcontainers SQL Server + fake `INasService`.
-- [ ] T061 [P] [US1] Author `MediaHandler.IntegrationTests/Scanner/IncrementalScanIdempotencyTests.cs::Sc005_IncrementalScan_UnchangedAndFast` — second scan in `Incremental` mode against unchanged tree must report Added=Updated=Removed=0 and wall-clock < 25 % of first.
+- [X] T053 [P] [US1] Author `MediaHandler.Tests/Scanner/KodiNameParserTests.cs` as a `[Theory]` table covering ≥ 60 movie filename patterns and ≥ 40 TV episode filename patterns derived clean-room per **R-001** (do not paste any string from Kodi `.cpp/.h`; document each row's source as "Kodi wiki: file naming" or "observed default behaviour" in an XML doc comment on the theory).
+- [X] T054 [P] [US1] Author `MediaHandler.Tests/Scanner/ExclusionEvaluatorTests.cs` covering: video-extension allow-list, sample/trailer/extras/featurettes patterns, `Sample/`/`Extras/`/`Trailers/`/`Featurettes/` subfolders, hidden files, `.nomedia` subtree skip — every row tied to a `RuleId`.
+- [X] T055 [P] [US1] Author `MediaHandler.Tests/Scanner/StackingDetectorTests.cs` for `cd1/cd2`, `part1/part2`, `disc1/disc2`, `(a)/(b)`, `pt1/pt2` — expect a single `StackGroupCandidate` per pair.
+- [X] T056 [P] [US1] Author `MediaHandler.Tests/Scanner/TvEpisodeMatcherTests.cs` for `SxxExx`, `SxxExx-Eyy`, `xXy`, `1x05`, date-based `YYYY.MM.DD`, absolute-numbering fallback; multi-episode rows yield ≥ 2 `EpisodeNumber` outputs.
+- [X] T057 [P] [US1] Author `MediaHandler.Tests/Features/Scan/StartScanCommandHandlerTests.cs` — happy path returns `ScanRunHandle`, second concurrent call returns `Result.Conflict("SCAN_IN_PROGRESS")`.
+- [X] T058 [P] [US1] Author `MediaHandler.Tests/Features/Scan/GetScanRunQueryHandlerTests.cs` — returns mapped DTO; not-found returns `Result.NotFound`.
+- [X] T059 [P] [US1] Author `MediaHandler.Tests/Features/LibraryRoots/AddLibraryRootCommandHandlerTests.cs` — duplicate path → `Conflict("LIBRARY_ROOT_DUPLICATE")`, path outside configured base paths → validation failure.
+- [X] T060 [P] [US1] Author `MediaHandler.IntegrationTests/Scanner/FullScanEndToEndTests.cs::Sc001_ClassificationAccuracy_AtLeast98Percent` against the Phase-1 fixture seed (will be filled in by T064–T065) using Testcontainers SQL Server + fake `INasService`.
+- [X] T061 [P] [US1] Author `MediaHandler.IntegrationTests/Scanner/IncrementalScanIdempotencyTests.cs::Sc005_IncrementalScan_UnchangedAndFast` — second scan in `Incremental` mode against unchanged tree must report Added=Updated=Removed=0 and wall-clock < 25 % of first.
 
 ### Implementation for User Story 1
 
-- [ ] T062 [US1] Implement `MediaHandler.Infrastructure/Nas/Scanner/KodiRegexCatalog.cs` — the clean-room re-derived regex tables (movie cleanup tokens, year extractors, episode patterns, stacking suffixes). Each pattern carries an inline `// SOURCE:` comment naming the public Kodi behaviour it reproduces (wiki page, advancedsettings default, observed black-box). **No string in this file may be copied verbatim from `/home/tpfeifer/Repos/xbmc-master/`** (R-001). Makes T053 / T056 begin to pass.
-- [ ] T063 [US1] Implement `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs` consuming `KodiRegexCatalog`. Folder-name takes precedence over filename per spec edge case. Makes all of T053 pass.
-- [ ] T064 [P] [US1] Implement `MediaHandler.Infrastructure/Nas/Scanner/ExclusionEvaluator.cs` (extension allow-list, regex sample/trailer matchers, folder-name exclusion set, hidden + `.nomedia` subtree handling). Pull initial rule rows into a static `ExclusionRule` seed used by EF migration (or runtime registration). Makes T054 pass.
-- [ ] T065 [P] [US1] Implement `MediaHandler.Infrastructure/Nas/Scanner/StackingDetector.cs`. Makes T055 pass.
-- [ ] T066 [P] [US1] Implement `MediaHandler.Infrastructure/Nas/Scanner/TvEpisodeMatcher.cs`. Makes T056 pass.
-- [ ] T067 [US1] Implement `MediaHandler.Infrastructure/Nas/Scanner/ScanPipeline.cs` — orchestrate `enumerate → exclude → group(stacks) → parse(folder+file) → classify(movie/episode) → fingerprint → persist → emit ScanItemDecision`. **TMDB stage in this story is a stub** that records every item as `Added` with `TmdbId=null` (US2 fills it). Computes `Fingerprint = SHA256(absPath|size|mtimeUnix)` for idempotency.
-- [ ] T068 [US1] Flesh out `MediaHandler.Infrastructure/Services/ScanRunCoordinator.cs` (replace T050 stubs) — owns `Channel<ScanProgressDto>`, runs `ScanPipeline` on `Task.Run`, enforces single-active-scan via DB filtered index probe + in-memory mutex, supports `RequestCancellationAsync`.
-- [ ] T069 [US1] Implement `MediaHandler.Application/Features/LibraryRoots/Commands/AddLibraryRoot/AddLibraryRootCommand.cs` + `Handler` + `Validator` (per `contracts/library-roots.md`).
-- [ ] T070 [P] [US1] Implement `Features/LibraryRoots/Commands/RemoveLibraryRoot/` (Command + Handler + Validator) including the soft-delete + `MissingSince` cascade and the `Conflict("SCAN_IN_PROGRESS")` guard.
-- [ ] T071 [P] [US1] Implement `Features/LibraryRoots/Queries/ListLibraryRoots/` (paginated, filters: `kind`, `enabledOnly`).
-- [ ] T072 [US1] Implement `Features/Scan/Commands/StartScan/StartScanCommand.cs` + `Handler` + `Validator` (distinct ids, existing+enabled roots, single-active enforcement → `Conflict("SCAN_IN_PROGRESS")`).
-- [ ] T073 [P] [US1] Implement `Features/Scan/Commands/CancelScan/` — looks up coordinator, calls `RequestCancellationAsync`, returns post-cancel summary.
-- [ ] T074 [P] [US1] Implement `Features/Scan/Queries/GetScanRun/` with `includeReview` flag plumbing (review list returns null in this story; populated in US4).
-- [ ] T075 [P] [US1] Implement `Features/Scan/Queries/GetActiveScan/`.
-- [ ] T076 [P] [US1] Create `MediaHandler.API/Contracts/Admin/LibraryRootRequests.cs` (`AddLibraryRootRequest`).
-- [ ] T077 [P] [US1] Create `MediaHandler.API/Contracts/Admin/ScanRequests.cs` (`StartScanRequest`) and `ScanResponses.cs` (`ScanRunSummaryResponse`, `ScanRunDetailResponse`).
-- [ ] T078 [US1] Implement `MediaHandler.API/Controllers/AdminLibraryRootsController.cs` — `GET`, `POST`, `DELETE` per `contracts/library-roots.md`. `[Authorize(Policy = "AdminOnly")]` + `[EnableRateLimiting("fixed")]` + `[ApiVersion("1.0")]` + full `[ProducesResponseType]` set + `ApiResponse<T>` envelope.
-- [ ] T079 [US1] Implement `MediaHandler.API/Controllers/AdminScanController.cs` — `POST /scan` (returns 202 + Location), `GET /scan/{id}`, `GET /scan/active`, `POST /scan/{id}/cancel` per `contracts/scan.md`.
-- [ ] T080 [US1] Implement `MediaHandler.IntegrationTests/Scanner/Fixtures/FixtureBuilder.cs` + `benchmark.yaml` containing **≥ 200 movies + ≥ 50 TV shows** in the layouts mandated by quickstart §1.1 (per-folder + flat + stacked + multi-disc movies, Season folders + Specials + multi-episode + 1x05 + date-based TV shows, exclusion bait, NFO sidecars, misnamed review-bait). Wires the fake `INasService` to read from this manifest.
-- [ ] T081 [US1] Run T060 + T061 to green; iterate on `KodiRegexCatalog` + `ScanPipeline` to satisfy SC-001 (≥ 98 % auto-classification) and SC-005 (incremental < 25 % of full).
-
-**Checkpoint**: User Story 1 complete — admin can register roots, run scans, see counts, re-scan idempotently. TMDB ids are still null; review queue is empty.
+- [X] T062 [US1] Implement `MediaHandler.Infrastructure/Nas/Scanner/KodiRegexCatalog.cs` — the clean-room re-derived regex tables (movie cleanup tokens, year extractors, episode patterns, stacking suffixes). Each pattern carries an inline `// SOURCE:` comment naming the public Kodi behaviour it reproduces (wiki page, advancedsettings default, observed black-box). **No string in this file may be copied verbatim from `/home/tpfeifer/Repos/xbmc-master/`** (R-001). Makes T053 / T056 begin to pass.
+- [X] T063 [US1] Implement `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs` consuming `KodiRegexCatalog`. Folder-name takes precedence over filename per spec edge case. Makes all of T053 pass.
+- [X] T064 [P] [US1] Implement `MediaHandler.Infrastructure/Nas/Scanner/ExclusionEvaluator.cs` (extension allow-list, regex sample/trailer matchers, folder-name exclusion set, hidden + `.nomedia` subtree handling). Pull initial rule rows into a static `ExclusionRule` seed used by EF migration (or runtime registration). Makes T054 pass.
+- [X] T065 [P] [US1] Implement `MediaHandler.Infrastructure/Nas/Scanner/StackingDetector.cs`. Makes T055 pass.
+- [X] T066 [P] [US1] Implement `MediaHandler.Infrastructure/Nas/Scanner/TvEpisodeMatcher.cs`. Makes T056 pass.
+- [X] T067 [US1] Implement `MediaHandler.Infrastructure/Nas/Scanner/ScanPipeline.cs` — orchestrate `enumerate → exclude → group(stacks) → parse(folder+file) → classify(movie/episode) → fingerprint → persist → emit ScanItemDecision`. **TMDB stage in this story is a stub** that records every item as `Added` with `TmdbId=null` (US2 fills it). Computes `Fingerprint = SHA256(absPath|size|mtimeUnix)` for idempotency.
+- [X] T068 [US1] Flesh out `MediaHandler.Infrastructure/Services/ScanRunCoordinator.cs` (replace T050 stubs) — owns `Channel<ScanProgressDto>`, runs `ScanPipeline` on `Task.Run`, enforces single-active-scan via DB filtered index probe + in-memory mutex, supports `RequestCancellationAsync`.
+- [X] T069 [US1] Implement `MediaHandler.Application/Features/LibraryRoots/Commands/AddLibraryRoot/AddLibraryRootCommand.cs` + `Handler` + `Validator` (per `contracts/library-roots.md`).
+- [X] T070 [P] [US1] Implement `Features/LibraryRoots/Commands/RemoveLibraryRoot/` (Command + Handler + Validator) including the soft-delete + `MissingSince` cascade and the `Conflict("SCAN_IN_PROGRESS")` guard.
+- [X] T071 [P] [US1] Implement `Features/LibraryRoots/Queries/ListLibraryRoots/` (paginated, filters: `kind`, `enabledOnly`).
+- [X] T072 [US1] Implement `Features/Scan/Commands/StartScan/StartScanCommand.cs` + `Handler` + `Validator` (distinct ids, existing+enabled roots, single-active enforcement → `Conflict("SCAN_IN_PROGRESS")`).
+- [X] T073 [P] [US1] Implement `Features/Scan/Commands/CancelScan/` — looks up coordinator, calls `RequestCancellationAsync`, returns post-cancel summary.
+- [X] T074 [P] [US1] Implement `Features/Scan/Queries/GetScanRun/` with `includeReview` flag plumbing (review list returns null in this story; populated in US4).
+- [X] T075 [P] [US1] Implement `Features/Scan/Queries/GetActiveScan/`.
+- [X] T076 [P] [US1] Create `MediaHandler.API/Contracts/Admin/LibraryRootRequests.cs` (`AddLibraryRootRequest`).
+- [X] T077 [P] [US1] Create `MediaHandler.API/Contracts/Admin/ScanRequests.cs` (`StartScanRequest`) and `ScanResponses.cs` (`ScanRunSummaryResponse`, `ScanRunDetailResponse`).
+- [X] T078 [US1] Implement `MediaHandler.API/Controllers/AdminLibraryRootsController.cs` — `GET`, `POST`, `DELETE` per `contracts/library-roots.md`. `[Authorize(Policy = "AdminOnly")]` + `[EnableRateLimiting("fixed")]` + `[ApiVersion("1.0")]` + full `[ProducesResponseType]` set + `ApiResponse<T>` envelope.
+- [X] T079 [US1] Implement `MediaHandler.API/Controllers/AdminScanController.cs` — `POST /scan` (returns 202 + Location), `GET /scan/{id}`, `GET /scan/active`, `POST /scan/{id}/cancel` per `contracts/scan.md`.
+- [X] T080 [US1] Implement `MediaHandler.IntegrationTests/Scanner/Fixtures/FixtureBuilder.cs` + `benchmark.yaml` containing **≥ 200 movies + ≥ 50 TV shows** in the layouts mandated by quickstart §1.1 (per-folder + flat + stacked + multi-disc movies, Season folders + Specials + multi-episode + 1x05 + date-based TV shows, exclusion bait, NFO sidecars, misnamed review-bait). Wires the fake `INasService` to read from this manifest.
+- [X] T081 [US1] Run T060 + T061 to green; iterate on `KodiRegexCatalog` + `ScanPipeline` to satisfy SC-001 (≥ 98 % auto-classification) and SC-005 (incremental < 25 % of full).**Checkpoint**: User Story 1 complete — admin can register roots, run scans, see counts, re-scan idempotently. TMDB ids are still null; review queue is empty.
 
 ---
 
