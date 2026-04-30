@@ -55,6 +55,8 @@ public sealed class ScanPipeline(
             foreach (var root in roots)
             {
                 ct.ThrowIfCancellationRequested();
+                logger.LogDebug("Stage transition: starting root processing for {RootId} ({Path})",
+                    root.Id, root.Path);
                 var succeeded = await ProcessRootAsync(scanRun, root, counters, progress, ct);
                 if (!succeeded)
                     failedRootIds.Add(root.Id);
@@ -64,6 +66,8 @@ public sealed class ScanPipeline(
             // Roots that failed enumeration already have a "NAS unreachable" decision written by
             // ProcessRootAsync and must not cause their files to be falsely marked as removed.
             var successfulRoots = roots.Where(r => !failedRootIds.Contains(r.Id)).ToList();
+            logger.LogDebug("Stage transition: marking removed files for {Count} successful roots",
+                successfulRoots.Count);
             await MarkRemovedFilesAsync(scanRun, successfulRoots, counters, ct);
         }
         catch (OperationCanceledException)
@@ -81,6 +85,8 @@ public sealed class ScanPipeline(
         scanRun.Excluded = counters.Excluded;
         scanRun.NeedsReview = counters.NeedsReview;
         await db.SaveChangesAsync(ct);
+
+        logger.LogDebug("Stage transition: scan pipeline completed for {ScanRunId}", scanRun.Id);
 
         await progress.WriteAsync(new ScanProgressDto(
             scanRun.Id, "Completed",
@@ -105,7 +111,8 @@ public sealed class ScanPipeline(
         ChannelWriter<ScanProgressDto> progress,
         CancellationToken ct)
     {
-        logger.LogInformation("ScanPipeline: starting root {RootId} ({Path})", root.Id, root.Path);
+        logger.LogDebug("Stage transition: enumerating files for root {RootId} ({Path})",
+            root.Id, root.Path);
 
         // Collect all file entries from the NAS (enumeration stage)
         var allEntries = new List<NasFileEntry>();
@@ -155,6 +162,7 @@ public sealed class ScanPipeline(
             : [];
 
         // ── Exclusion stage ─────────────────────────────────────────────────
+        logger.LogDebug("Stage transition: exclusion evaluation for root {RootId}", root.Id);
         var videoFiles = new List<NasFileEntry>();
         foreach (var entry in allEntries)
         {
@@ -173,13 +181,18 @@ public sealed class ScanPipeline(
                         Reason = verdict.Reason,
                         RuleId = verdict.RuleId
                     }, ct);
+
+                    // Structured per-file decision log
+                    logger.LogInformation(
+                        "Scan decision: {ScanRunId} | {FilePath} | Kind={Kind} | Reason={Reason} | RuleId={RuleId}",
+                        scanRun.Id, entry.AbsolutePath, ScanDecisionKind.Excluded, verdict.Reason, verdict.RuleId);
                 }
                 continue;
             }
             videoFiles.Add(entry);
         }
 
-        // ── Pre-load resolved ReviewItems for this batch of paths (T093 read-back) ──
+        // ── Pre-load resolved ReviewItems for this batch of paths ──
         var videoPaths = videoFiles.Select(f => f.AbsolutePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var videoPathsList = videoPaths.ToList(); // List<string> is reliably translated to SQL IN clause
 
@@ -203,6 +216,7 @@ public sealed class ScanPipeline(
             .ToDictionaryAsync(mf => mf.FilePath, mf => mf, StringComparer.OrdinalIgnoreCase, ct);
 
         // ── Group by folder for stacking detection ──────────────────────────
+        logger.LogDebug("Stage transition: stacking detection for root {RootId}", root.Id);
         var byFolder = videoFiles
             .GroupBy(f => System.IO.Path.GetDirectoryName(f.AbsolutePath) ?? string.Empty);
 
@@ -226,6 +240,7 @@ public sealed class ScanPipeline(
         }
 
         // ── Classification & persistence stage ──────────────────────────────
+        logger.LogDebug("Stage transition: classification and persistence for root {RootId}", root.Id);
         await EmitProgressAsync(scanRun.Id, "Classifying", 0, videoFiles.Count, null, progress, ct);
 
         // Track paths added in this batch to handle duplicate entries in the source (defensive check)
@@ -256,8 +271,8 @@ public sealed class ScanPipeline(
 
         await db.SaveChangesAsync(ct);
         logger.LogInformation(
-            "ScanPipeline: root {RootId} done. Added={A} Updated={U} Unchanged={X} Excluded={E} NeedsReview={R}",
-            root.Id, counters.Added, counters.Updated, counters.Unchanged, counters.Excluded, counters.NeedsReview);
+            "Root processing complete: {ScanRunId} | Root={RootId} | Added={Added} | Updated={Updated} | Unchanged={Unchanged} | Excluded={Excluded} | NeedsReview={NeedsReview}",
+            scanRun.Id, root.Id, counters.Added, counters.Updated, counters.Unchanged, counters.Excluded, counters.NeedsReview);
 
         return true;
     }
@@ -303,6 +318,10 @@ public sealed class ScanPipeline(
                     Kind = ScanDecisionKind.Unchanged,
                     MediaFileId = existing.Id
                 }, ct);
+
+                logger.LogInformation(
+                    "Scan decision: {ScanRunId} | {FilePath} | Kind={Kind}",
+                    scanRun.Id, file.AbsolutePath, ScanDecisionKind.Unchanged);
                 return;
             }
 
@@ -320,6 +339,10 @@ public sealed class ScanPipeline(
                 Kind = ScanDecisionKind.Updated,
                 MediaFileId = existing.Id
             }, ct);
+
+            logger.LogInformation(
+                "Scan decision: {ScanRunId} | {FilePath} | Kind={Kind}",
+                scanRun.Id, file.AbsolutePath, ScanDecisionKind.Updated);
             return;
         }
 
@@ -417,7 +440,7 @@ public sealed class ScanPipeline(
         }
 
         // ── TMDB resolution stage ─────────────────────────────────────────────
-        // T093: Check for a previously resolved ReviewItem for this path first.
+        // Check for a previously resolved ReviewItem for this path first.
         // If found, skip the TMDB title search and re-use the administrator's saved mapping.
         if (resolvedReviewItems.TryGetValue(file.AbsolutePath, out var resolvedItem)
             && resolvedItem.ResolvedTmdbId.HasValue)
@@ -555,9 +578,10 @@ public sealed class ScanPipeline(
         };
         await db.ScanItemDecisions.AddAsync(decision, ct);
 
-        logger.LogDebug(
-            "{ScanRunId}: Added {FilePath} [role={Role}]",
-            scanRun.Id, file.AbsolutePath, role);
+        // Structured per-file decision log at Information level
+        logger.LogInformation(
+            "Scan decision: {ScanRunId} | {FilePath} | Kind={Kind}",
+            scanRun.Id, file.AbsolutePath, ScanDecisionKind.Added);
     }
 
     // =========================================================================
@@ -615,9 +639,10 @@ public sealed class ScanPipeline(
             Reason = effectiveReason.ToString()
         }, ct);
 
-        logger.LogDebug(
-            "{ScanRunId}: NeedsReview {FilePath} [reason={Reason}]",
-            scanRun.Id, file.AbsolutePath, effectiveReason);
+        // Structured per-file decision log for review items
+        logger.LogInformation(
+            "Scan decision: {ScanRunId} | {FilePath} | Kind={Kind} | Reason={Reason}",
+            scanRun.Id, file.AbsolutePath, ScanDecisionKind.NeedsReview, effectiveReason);
     }
 
     // =========================================================================
@@ -717,6 +742,10 @@ public sealed class ScanPipeline(
                 Kind = ScanDecisionKind.Removed,
                 MediaFileId = mf.Id
             }, ct);
+
+            logger.LogInformation(
+                "Scan decision: {ScanRunId} | {FilePath} | Kind={Kind}",
+                scanRun.Id, mf.FilePath, ScanDecisionKind.Removed);
         }
     }
 

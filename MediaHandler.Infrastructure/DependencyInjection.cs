@@ -59,7 +59,9 @@ public static class DependencyInjection
             .AddStandardResilienceHandler();
 
         services.AddScoped<INasService, FreeboxNasService>();
+#pragma warning disable CS0618 // Intentionally retained for legacy FilesController compatibility
         services.AddScoped<IMediaFileNameParser, MediaFileNameParser>();
+#pragma warning restore CS0618
         services.AddScoped<IMediaImportService, MediaImportService>();
         services.AddScoped<IMediaAutoMatchService, MediaAutoMatchService>();
 

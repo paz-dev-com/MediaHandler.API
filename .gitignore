@@ -8,6 +8,10 @@ obj/
 *.userprefs
 packages/
 *.nuget.props
+
+# Serilog rolling log files
+logs/
+*.log
 *.nuget.targets
 project.lock.json
 project.fragment.lock.json
