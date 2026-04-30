@@ -345,5 +345,100 @@ public class TmdbMatcherTests
         result.IsMatched.Should().BeTrue();
         result.TmdbId.Should().Be(27205);
     }
+
+    // =========================================================================
+    // Override-precedence — NFO id always wins (US3 mapping note)
+    // SOURCE: plan.md US3 mapping note — NfoTmdbId precedes all other resolution signals.
+    // =========================================================================
+
+    /// <remarks>
+    /// When both an NFO id and an explicit filename token id are present, the NFO id wins.
+    /// This asserts the full precedence chain: NfoTmdbId > ExplicitTokenId > Title+Year > Title.
+    /// </remarks>
+    [Fact]
+    public async Task ResolveAsync_NfoTmdbId_WinsOverExplicitTokenId()
+    {
+        var service = CreateService();
+
+        // NFO id = 27205 (Inception)
+        service.GetMovieByIdAsync(27205, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new TmdbIdLookupResult(27205, MediaType.Film, "Inception", 2010, null));
+
+        // Explicit token id = 99999 — should NOT be resolved
+        service.GetMovieByIdAsync(99999, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new TmdbIdLookupResult(99999, MediaType.Film, "SomeOtherMovie", 2015, null));
+
+        var matcher = CreateMatcher(service);
+        // Both NfoTmdbId and ExplicitTokenId set — NFO wins
+        var query = new MatchQuery("Inception", 2010, MediaType.Film,
+            NfoTmdbId: 27205, ExplicitTokenId: 99999);
+
+        var result = await matcher.ResolveAsync(query);
+
+        result.IsMatched.Should().BeTrue();
+        result.TmdbId.Should().Be(27205, "NfoTmdbId must take precedence over ExplicitTokenId");
+        result.NeedsReview.Should().BeFalse();
+
+        // ExplicitTokenId lookup must NOT be called
+        await service.DidNotReceive().GetMovieByIdAsync(99999, Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <remarks>
+    /// When an NFO id is present, no title-based TMDB search is performed at all.
+    /// This guarantees the NFO is the definitive override regardless of how well the filename parses.
+    /// </remarks>
+    [Fact]
+    public async Task ResolveAsync_NfoTmdbId_WinsOverTitleYearSearch_NoSearchCalled()
+    {
+        var service = CreateService();
+
+        service.GetMovieByIdAsync(27205, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new TmdbIdLookupResult(27205, MediaType.Film, "Inception", 2010, null));
+
+        var matcher = CreateMatcher(service);
+        // NfoTmdbId given alongside a perfectly valid title+year
+        var query = new MatchQuery("Inception", 2010, MediaType.Film, NfoTmdbId: 27205);
+
+        var result = await matcher.ResolveAsync(query);
+
+        result.IsMatched.Should().BeTrue();
+        result.TmdbId.Should().Be(27205);
+
+        // Title search must never run when NfoTmdbId resolves successfully
+        await service.DidNotReceive().SearchCandidatesAsync(
+            Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<MediaType?>(),
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <remarks>
+    /// An NFO-provided tmdbid that does not exist on TMDB (lookup returns null for both
+    /// movie and TV show) must produce NeedsReview, not fall through to title+year search.
+    /// This protects against stale or incorrect NFO ids silently picking the wrong item.
+    /// </remarks>
+    [Fact]
+    public async Task ResolveAsync_NfoTmdbId_NotFoundOnTmdb_ReturnsNeedsReview_WithoutTitleFallback()
+    {
+        var service = CreateService();
+
+        // NFO id not found on TMDB
+        service.GetMovieByIdAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((TmdbIdLookupResult?)null);
+        service.GetTvShowByIdAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((TmdbIdLookupResult?)null);
+
+        var matcher = CreateMatcher(service);
+        var query = new MatchQuery("Inception", 2010, MediaType.Film, NfoTmdbId: 99999);
+
+        var result = await matcher.ResolveAsync(query);
+
+        result.NeedsReview.Should().BeTrue();
+        result.IsMatched.Should().BeFalse();
+
+        // Title fallback must NOT be attempted when NfoTmdbId is set
+        await service.DidNotReceive().SearchCandidatesAsync(
+            Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<MediaType?>(),
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
 }
+
 

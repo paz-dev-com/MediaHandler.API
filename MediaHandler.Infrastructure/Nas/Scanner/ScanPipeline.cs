@@ -1,7 +1,9 @@
 #nullable enable
 // ScanPipeline — orchestrates the full scanner pipeline:
-// enumerate → exclude → group(stacks) → parse → classify → TMDB-match → fingerprint → persist.
+// enumerate → exclude → group(stacks) → parse → NFO-lookup → classify → TMDB-match → fingerprint → persist.
 // Files that cannot be unambiguously matched to TMDB become ReviewItems rather than silent mis-mappings.
+// NFO sidecar files (movie.nfo, tvshow.nfo, <basename>.nfo) are discovered from the enumerated entry
+// list, parsed by INfoParser, and their TmdbId fed into the TMDB precedence chain at highest priority.
 
 using System.Security.Cryptography;
 using System.Text;
@@ -18,7 +20,7 @@ namespace MediaHandler.Infrastructure.Nas.Scanner;
 
 /// <summary>
 /// Executes the full scanner pipeline for a single <see cref="ScanRun"/>.
-/// Pipeline stages: enumerate → exclude → group(stacks) → parse → classify → fingerprint → persist.
+/// Pipeline stages: enumerate → exclude → group(stacks) → parse → NFO lookup → classify → fingerprint → persist.
 /// </summary>
 public sealed class ScanPipeline(
     IApplicationDbContext db,
@@ -28,7 +30,8 @@ public sealed class ScanPipeline(
     IKodiNameParser nameParser,
     ITvEpisodeMatcher episodeMatcher,
     ITmdbMatcher tmdbMatcher,
-    ILogger<ScanPipeline> logger)
+    ILogger<ScanPipeline> logger,
+    INfoParser? nfoParser = null)
 {
     // =========================================================================
     // Public entry point
@@ -120,6 +123,19 @@ public sealed class ScanPipeline(
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var exclusionCtx = new ExclusionContext(root, KodiRegexCatalog.DefaultExclusionRules, nomediaFolders);
+
+        // ── Build NFO lookup from enumerated entries ─────────────────────────
+        // NFO files are discovered during enumeration and looked up when each video
+        // file is processed. Two lookup levels:
+        //   • Per-file: "<videoBasename>.nfo" in the same folder (e.g., "Inception (2010).nfo")
+        //   • Per-folder: "movie.nfo" or "tvshow.nfo" in the same folder
+        // SOURCE: Kodi wiki — https://kodi.wiki/view/NFO_files describing the sidecar placement rules
+        var nfoEntriesByPath = nfoParser is not null
+            ? allEntries
+                .Where(e => !e.IsDirectory
+                    && string.Equals(e.Extension, "nfo", StringComparison.OrdinalIgnoreCase))
+                .ToDictionary(e => e.AbsolutePath, StringComparer.OrdinalIgnoreCase)
+            : [];
 
         // ── Exclusion stage ─────────────────────────────────────────────────
         var videoFiles = new List<NasFileEntry>();
@@ -213,7 +229,8 @@ public sealed class ScanPipeline(
                 : MediaFileRole.Main;
 
             await ClassifyAndPersistFileAsync(
-                scanRun, root, file, role, stack, counters, resolvedReviewItems, existingOpenReviewPaths, existingMediaFiles, inFlightPaths, ct);
+                scanRun, root, file, role, stack, counters, resolvedReviewItems, existingOpenReviewPaths,
+                existingMediaFiles, inFlightPaths, nfoEntriesByPath, ct);
 
             if (processedInRoot % 50 == 0)
                 await EmitProgressAsync(scanRun.Id, "Classifying", processedInRoot, videoFiles.Count,
@@ -227,7 +244,7 @@ public sealed class ScanPipeline(
     }
 
     // =========================================================================
-    // File classification + TMDB matching + persistence
+    // File classification + NFO lookup + TMDB matching + persistence
     // =========================================================================
 
     private async Task ClassifyAndPersistFileAsync(
@@ -241,6 +258,7 @@ public sealed class ScanPipeline(
         HashSet<string> existingOpenReviewPaths,
         Dictionary<string, MediaFile> existingMediaFiles,
         HashSet<string> inFlightPaths,
+        Dictionary<string, NasFileEntry> nfoEntriesByPath,
         CancellationToken ct)
     {
         // Guard against duplicate paths within the same batch (defensive handling of fixture bugs or NAS oddities)
@@ -298,6 +316,87 @@ public sealed class ScanPipeline(
         else if (root.Kind == LibraryRootKind.Movies || episodeNumbers.Count == 0)
             role = role == MediaFileRole.StackedPart ? MediaFileRole.StackedPart : MediaFileRole.Main;
 
+        // ── NFO lookup and parsing ────────────────────────────────────────────
+        // Discover the most authoritative NFO sidecar for this file:
+        //   1. Per-file NFO: "<videoBasename>.nfo" in the same folder (highest precedence)
+        //   2. Per-folder NFO: "movie.nfo" or "tvshow.nfo" in the same folder
+        // SOURCE: Kodi wiki — NFO file discovery priority follows the same order Kodi uses.
+        NfoParseResult? nfoResult = null;
+        string? nfoPath = null;
+
+        if (nfoParser is not null)
+        {
+            var folder = System.IO.Path.GetDirectoryName(file.AbsolutePath) ?? string.Empty;
+            var baseName = System.IO.Path.GetFileNameWithoutExtension(file.FileName);
+
+            // Per-file NFO has highest priority
+            var perFileNfoPath = System.IO.Path.Combine(folder, baseName + ".nfo");
+            if (nfoEntriesByPath.ContainsKey(perFileNfoPath))
+                nfoPath = perFileNfoPath;
+
+            // Per-folder fallbacks: movie.nfo in the same folder
+            if (nfoPath is null)
+            {
+                var movieNfoPath = System.IO.Path.Combine(folder, "movie.nfo");
+                if (nfoEntriesByPath.ContainsKey(movieNfoPath))
+                    nfoPath = movieNfoPath;
+            }
+
+            // tvshow.nfo: check the same folder and, for season subfolders, also the parent folder.
+            // SOURCE: Kodi wiki — tvshow.nfo lives at the show root, not inside each season folder.
+            if (nfoPath is null)
+            {
+                var tvShowNfoPath = System.IO.Path.Combine(folder, "tvshow.nfo");
+                if (nfoEntriesByPath.ContainsKey(tvShowNfoPath))
+                {
+                    nfoPath = tvShowNfoPath;
+                }
+                else
+                {
+                    // Walk up one level to find tvshow.nfo at the show root
+                    // (episode files typically live in Season X subdirectories)
+                    var parentFolder = System.IO.Path.GetDirectoryName(folder);
+                    if (parentFolder is not null)
+                    {
+                        var parentTvShowNfoPath = System.IO.Path.Combine(parentFolder, "tvshow.nfo");
+                        if (nfoEntriesByPath.ContainsKey(parentTvShowNfoPath))
+                            nfoPath = parentTvShowNfoPath;
+                    }
+                }
+            }
+
+            // Parse the NFO if one was found
+            if (nfoPath is not null)
+            {
+                try
+                {
+                    nfoResult = await nfoParser.ParseAsync(nfoPath, ct);
+
+                    if (nfoResult.ParsedSuccessfully)
+                    {
+                        logger.LogDebug(
+                            "NFO sidecar parsed for '{FilePath}': title='{Title}' year={Year} tmdbId={TmdbId}",
+                            file.AbsolutePath, nfoResult.Title, nfoResult.Year, nfoResult.TmdbId);
+
+                        // Persist the NfoMetadata row (upsert by SourcePath to handle incremental rescans)
+                        await PersistNfoMetadataAsync(nfoPath, nfoResult, ct);
+                    }
+                    else
+                    {
+                        logger.LogWarning(
+                            "NFO sidecar at '{NfoPath}' is malformed for file '{FilePath}': {Warning}",
+                            nfoPath, file.AbsolutePath, nfoResult.Warning);
+                    }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Unexpected error parsing NFO sidecar at '{NfoPath}'", nfoPath);
+                    nfoResult = NfoParseResult.Malformed(ex.Message);
+                }
+            }
+        }
+
         // ── TMDB resolution stage ─────────────────────────────────────────────
         // T093: Check for a previously resolved ReviewItem for this path first.
         // If found, skip the TMDB title search and re-use the administrator's saved mapping.
@@ -314,23 +413,86 @@ public sealed class ScanPipeline(
             return;
         }
 
-        // Build the TMDB match query from parsed name data
-        var matchQuery = BuildMatchQuery(file, root, episodeNumbers, role);
+        // Build the TMDB match query from parsed name data (and NFO metadata when available)
+        var matchQuery = BuildMatchQuery(file, root, episodeNumbers, role, nfoResult);
 
         // Resolve via matcher (handles precedence chain + cache + error tolerance)
         var tmdbResult = await tmdbMatcher.ResolveAsync(matchQuery, ct);
 
         if (tmdbResult.NeedsReview)
         {
-            // The file cannot be confidently matched — create a ReviewItem
+            // Determine the effective review reason:
+            // If the NFO was malformed AND the TMDB lookup also failed, surface NfoMalformed reason.
+            // Otherwise use the standard TMDB review reason.
+            var effectiveReason = (nfoResult is { ParsedSuccessfully: false })
+                ? ReviewReason.NfoMalformed
+                : (tmdbResult.ReviewReason ?? ReviewReason.NoTmdbResult);
+
             await CreateReviewItemAsync(
-                scanRun, file, tmdbResult, matchQuery, episodeNumbers, counters, existingOpenReviewPaths, ct);
+                scanRun, file, tmdbResult, matchQuery, episodeNumbers, counters,
+                existingOpenReviewPaths, effectiveReason, ct);
             return;
         }
 
-        // Successful match — persist the new MediaFile
+        // Successful TMDB match.
+        // If the NFO was malformed but the filename fallback matched, emit a warning decision row
+        // (NfoMalformed reason) alongside the standard Added decision so the report is transparent.
+        if (nfoResult is { ParsedSuccessfully: false })
+        {
+            await db.ScanItemDecisions.AddAsync(new ScanItemDecision
+            {
+                ScanRunId = scanRun.Id,
+                FilePath = file.AbsolutePath,
+                Kind = ScanDecisionKind.Added,
+                Reason = ReviewReason.NfoMalformed.ToString()
+            }, ct);
+        }
+
         inFlightPaths.Add(file.AbsolutePath);
         await PersistNewMediaFileAsync(scanRun, root, file, role, fingerprint, counters, ct);
+    }
+
+    // =========================================================================
+    // Persist NfoMetadata row (upsert by SourcePath)
+    // =========================================================================
+
+    private async Task PersistNfoMetadataAsync(string nfoPath, NfoParseResult result, CancellationToken ct)
+    {
+        // Check for an existing row to handle incremental rescans (unique index on SourcePath).
+        var existing = await db.NfoMetadata
+            .FirstOrDefaultAsync(n => n.SourcePath == nfoPath, ct);
+
+        if (existing is not null)
+        {
+            // Update the existing row with freshly parsed values
+            existing.Title = result.Title;
+            existing.Year = result.Year;
+            existing.TmdbId = result.TmdbId;
+            existing.ImdbId = result.ImdbId;
+            existing.Season = result.Season;
+            existing.Episode = result.Episode;
+            existing.ParseFailed = false;
+            existing.ParseError = null;
+            // RawContent not updated here — would require re-reading the file content;
+            // the SourcePath unique index prevents stale state for most incremental scans.
+        }
+        else
+        {
+            await db.NfoMetadata.AddAsync(new NfoMetadata
+            {
+                SourcePath = nfoPath,
+                // Store a brief summary in RawContent (actual parsed fields are stored in columns)
+                RawContent = $"parsed:{result.Title}/{result.Year}/{result.TmdbId}",
+                Title = result.Title,
+                Year = result.Year,
+                TmdbId = result.TmdbId,
+                ImdbId = result.ImdbId,
+                Season = result.Season,
+                Episode = result.Episode,
+                ParseFailed = false,
+                ParseError = null
+            }, ct);
+        }
     }
 
     // =========================================================================
@@ -391,6 +553,7 @@ public sealed class ScanPipeline(
         IReadOnlyList<EpisodeNumber> episodeNumbers,
         ScanCounters counters,
         HashSet<string> existingOpenReviewPaths,
+        ReviewReason effectiveReason,
         CancellationToken ct)
     {
         // Avoid creating duplicate Open ReviewItems for the same path (use pre-loaded set)
@@ -410,7 +573,7 @@ public sealed class ScanPipeline(
             var reviewItem = new ReviewItem
             {
                 FilePath = file.AbsolutePath,
-                Reason = tmdbResult.ReviewReason ?? ReviewReason.NoTmdbResult,
+                Reason = effectiveReason,
                 Status = ReviewStatus.Open,
                 ParsedTitle = matchQuery.Title,
                 ParsedYear = matchQuery.Year,
@@ -430,29 +593,35 @@ public sealed class ScanPipeline(
             ScanRunId = scanRun.Id,
             FilePath = file.AbsolutePath,
             Kind = ScanDecisionKind.NeedsReview,
-            Reason = tmdbResult.ReviewReason?.ToString()
+            Reason = effectiveReason.ToString()
         }, ct);
 
         logger.LogDebug(
             "{ScanRunId}: NeedsReview {FilePath} [reason={Reason}]",
-            scanRun.Id, file.AbsolutePath, tmdbResult.ReviewReason);
+            scanRun.Id, file.AbsolutePath, effectiveReason);
     }
 
     // =========================================================================
-    // Build a MatchQuery from file path and parsed episode data
+    // Build a MatchQuery from file path, parsed episode data, and NFO result
     // =========================================================================
 
     private MatchQuery BuildMatchQuery(
         NasFileEntry file,
         LibraryRoot root,
         IReadOnlyList<EpisodeNumber> episodeNumbers,
-        MediaFileRole role)
+        MediaFileRole role,
+        NfoParseResult? nfoResult = null)
     {
         // Check for explicit TMDB id token in the file or folder name
         int? explicitTokenId = null;
         var tokenMatch = KodiRegexCatalog.ExplicitTmdbIdToken.Match(file.AbsolutePath);
         if (tokenMatch.Success && int.TryParse(tokenMatch.Groups[1].Value, out var parsedId))
             explicitTokenId = parsedId;
+
+        // NFO TmdbId feeds the highest-precedence slot in the resolution chain:
+        //   NfoTmdbId → ExplicitTokenId → Title+Year → Title
+        // Only use TmdbId from well-formed NFO results.
+        int? nfoTmdbId = (nfoResult?.ParsedSuccessfully == true) ? nfoResult.TmdbId : null;
 
         // Parse the title and year from the filename using the Kodi name parser
         var kindHint = role == MediaFileRole.Episode || root.Kind == LibraryRootKind.TvShows
@@ -462,19 +631,36 @@ public sealed class ScanPipeline(
         if (kindHint == MediaType.Film)
         {
             var movieResult = nameParser.ParseMovie(file.AbsolutePath);
+
+            // NFO fields override filename-parsed fields when the NFO is well-formed
+            var title = nfoResult?.ParsedSuccessfully == true && nfoResult.Title is not null
+                ? nfoResult.Title
+                : (movieResult.Title ?? System.IO.Path.GetFileNameWithoutExtension(file.FileName));
+
+            var year = nfoResult?.ParsedSuccessfully == true && nfoResult.Year is not null
+                ? nfoResult.Year
+                : movieResult.Year;
+
             return new MatchQuery(
-                Title: movieResult.Title ?? System.IO.Path.GetFileNameWithoutExtension(file.FileName),
-                Year: movieResult.Year,
+                Title: title,
+                Year: year,
                 KindHint: MediaType.Film,
+                NfoTmdbId: nfoTmdbId,
                 ExplicitTokenId: explicitTokenId);
         }
         else
         {
             var episodeResult = nameParser.ParseEpisode(file.AbsolutePath, BuildEpisodeHint(file.AbsolutePath));
+
+            var title = nfoResult?.ParsedSuccessfully == true && nfoResult.Title is not null
+                ? nfoResult.Title
+                : (episodeResult.Title ?? System.IO.Path.GetFileNameWithoutExtension(file.FileName));
+
             return new MatchQuery(
-                Title: episodeResult.Title ?? System.IO.Path.GetFileNameWithoutExtension(file.FileName),
+                Title: title,
                 Year: null,
                 KindHint: MediaType.TvShow,
+                NfoTmdbId: nfoTmdbId,
                 ExplicitTokenId: explicitTokenId);
         }
     }

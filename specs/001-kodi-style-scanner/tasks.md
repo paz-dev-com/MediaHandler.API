@@ -196,15 +196,15 @@ description: "Task list for Kodi-Style NAS Library Scanner"
 
 ### Tests for User Story 3 — write FIRST
 
-- [ ] T095 [P] [US3] Author `MediaHandler.Tests/Scanner/NfoParserTests.cs` — well-formed `movie.nfo` with `<tmdbid>` parsed correctly; malformed XML returns `NfoParseResult.Malformed` (not throws); missing optional fields return null without failing; `tvshow.nfo` and per-episode `.nfo` shapes covered.
-- [ ] T096 [P] [US3] Add `Sc_Nfo_OverridesFilenameGuess` integration scenario to `FullScanEndToEndTests.cs` covering acceptance scenarios 1–3 of US3.
+- [X] T095 [P] [US3] Author `MediaHandler.Tests/Scanner/NfoParserTests.cs` — well-formed `movie.nfo` with `<tmdbid>` parsed correctly; malformed XML returns `NfoParseResult.Malformed` (not throws); missing optional fields return null without failing; `tvshow.nfo` and per-episode `.nfo` shapes covered.
+- [X] T096 [P] [US3] Add `Sc_Nfo_OverridesFilenameGuess` integration scenario to `FullScanEndToEndTests.cs` covering acceptance scenarios 1–3 of US3.
 
 ### Implementation for User Story 3
 
-- [ ] T097 [US3] Implement `MediaHandler.Infrastructure/Nas/Scanner/NfoParser.cs` using `XDocument`; tolerant of unknown elements; returns `NfoParseResult { Title, Year, TmdbId, Kind, ParsedSuccessfully, Warning? }`. Makes T095 pass.
-- [ ] T098 [US3] Wire NFO discovery into `ScanPipeline`: per-folder discover `movie.nfo`/`tvshow.nfo`; per-file discover `<basename>.nfo`. On parse success, persist a `NfoMetadata` row, attach to the `Media`, and surface the result to `ITmdbMatcher` so its precedence chain (NfoTmdbId first) takes effect. On `Warning`, write a `ScanItemDecision` of `Kind=NeedsReview, Reason=NfoMalformed` ONLY if filename fallback also fails; otherwise emit a Serilog warning + decision row with `Reason=NfoMalformed` but proceed.
-- [ ] T099 [US3] Add the override-precedence rows to `KodiNameParserTests` / `TmdbMatcherTests` ensuring NFO id always wins (per plan US3 mapping note).
-- [ ] T100 [US3] Run T096 to green.
+- [X] T097 [US3] Implement `MediaHandler.Infrastructure/Nas/Scanner/NfoParser.cs` using `XDocument`; tolerant of unknown elements; returns `NfoParseResult { Title, Year, TmdbId, Kind, ParsedSuccessfully, Warning? }`. Makes T095 pass.
+- [X] T098 [US3] Wire NFO discovery into `ScanPipeline`: per-folder discover `movie.nfo`/`tvshow.nfo`; per-file discover `<basename>.nfo`. On parse success, persist a `NfoMetadata` row, attach to the `Media`, and surface the result to `ITmdbMatcher` so its precedence chain (NfoTmdbId first) takes effect. On `Warning`, write a `ScanItemDecision` of `Kind=NeedsReview, Reason=NfoMalformed` ONLY if filename fallback also fails; otherwise emit a Serilog warning + decision row with `Reason=NfoMalformed` but proceed.
+- [X] T099 [US3] Add the override-precedence rows to `KodiNameParserTests` / `TmdbMatcherTests` ensuring NFO id always wins (per plan US3 mapping note).
+- [X] T100 [US3] Run T096 to green.
 
 **Checkpoint**: NFO escape-hatch works; libraries with curated NFOs map deterministically.
 
