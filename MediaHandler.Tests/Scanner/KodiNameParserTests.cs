@@ -254,5 +254,57 @@ public class KodiNameParserTests
         result.Title.Should().Be("1917");
         result.Year.Should().Be(2019);
     }
+
+    // =========================================================================
+    // NFO override-precedence contract (US3 mapping note)
+    // These tests document the parser's output BEFORE NFO override is applied.
+    // The pipeline replaces the parser result with NFO data when a sidecar is present.
+    // SOURCE: plan.md — "NfoTmdbId → ExplicitTokenId → Title+Year → Title"
+    // =========================================================================
+
+    /// <summary>
+    /// Documents a deliberately misnamed file so the reader understands why the NFO
+    /// override matters: the filename parser alone cannot produce the correct TMDB id.
+    /// The ScanPipeline replaces the parser's title/year with NFO values (US3 wiring).
+    /// </summary>
+    [Fact]
+    public void ParseMovie_MisnamedFile_ProducesFilenameGuess_NfoWouldOverride()
+    {
+        // File intentionally misnamed — the parser returns the filename guess.
+        // When a movie.nfo with <tmdbid> exists alongside this file, the pipeline
+        // replaces the parser output with the NFO's authoritative values, meaning
+        // the MatchQuery gets NfoTmdbId set and the title/year below are NOT sent to TMDB.
+        var result = _sut.ParseMovie("/nas/Movies/Some Misnamed Movie (2010)/Some Misnamed Movie (2010).mkv");
+
+        // Filename parser still parses what it finds — NFO override happens at pipeline level
+        result.Title.Should().Be("Some Misnamed Movie");
+        result.Year.Should().Be(2010);
+    }
+
+    /// <summary>
+    /// Documents that an NFO id in a tvshow.nfo overrides even a well-formed filename.
+    /// The KodiNameParser itself is unaware of NFO files; it only parses filename tokens.
+    /// The pipeline supplies the NFO id to the MatchQuery before sending to TmdbMatcher,
+    /// ensuring the NFO id always wins the resolution chain.
+    /// </summary>
+    [Fact]
+    public void ParseEpisode_WellFormedFilename_ProducesEpisodeResult_NfoTmdbIdWouldOverride()
+    {
+        // A perfectly named episode file. Even so, when tvshow.nfo contains <tmdbid>,
+        // the pipeline passes that id as NfoTmdbId to the MatchQuery, giving it highest
+        // precedence over both this title guess and any ExplicitTokenId in the path.
+        var result = _sut.ParseEpisode(
+            "/nas/TV/Breaking Bad/Season 1/Breaking.Bad.S01E01.mkv",
+            new EpisodeNumberingHint(SeasonFromFolder: 1));
+
+        // The parser successfully extracts the episode numbers from the well-named file.
+        // The title output from the parser (which may be null or partial) is irrelevant
+        // when a tvshow.nfo is present — the NFO's TmdbId is used as the authoritative signal.
+        result.IsSuccess.Should().BeTrue();
+        result.EpisodeNumbers.Should().NotBeEmpty("well-named SxxExx file must yield at least one episode number");
+        result.EpisodeNumbers[0].Season.Should().Be(1);
+        result.EpisodeNumbers[0].Episode.Should().Be(1);
+    }
 }
+
 

@@ -6,6 +6,7 @@ using FluentAssertions;
 using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models.Scanner;
+using NasFileInfo = MediaHandler.Application.Common.DTOs.NasFileInfo;
 using MediaHandler.Application.Features.Scan.Commands.StartScan;
 using MediaHandler.Application.Features.Scan.Queries.GetScanRun;
 using MediaHandler.Domain.Entities;
@@ -248,5 +249,197 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
             pipelineLogger);
 
         return new ScanRunCoordinator(logger, pipeline, coordinatorDb);
+    }
+
+    private ScanRunCoordinator BuildCoordinatorWithNfoParser(
+        ITmdbMatcher tmdbMatcher,
+        INfoParser nfoParser)
+    {
+        var nasEnumerator = new MediaHandler.Infrastructure.Nas.NasFileEnumerator(
+            FakeNas!, Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaHandler.Infrastructure.Nas.NasFileEnumerator>.Instance);
+
+        var parser = new KodiNameParser();
+        var exclusionEvaluator = new ExclusionEvaluator();
+        var stackDetector = new StackingDetector();
+        var episodeMatcher = new TvEpisodeMatcher();
+
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScanRunCoordinator>.Instance;
+        var pipelineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScanPipeline>.Instance;
+
+        var coordinatorDb = new MediaHandler.Infrastructure.Persistence.MediaHandlerDbContext(DbContextOptions);
+
+        var pipeline = new ScanPipeline(
+            coordinatorDb,
+            nasEnumerator,
+            exclusionEvaluator,
+            stackDetector,
+            parser,
+            episodeMatcher,
+            tmdbMatcher,
+            pipelineLogger,
+            nfoParser);
+
+        return new ScanRunCoordinator(logger, pipeline, coordinatorDb);
+    }
+
+    // =========================================================================
+    // US3 acceptance scenarios — NFO sidecar overrides filename guess
+    // =========================================================================
+
+    /// <summary>
+    /// Acceptance scenario 1: movie file in a folder with movie.nfo containing a tmdbid
+    /// is mapped using the NFO's TMDB id rather than the filename parser's guess.
+    ///
+    /// Acceptance scenario 2: TV show folder with tvshow.nfo containing a tmdbid
+    /// is mapped using the NFO's TMDB id.
+    ///
+    /// Acceptance scenario 3: malformed NFO file causes a Serilog warning and graceful
+    /// fallback to filename-based detection; the overall scan does not abort.
+    /// </summary>
+    [Fact]
+    public async Task Sc_Nfo_OverridesFilenameGuess()
+    {
+        // ── Build the in-memory NAS fixture ───────────────────────────────────
+        // Movie with well-formed movie.nfo whose tmdbid=27205 (Inception)
+        const string movieFolder = "/nas/Movies/Some Misnamed Movie (2010)";
+        const string movieFile   = movieFolder + "/Some Misnamed Movie (2010).mkv";
+        const string movieNfo    = movieFolder + "/movie.nfo";
+
+        // TV show with tvshow.nfo whose tmdbid=1396 (Breaking Bad)
+        const string tvFolder    = "/nas/TV Shows/A Misnamed Show";
+        const string tvNfo       = tvFolder + "/tvshow.nfo";
+        const string tvEpisode   = tvFolder + "/Season 1/S01E01.mkv";
+
+        // Movie with a malformed NFO — scanner must fall back gracefully
+        const string badNfoFolder = "/nas/Movies/Interstellar (2014)";
+        const string badNfoFile   = badNfoFolder + "/Interstellar (2014).mkv";
+        const string badNfo       = badNfoFolder + "/movie.nfo";
+
+        var nasEntries = new List<NasFileInfo>
+        {
+            new(movieFolder, System.IO.Path.GetFileName(movieFolder), 0, null, DateTime.UtcNow, DateTime.UtcNow, IsDirectory: true),
+            new(movieFile,   "Some Misnamed Movie (2010).mkv", 1_073_741_824, "mkv", DateTime.UtcNow, DateTime.UtcNow),
+            new(movieNfo,    "movie.nfo", 512, "nfo", DateTime.UtcNow, DateTime.UtcNow),
+
+            new(tvFolder,    System.IO.Path.GetFileName(tvFolder), 0, null, DateTime.UtcNow, DateTime.UtcNow, IsDirectory: true),
+            new(tvNfo,       "tvshow.nfo", 512, "nfo", DateTime.UtcNow, DateTime.UtcNow),
+            new(tvFolder + "/Season 1", "Season 1", 0, null, DateTime.UtcNow, DateTime.UtcNow, IsDirectory: true),
+            new(tvEpisode,   "S01E01.mkv", 1_073_741_824, "mkv", DateTime.UtcNow, DateTime.UtcNow),
+
+            new(badNfoFolder, System.IO.Path.GetFileName(badNfoFolder), 0, null, DateTime.UtcNow, DateTime.UtcNow, IsDirectory: true),
+            new(badNfoFile,   "Interstellar (2014).mkv", 1_073_741_824, "mkv", DateTime.UtcNow, DateTime.UtcNow),
+            new(badNfo,       "movie.nfo", 50, "nfo", DateTime.UtcNow, DateTime.UtcNow),
+        };
+
+        WithFakeNasService(nasEntries, configuredPaths: ["/nas"]);
+
+        // ── Register library roots ────────────────────────────────────────────
+        var moviesRoot = new LibraryRoot { Path = "/nas/Movies", Kind = LibraryRootKind.Movies, IsEnabled = true };
+        var tvRoot = new LibraryRoot { Path = "/nas/TV Shows", Kind = LibraryRootKind.TvShows, IsEnabled = true };
+        DbContext.LibraryRoots.AddRange(moviesRoot, tvRoot);
+        await DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // ── Build fake ITmdbMatcher ───────────────────────────────────────────
+        // Returns a successful match when NfoTmdbId is present; otherwise needs-review.
+        var fakeTmdb = Substitute.For<ITmdbMatcher>();
+
+        // When NfoTmdbId=27205 is passed, return a successful movie match
+        fakeTmdb.ResolveAsync(
+                Arg.Is<MatchQuery>(q => q.NfoTmdbId == 27205),
+                Arg.Any<CancellationToken>())
+            .Returns(new TmdbMatchResult(true, 27205, MediaHandler.Domain.Enums.MediaType.Film, false, null, []));
+
+        // When NfoTmdbId=1396 is passed, return a successful TV show match
+        fakeTmdb.ResolveAsync(
+                Arg.Is<MatchQuery>(q => q.NfoTmdbId == 1396),
+                Arg.Any<CancellationToken>())
+            .Returns(new TmdbMatchResult(true, 1396, MediaHandler.Domain.Enums.MediaType.TvShow, false, null, []));
+
+        // Default: resolve Interstellar by title (filename fallback) — return matched too
+        fakeTmdb.ResolveAsync(
+                Arg.Is<MatchQuery>(q => q.NfoTmdbId == null),
+                Arg.Any<CancellationToken>())
+            .Returns(new TmdbMatchResult(true, 99999, MediaHandler.Domain.Enums.MediaType.Film, false, null, []));
+
+        // ── Build fake INfoParser ─────────────────────────────────────────────
+        // Returns predefined results by path (no actual files on disk needed).
+        var fakeNfoParser = Substitute.For<INfoParser>();
+
+        // movie.nfo for the Inception folder → well-formed, tmdbid=27205
+        fakeNfoParser.ParseAsync(movieNfo, Arg.Any<CancellationToken>())
+            .Returns(new MediaHandler.Application.Common.Models.Scanner.NfoParseResult(
+                ParsedSuccessfully: true,
+                Title: "Inception",
+                Year: 2010,
+                TmdbId: 27205,
+                ImdbId: null,
+                Season: null,
+                Episode: null));
+
+        // tvshow.nfo → well-formed, tmdbid=1396
+        fakeNfoParser.ParseAsync(tvNfo, Arg.Any<CancellationToken>())
+            .Returns(new MediaHandler.Application.Common.Models.Scanner.NfoParseResult(
+                ParsedSuccessfully: true,
+                Title: "Breaking Bad",
+                Year: 2008,
+                TmdbId: 1396,
+                ImdbId: null,
+                Season: null,
+                Episode: null));
+
+        // badNfo → malformed XML
+        fakeNfoParser.ParseAsync(badNfo, Arg.Any<CancellationToken>())
+            .Returns(MediaHandler.Application.Common.Models.Scanner.NfoParseResult.Malformed("Invalid XML"));
+
+        // ── Execute the scan ──────────────────────────────────────────────────
+        var coordinator = BuildCoordinatorWithNfoParser(fakeTmdb, fakeNfoParser);
+        var handle = await coordinator.StartAsync(
+            new ScanStartParameters(Guid.NewGuid(), [moviesRoot.Id, tvRoot.Id], ScanMode.Full),
+            TestContext.Current.CancellationToken);
+
+        await WaitForScanCompletion(handle.ScanRunId, timeoutSeconds: 120);
+
+        // ── Acceptance scenario 1: NFO TMDB id was used for movie match ───────
+        await fakeNfoParser.Received().ParseAsync(movieNfo, Arg.Any<CancellationToken>());
+
+        await fakeTmdb.Received().ResolveAsync(
+            Arg.Is<MatchQuery>(q => q.NfoTmdbId == 27205),
+            Arg.Any<CancellationToken>());
+
+        // ── Acceptance scenario 2: NFO TMDB id was used for TV show match ────
+        await fakeNfoParser.Received().ParseAsync(tvNfo, Arg.Any<CancellationToken>());
+
+        await fakeTmdb.Received().ResolveAsync(
+            Arg.Is<MatchQuery>(q => q.NfoTmdbId == 1396),
+            Arg.Any<CancellationToken>());
+
+        // ── Acceptance scenario 3: malformed NFO fell back gracefully ─────────
+        // Scan must NOT be in a failed state (malformed NFO did not abort the run).
+        var scanRun = await DbContext.ScanRuns
+            .AsNoTracking()
+            .FirstAsync(r => r.Id == handle.ScanRunId, TestContext.Current.CancellationToken);
+
+        scanRun.Status.Should().Be(ScanStatus.Completed,
+            "A malformed NFO must not abort the scan run");
+
+        // The bad-NFO movie file must still appear in decisions (added via filename fallback)
+        var badNfoDecisions = await DbContext.ScanItemDecisions
+            .AsNoTracking()
+            .Where(d => d.ScanRunId == handle.ScanRunId && d.FilePath == badNfoFile)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        badNfoDecisions.Should().NotBeEmpty(
+            "The movie file with a malformed NFO must still receive a scan decision");
+
+        // The NfoMetadata table must contain rows for the two well-formed NFO files
+        var nfoRows = await DbContext.NfoMetadata
+            .AsNoTracking()
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        nfoRows.Should().Contain(n => n.SourcePath == movieNfo && n.TmdbId == 27205,
+            "NfoMetadata row must be persisted for the well-formed movie.nfo");
+
+        nfoRows.Should().Contain(n => n.SourcePath == tvNfo && n.TmdbId == 1396,
+            "NfoMetadata row must be persisted for the well-formed tvshow.nfo");
     }
 }
