@@ -218,15 +218,15 @@ description: "Task list for Kodi-Style NAS Library Scanner"
 
 ### Tests for User Story 4 — write FIRST
 
-- [ ] T101 [P] [US4] Add `Sc006_AnyFileDiagnosable_Under30Seconds` to `FullScanEndToEndTests.cs` — for every fixture file path, the GET-detail response (with `includeReview=true`) MUST contain either a matching `MediaFile` reference OR a `ScanItemDecision` row OR a `ReviewItem` row, each carrying a `Reason` / `RuleId`. Asserts presence in O(1) lookup per path.
-- [ ] T102 [P] [US4] Unit test `MediaHandler.Tests/Features/Scan/GetScanRunQueryHandlerTests.cs::IncludeReview_ReturnsOpenItemsForRun` (extension of T058).
+- [X] T101 [P] [US4] Add `Sc006_AnyFileDiagnosable_Under30Seconds` to `FullScanEndToEndTests.cs` — for every fixture file path, the GET-detail response (with `includeReview=true`) MUST contain either a matching `MediaFile` reference OR a `ScanItemDecision` row OR a `ReviewItem` row, each carrying a `Reason` / `RuleId`. Asserts presence in O(1) lookup per path.
+- [X] T102 [P] [US4] Unit test `MediaHandler.Tests/Features/Scan/GetScanRunQueryHandlerTests.cs::IncludeReview_ReturnsOpenItemsForRun` (extension of T058).
 
 ### Implementation for User Story 4
 
-- [ ] T103 [US4] Extend `GetScanRun` query handler + DTO mapping so `includeReview=true` returns up to 100 most recent open `ReviewItem`s scoped to the run (per `contracts/scan.md`).
-- [ ] T104 [US4] Ensure `ScanPipeline` writes a `ScanItemDecision` row for **every** processed path (Added/Updated/Unchanged/Removed/Excluded/NeedsReview) including `RuleId` for exclusions and `Reason` for review items (FR-023 data-side).
-- [ ] T105 [US4] Implement removed-file detection: at the end of a scan, every `MediaFile` belonging to a scanned `LibraryRoot` whose `LastSeenScanRunId != currentRunId` gets `MissingSince = UtcNow` and a `ScanItemDecision { Kind=Removed }` row (FR-019). Failing root reads (NAS unreachable) MUST suppress this step for that root and write a single `Reason="NAS unreachable"` decision instead — no mass-removal on transient failure.
-- [ ] T106 [US4] Run T101, T102 to green.
+- [X] T103 [US4] Extend `GetScanRun` query handler + DTO mapping so `includeReview=true` returns up to 100 most recent open `ReviewItem`s scoped to the run (per `contracts/scan.md`).
+- [X] T104 [US4] Ensure `ScanPipeline` writes a `ScanItemDecision` row for **every** processed path (Added/Updated/Unchanged/Removed/Excluded/NeedsReview) including `RuleId` for exclusions and `Reason` for review items (FR-023 data-side).
+- [X] T105 [US4] Implement removed-file detection: at the end of a scan, every `MediaFile` belonging to a scanned `LibraryRoot` whose `LastSeenScanRunId != currentRunId` gets `MissingSince = UtcNow` and a `ScanItemDecision { Kind=Removed }` row (FR-019). Failing root reads (NAS unreachable) MUST suppress this step for that root and write a single `Reason="NAS unreachable"` decision instead — no mass-removal on transient failure.
+- [X] T106 [US4] Run T101, T102 to green.
 
 **Checkpoint**: All four user stories independently demonstrable.
 

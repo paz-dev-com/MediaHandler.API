@@ -45,17 +45,26 @@ public sealed class ScanPipeline(
     {
         var counters = new ScanCounters();
 
+        // Track which roots failed enumeration so removed-file detection is suppressed for them.
+        // A failed root (NAS unreachable) must NOT trigger mass-removal of its files — the absence
+        // of entries would be a transient network issue, not a genuine removal.
+        var failedRootIds = new HashSet<Guid>();
+
         try
         {
             foreach (var root in roots)
             {
                 ct.ThrowIfCancellationRequested();
-                await ProcessRootAsync(scanRun, root, counters, progress, ct);
+                var succeeded = await ProcessRootAsync(scanRun, root, counters, progress, ct);
+                if (!succeeded)
+                    failedRootIds.Add(root.Id);
             }
 
-            // ── Removed-file detection (US4 / T105 stub) ────────────────────
-            // Full detection is wired in US4; here we mark the run complete.
-            await MarkRemovedFilesAsync(scanRun, roots, counters, ct);
+            // Only run removed-file detection for roots that were successfully enumerated.
+            // Roots that failed enumeration already have a "NAS unreachable" decision written by
+            // ProcessRootAsync and must not cause their files to be falsely marked as removed.
+            var successfulRoots = roots.Where(r => !failedRootIds.Contains(r.Id)).ToList();
+            await MarkRemovedFilesAsync(scanRun, successfulRoots, counters, ct);
         }
         catch (OperationCanceledException)
         {
@@ -83,7 +92,13 @@ public sealed class ScanPipeline(
     // Per-root processing
     // =========================================================================
 
-    private async Task ProcessRootAsync(
+    /// <summary>
+    /// Processes one library root through the full pipeline.
+    /// Returns <c>true</c> when the root was enumerated successfully, <c>false</c> when
+    /// the NAS was unreachable (partial failure — a "NAS unreachable" decision is written
+    /// but removed-file detection for this root is suppressed by the caller).
+    /// </summary>
+    private async Task<bool> ProcessRootAsync(
         ScanRun scanRun,
         LibraryRoot root,
         ScanCounters counters,
@@ -102,7 +117,9 @@ public sealed class ScanPipeline(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "NAS enumeration failed for root {RootId} ({Path}). Skipping removed-file detection for this root.", root.Id, root.Path);
-            // R-007: NAS unreachable → suppress removed-file detection, write single decision
+            // NAS unreachable: write a single diagnostic decision so the admin can see the failure.
+            // Returning false signals to the caller that removed-file detection must be skipped
+            // for this root to avoid falsely marking its files as removed.
             await db.ScanItemDecisions.AddAsync(new ScanItemDecision
             {
                 ScanRunId = scanRun.Id,
@@ -112,7 +129,7 @@ public sealed class ScanPipeline(
                 RuleId = null
             }, ct);
             await db.SaveChangesAsync(ct);
-            return;
+            return false;
         }
 
         // Build .nomedia folder set
@@ -241,6 +258,8 @@ public sealed class ScanPipeline(
         logger.LogInformation(
             "ScanPipeline: root {RootId} done. Added={A} Updated={U} Unchanged={X} Excluded={E} NeedsReview={R}",
             root.Id, counters.Added, counters.Updated, counters.Unchanged, counters.Excluded, counters.NeedsReview);
+
+        return true;
     }
 
     // =========================================================================

@@ -103,7 +103,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
             IsEnabled = true
         };
         var tvRoot = new LibraryRoot
-        { 
+        {
             Path = "/nas/TV Shows",
             Kind = LibraryRootKind.TvShows,
             IsEnabled = true
@@ -251,6 +251,101 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
         return new ScanRunCoordinator(logger, pipeline, coordinatorDb);
     }
 
+    // =========================================================================
+    // SC-006: any file diagnosable in under 30 seconds
+    // =========================================================================
+
+    /// <summary>
+    /// SC-006: For every file in the benchmark fixture, the outcome must be locatable
+    /// via an O(1) indexed lookup — either a <c>ScanItemDecision</c> row, a <c>MediaFile</c>
+    /// row, or a <c>ReviewItem</c> — all within 30 seconds elapsed wall-clock time.
+    /// This validates FR-023: every path the pipeline touches has an audit trail.
+    /// </summary>
+    [Fact]
+    public async Task Sc006_AnyFileDiagnosable_Under30Seconds()
+    {
+        if (_fixture is null) throw new InvalidOperationException("Fixture not initialised");
+
+        // Register library roots
+        var moviesRoot = new LibraryRoot
+        {
+            Path = "/nas/Movies",
+            Kind = LibraryRootKind.Movies,
+            IsEnabled = true
+        };
+        var tvRoot = new LibraryRoot
+        {
+            Path = "/nas/TV Shows",
+            Kind = LibraryRootKind.TvShows,
+            IsEnabled = true
+        };
+        DbContext.LibraryRoots.AddRange(moviesRoot, tvRoot);
+        await DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Run a full scan (TMDB stub returns NeedsReview=false so all valid files are Added)
+        var coordinator = BuildCoordinator();
+        var handle = await coordinator.StartAsync(
+            new ScanStartParameters(Guid.NewGuid(), [moviesRoot.Id, tvRoot.Id], ScanMode.Full),
+            TestContext.Current.CancellationToken);
+
+        await WaitForScanCompletion(handle.ScanRunId, timeoutSeconds: 120);
+
+        // Build O(1) lookup structures — this is the diagnostic query the admin would run.
+        // The 30-second budget covers loading all three sets plus iterating every fixture path.
+        var diagnosticStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        // All paths that received a pipeline decision for this scan run
+        var decidedPaths = (await DbContext.ScanItemDecisions
+            .AsNoTracking()
+            .Where(d => d.ScanRunId == handle.ScanRunId)
+            .Select(d => d.FilePath)
+            .ToListAsync(TestContext.Current.CancellationToken))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // All MediaFile paths persisted (any scan — covers incrementals)
+        var mediaFilePaths = (await DbContext.MediaFiles
+            .AsNoTracking()
+            .Select(mf => mf.FilePath)
+            .ToListAsync(TestContext.Current.CancellationToken))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // All ReviewItem paths created by this scan run
+        var reviewItemPaths = (await DbContext.ReviewItems
+            .AsNoTracking()
+            .Where(r => r.FirstSeenScanRunId == handle.ScanRunId)
+            .Select(r => r.FilePath)
+            .ToListAsync(TestContext.Current.CancellationToken))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Check every non-directory fixture file — each must appear in at least one set.
+        // The lookup is O(1) per path thanks to the indexed DB columns and in-memory HashSets.
+        var allFixturePaths = _fixture.ToNasFileInfos()
+            .Where(e => !e.IsDirectory)
+            .Select(e => e.FilePath)
+            .ToList();
+
+        var uncoveredPaths = new List<string>();
+        foreach (var path in allFixturePaths)
+        {
+            if (!decidedPaths.Contains(path)
+                && !mediaFilePaths.Contains(path)
+                && !reviewItemPaths.Contains(path))
+            {
+                uncoveredPaths.Add(path);
+            }
+        }
+
+        diagnosticStopwatch.Stop();
+
+        uncoveredPaths.Should().BeEmpty(
+            because: $"Every file path in the fixture must have at least one audit record " +
+                     $"(ScanItemDecision, MediaFile, or ReviewItem). " +
+                     $"Paths without coverage: {string.Join(", ", uncoveredPaths.Take(10))}");
+
+        diagnosticStopwatch.Elapsed.TotalSeconds.Should().BeLessThan(30,
+            because: "SC-006 requires any file's scan outcome to be diagnosable in under 30 seconds");
+    }
+
     private ScanRunCoordinator BuildCoordinatorWithNfoParser(
         ITmdbMatcher tmdbMatcher,
         INfoParser nfoParser)
@@ -302,18 +397,18 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
         // ── Build the in-memory NAS fixture ───────────────────────────────────
         // Movie with well-formed movie.nfo whose tmdbid=27205 (Inception)
         const string movieFolder = "/nas/Movies/Some Misnamed Movie (2010)";
-        const string movieFile   = movieFolder + "/Some Misnamed Movie (2010).mkv";
-        const string movieNfo    = movieFolder + "/movie.nfo";
+        const string movieFile = movieFolder + "/Some Misnamed Movie (2010).mkv";
+        const string movieNfo = movieFolder + "/movie.nfo";
 
         // TV show with tvshow.nfo whose tmdbid=1396 (Breaking Bad)
-        const string tvFolder    = "/nas/TV Shows/A Misnamed Show";
-        const string tvNfo       = tvFolder + "/tvshow.nfo";
-        const string tvEpisode   = tvFolder + "/Season 1/S01E01.mkv";
+        const string tvFolder = "/nas/TV Shows/A Misnamed Show";
+        const string tvNfo = tvFolder + "/tvshow.nfo";
+        const string tvEpisode = tvFolder + "/Season 1/S01E01.mkv";
 
         // Movie with a malformed NFO — scanner must fall back gracefully
         const string badNfoFolder = "/nas/Movies/Interstellar (2014)";
-        const string badNfoFile   = badNfoFolder + "/Interstellar (2014).mkv";
-        const string badNfo       = badNfoFolder + "/movie.nfo";
+        const string badNfoFile = badNfoFolder + "/Interstellar (2014).mkv";
+        const string badNfo = badNfoFolder + "/movie.nfo";
 
         var nasEntries = new List<NasFileInfo>
         {

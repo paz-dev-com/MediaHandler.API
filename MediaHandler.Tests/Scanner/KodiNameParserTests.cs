@@ -209,11 +209,11 @@ public class KodiNameParserTests
     [Theory]
     [MemberData(nameof(EpisodeData))]
     public void ParseEpisode_VariousPatterns_ExtractsSeason(
-        string fullPath, EpisodeNumberingHint hint, int expectedSeason, int _episodeIgnored)
+        string fullPath, EpisodeNumberingHint hint, int expectedSeason, int expectedEpisode)
     {
         var result = _sut.ParseEpisode(fullPath, hint);
 
-        result.IsSuccess.Should().BeTrue(because: $"'{fullPath}' should parse");
+        result.IsSuccess.Should().BeTrue(because: $"'{fullPath}' should parse (expected episode {expectedEpisode})");
         if (expectedSeason >= 0)
             result.EpisodeNumbers.Should().NotBeEmpty(because: $"'{fullPath}' should yield at least one episode number");
     }

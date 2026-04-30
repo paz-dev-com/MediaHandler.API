@@ -65,7 +65,7 @@ public class NfoParserTests : IAsyncLifetime
             """;
 
         var path = await WriteTempNfoAsync(xml);
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
 
         result.ParsedSuccessfully.Should().BeTrue();
         result.Title.Should().Be("Inception");
@@ -95,7 +95,7 @@ public class NfoParserTests : IAsyncLifetime
             """;
 
         var path = await WriteTempNfoAsync(xml);
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
 
         result.ParsedSuccessfully.Should().BeTrue();
         result.Title.Should().Be("The Dark Knight");
@@ -116,10 +116,10 @@ public class NfoParserTests : IAsyncLifetime
 
         var path = await WriteTempNfoAsync(xml);
 
-        var act = async () => await _sut.ParseAsync(path);
+        var act = async () => await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
         await act.Should().NotThrowAsync("Parser must be fault-tolerant on malformed XML");
 
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
         result.ParsedSuccessfully.Should().BeFalse();
         result.Warning.Should().NotBeNullOrEmpty();
         result.TmdbId.Should().BeNull();
@@ -131,7 +131,7 @@ public class NfoParserTests : IAsyncLifetime
     {
         var path = await WriteTempNfoAsync(string.Empty);
 
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
 
         result.ParsedSuccessfully.Should().BeFalse();
         result.Warning.Should().NotBeNullOrEmpty();
@@ -142,10 +142,10 @@ public class NfoParserTests : IAsyncLifetime
     {
         var path = await WriteTempNfoAsync("This is not XML at all!!! ###");
 
-        var act = async () => await _sut.ParseAsync(path);
+        var act = async () => await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
         await act.Should().NotThrowAsync();
 
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
         result.ParsedSuccessfully.Should().BeFalse();
     }
 
@@ -154,10 +154,10 @@ public class NfoParserTests : IAsyncLifetime
     {
         var nonExistentPath = "/tmp/this-file-does-not-exist-xyz-12345.nfo";
 
-        var act = async () => await _sut.ParseAsync(nonExistentPath);
+        var act = async () => await _sut.ParseAsync(nonExistentPath, TestContext.Current.CancellationToken);
         await act.Should().NotThrowAsync("Parser must not throw even for missing files");
 
-        var result = await _sut.ParseAsync(nonExistentPath);
+        var result = await _sut.ParseAsync(nonExistentPath, TestContext.Current.CancellationToken);
         result.ParsedSuccessfully.Should().BeFalse();
         result.Warning.Should().NotBeNullOrEmpty();
     }
@@ -178,7 +178,7 @@ public class NfoParserTests : IAsyncLifetime
             """;
 
         var path = await WriteTempNfoAsync(xml);
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
 
         result.ParsedSuccessfully.Should().BeTrue();
         result.Title.Should().Be("Parasite");
@@ -196,7 +196,7 @@ public class NfoParserTests : IAsyncLifetime
             """;
 
         var path = await WriteTempNfoAsync(xml);
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
 
         result.ParsedSuccessfully.Should().BeTrue();
         result.Title.Should().Be("Minimal Movie");
@@ -215,7 +215,7 @@ public class NfoParserTests : IAsyncLifetime
             """;
 
         var path = await WriteTempNfoAsync(xml);
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
 
         result.ParsedSuccessfully.Should().BeTrue();
         result.Title.Should().BeNull();
@@ -241,7 +241,7 @@ public class NfoParserTests : IAsyncLifetime
             """;
 
         var path = await WriteTempNfoAsync(xml);
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
 
         result.ParsedSuccessfully.Should().BeTrue();
         result.Title.Should().Be("Breaking Bad");
@@ -264,7 +264,7 @@ public class NfoParserTests : IAsyncLifetime
             """;
 
         var path = await WriteTempNfoAsync(xml);
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
 
         result.ParsedSuccessfully.Should().BeTrue();
         result.TmdbId.Should().BeNull();
@@ -289,7 +289,7 @@ public class NfoParserTests : IAsyncLifetime
             """;
 
         var path = await WriteTempNfoAsync(xml);
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
 
         result.ParsedSuccessfully.Should().BeTrue();
         result.Title.Should().Be("Pilot");
@@ -308,7 +308,7 @@ public class NfoParserTests : IAsyncLifetime
             """;
 
         var path = await WriteTempNfoAsync(xml);
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
 
         result.ParsedSuccessfully.Should().BeTrue();
         result.Season.Should().BeNull();
@@ -332,7 +332,7 @@ public class NfoParserTests : IAsyncLifetime
             """;
 
         var path = await WriteTempNfoAsync(xml);
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
 
         result.ParsedSuccessfully.Should().BeTrue();
         result.ImdbId.Should().Be("tt0114369");
@@ -354,7 +354,7 @@ public class NfoParserTests : IAsyncLifetime
             """;
 
         var path = await WriteTempNfoAsync(xml);
-        var result = await _sut.ParseAsync(path);
+        var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
 
         result.ParsedSuccessfully.Should().BeTrue();
         result.Title.Should().Be("Inception");
