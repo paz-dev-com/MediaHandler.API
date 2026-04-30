@@ -54,7 +54,7 @@ public class TmdbMatcherTests
         var matcher = CreateMatcher(service);
         var query = new MatchQuery("Some Other Movie", 2000, MediaType.Film, NfoTmdbId: 12345);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.IsMatched.Should().BeTrue();
         result.TmdbId.Should().Be(12345);
@@ -84,7 +84,7 @@ public class TmdbMatcherTests
         var query = new MatchQuery("Noisy.Release.2009.BluRay", 2009, MediaType.Film,
             NfoTmdbId: null, ExplicitTokenId: 99999);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.IsMatched.Should().BeTrue();
         result.TmdbId.Should().Be(99999);
@@ -113,7 +113,7 @@ public class TmdbMatcherTests
         var matcher = CreateMatcher(service);
         var query = new MatchQuery("Inception", 2010, MediaType.Film);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.IsMatched.Should().BeTrue();
         result.TmdbId.Should().Be(27205);
@@ -142,7 +142,7 @@ public class TmdbMatcherTests
         var matcher = CreateMatcher(service);
         var query = new MatchQuery("The Fly", 1986, null);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.NeedsReview.Should().BeTrue();
         result.ReviewReason.Should().Be(ReviewReason.MultipleCandidates);
@@ -169,7 +169,7 @@ public class TmdbMatcherTests
         var matcher = CreateMatcher(service);
         var query = new MatchQuery("Inception", 2010, MediaType.Film);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.NeedsReview.Should().BeTrue();
         result.ReviewReason.Should().Be(ReviewReason.YearMismatch);
@@ -192,7 +192,7 @@ public class TmdbMatcherTests
         var matcher = CreateMatcher(service);
         var query = new MatchQuery("Inception", queryYear, MediaType.Film);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.NeedsReview.Should().BeFalse();
         result.IsMatched.Should().BeTrue();
@@ -216,7 +216,7 @@ public class TmdbMatcherTests
         var matcher = CreateMatcher(service);
         var query = new MatchQuery("ZzzzUnknownTitle9999", 1900, MediaType.Film);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.NeedsReview.Should().BeTrue();
         result.ReviewReason.Should().Be(ReviewReason.NoTmdbResult);
@@ -242,10 +242,10 @@ public class TmdbMatcherTests
         var query = new MatchQuery("Inception", 2010, MediaType.Film);
 
         // Should not throw
-        var act = async () => await matcher.ResolveAsync(query);
+        var act = async () => await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
         await act.Should().NotThrowAsync();
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
         result.NeedsReview.Should().BeTrue();
         result.IsMatched.Should().BeFalse();
     }
@@ -266,7 +266,7 @@ public class TmdbMatcherTests
         var matcher = CreateMatcher(service);
         var query = new MatchQuery("Unknown", 2010, MediaType.Film, NfoTmdbId: 999999);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.NeedsReview.Should().BeTrue();
         result.ReviewReason.Should().Be(ReviewReason.NoTmdbResult);
@@ -286,8 +286,8 @@ public class TmdbMatcherTests
         var matcher = CreateMatcher(service);
         var query = new MatchQuery("Inception", 2010, MediaType.Film);
 
-        await matcher.ResolveAsync(query);
-        await matcher.ResolveAsync(query); // second call should hit cache
+        await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
+        await matcher.ResolveAsync(query, TestContext.Current.CancellationToken); // second call should hit cache
 
         await service.Received(1).SearchCandidatesAsync(
             "Inception", 2010, MediaType.Film, Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -313,7 +313,7 @@ public class TmdbMatcherTests
         var matcher = CreateMatcher(service);
         var query = new MatchQuery("Inception", 2010, MediaType.Film);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.IsMatched.Should().BeTrue();
         result.NeedsReview.Should().BeFalse();
@@ -340,7 +340,7 @@ public class TmdbMatcherTests
         var matcher = CreateMatcher(service);
         var query = new MatchQuery("Inception", 2010, MediaType.Film);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.IsMatched.Should().BeTrue();
         result.TmdbId.Should().Be(27205);
@@ -373,7 +373,7 @@ public class TmdbMatcherTests
         var query = new MatchQuery("Inception", 2010, MediaType.Film,
             NfoTmdbId: 27205, ExplicitTokenId: 99999);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.IsMatched.Should().BeTrue();
         result.TmdbId.Should().Be(27205, "NfoTmdbId must take precedence over ExplicitTokenId");
@@ -399,7 +399,7 @@ public class TmdbMatcherTests
         // NfoTmdbId given alongside a perfectly valid title+year
         var query = new MatchQuery("Inception", 2010, MediaType.Film, NfoTmdbId: 27205);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.IsMatched.Should().BeTrue();
         result.TmdbId.Should().Be(27205);
@@ -429,7 +429,7 @@ public class TmdbMatcherTests
         var matcher = CreateMatcher(service);
         var query = new MatchQuery("Inception", 2010, MediaType.Film, NfoTmdbId: 99999);
 
-        var result = await matcher.ResolveAsync(query);
+        var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
         result.NeedsReview.Should().BeTrue();
         result.IsMatched.Should().BeFalse();

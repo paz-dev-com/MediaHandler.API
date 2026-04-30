@@ -103,5 +103,79 @@ public class GetScanRunQueryHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.ReviewItems.Should().NotBeNull().And.BeEmpty();
     }
+
+    /// <summary>
+    /// Verifies that when <c>includeReview=true</c> the handler returns only Open review items
+    /// whose <c>FirstSeenScanRunId</c> matches the requested run id.
+    /// Items belonging to other scan runs and items with non-Open status must be excluded.
+    /// </summary>
+    [Fact]
+    public async Task IncludeReview_ReturnsOpenItemsForRun()
+    {
+        // Arrange: two runs, each with its own review items; some items are non-Open.
+        var targetRun = new ScanRun
+        {
+            Mode = ScanMode.Full,
+            Status = ScanStatus.Completed,
+            LibraryRootIdsJson = "[]"
+        };
+        var otherRun = new ScanRun
+        {
+            Mode = ScanMode.Incremental,
+            Status = ScanStatus.Completed,
+            LibraryRootIdsJson = "[]"
+        };
+        _context.ScanRuns.AddRange(targetRun, otherRun);
+
+        // Open item for the target run — must be included
+        var openItemForTarget = new ReviewItem
+        {
+            FilePath = "/nas/Movies/ambiguous-target.mkv",
+            Reason = ReviewReason.NoTmdbResult,
+            Status = ReviewStatus.Open,
+            FirstSeenScanRunId = targetRun.Id,
+            CandidatesJson = "[]"
+        };
+        // Resolved item for the target run — must NOT be included (non-Open status)
+        var resolvedItemForTarget = new ReviewItem
+        {
+            FilePath = "/nas/Movies/resolved-target.mkv",
+            Reason = ReviewReason.YearMismatch,
+            Status = ReviewStatus.Resolved,
+            FirstSeenScanRunId = targetRun.Id,
+            CandidatesJson = "[]"
+        };
+        // Open item for the OTHER run — must NOT be included (different run)
+        var openItemForOtherRun = new ReviewItem
+        {
+            FilePath = "/nas/Movies/different-run.mkv",
+            Reason = ReviewReason.MultipleCandidates,
+            Status = ReviewStatus.Open,
+            FirstSeenScanRunId = otherRun.Id,
+            CandidatesJson = "[]"
+        };
+        _context.ReviewItems.AddRange(openItemForTarget, resolvedItemForTarget, openItemForOtherRun);
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var handler = new GetScanRunQueryHandler(_context);
+
+        // Act
+        var result = await handler.Handle(
+            new GetScanRunQuery(targetRun.Id, IncludeReview: true),
+            TestContext.Current.CancellationToken);
+
+        // Assert: only the Open item for the target run is returned
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ReviewItems.Should().NotBeNull();
+
+        var items = result.Value.ReviewItems!;
+        items.Should().HaveCount(1, because: "only the single Open item for this run should be returned");
+        items.Should().Contain(ri => ri.FilePath == openItemForTarget.FilePath,
+            because: "the Open item should be present");
+        items.Should().NotContain(ri => ri.FilePath == resolvedItemForTarget.FilePath,
+            because: "Resolved items must not appear in the results");
+        items.Should().NotContain(ri => ri.FilePath == openItemForOtherRun.FilePath,
+            because: "items from other scan runs must not appear");
+    }
 }
 

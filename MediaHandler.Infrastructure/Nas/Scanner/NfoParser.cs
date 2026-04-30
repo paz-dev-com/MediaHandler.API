@@ -78,12 +78,12 @@ public sealed class NfoParser : INfoParser
 
         // Extract all recognised fields, ignoring unknown elements silently.
         // SOURCE: Kodi wiki NFO schemas for movies, TV shows, and episodes.
-        var title   = root.Element("title")?.Value?.Trim().NullIfEmpty();
-        var year    = TryParseInt(root.Element("year")?.Value);
-        var tmdbId  = TryParseInt(root.Element("tmdbid")?.Value);
+        var title = root.Element("title")?.Value?.Trim().NullIfEmpty();
+        var year = TryParseInt(root.Element("year")?.Value);
+        var tmdbId = TryParseInt(root.Element("tmdbid")?.Value);
         // IMDB id: <imdbid> preferred; <id> is the legacy Kodi element name
-        var imdbId  = (root.Element("imdbid")?.Value ?? root.Element("id")?.Value)?.Trim().NullIfEmpty();
-        var season  = TryParseInt(root.Element("season")?.Value);
+        var imdbId = (root.Element("imdbid")?.Value ?? root.Element("id")?.Value)?.Trim().NullIfEmpty();
+        var season = TryParseInt(root.Element("season")?.Value);
         var episode = TryParseInt(root.Element("episode")?.Value);
 
         return new NfoParseResult(
