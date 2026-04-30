@@ -27,3 +27,18 @@ public record ScanRunDto(
     Guid[] LibraryRootIds,
     ScanCountsDto Counts);
 
+/// <summary>
+/// Detail view of a scan run including optional open review items.
+/// Returned by <c>GetScanRunQuery</c> when <c>IncludeReview</c> is true.
+/// </summary>
+public record ScanRunDetailDto(
+    Guid Id,
+    ScanMode Mode,
+    ScanStatus Status,
+    DateTime StartedAt,
+    DateTime? FinishedAt,
+    string? FailureReason,
+    Guid[] LibraryRootIds,
+    ScanCountsDto Counts,
+    /// <summary>Open review items for this run; null when <c>includeReview = false</c>.</summary>
+    IReadOnlyList<ReviewItemDto>? ReviewItems);
