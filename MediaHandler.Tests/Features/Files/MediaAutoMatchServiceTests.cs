@@ -12,21 +12,21 @@ namespace MediaHandler.Tests.Features.Files;
 
 public class MediaAutoMatchServiceTests
 {
-    private readonly IMediaFileNameParser _parser;
-    private readonly ITmdbService _tmdb;
-    private readonly IMediaImportService _importer;
-    private readonly MediaAutoMatchService _service;
-
     private static readonly TmdbMediaDto MatrixSearchResult = new(
-        Id: 603,
-        Title: "The Matrix",
-        OriginalTitle: "The Matrix",
-        Overview: null,
-        MediaType: "movie",
-        ReleaseDate: new DateTime(1999, 3, 31),
-        PosterPath: null,
-        BackdropPath: null,
-        VoteAverage: 8.7m);
+        603,
+        "The Matrix",
+        "The Matrix",
+        null,
+        "movie",
+        new DateTime(1999, 3, 31),
+        null,
+        null,
+        8.7m);
+
+    private readonly IMediaImportService _importer;
+    private readonly IMediaFileNameParser _parser;
+    private readonly MediaAutoMatchService _service;
+    private readonly ITmdbService _tmdb;
 
     public MediaAutoMatchServiceTests()
     {
@@ -51,13 +51,13 @@ public class MediaAutoMatchServiceTests
         var file = new MediaFile { FilePath = "/Movies/The.Matrix.1999.mkv" };
 
         _parser.Parse(file.FilePath)
-               .Returns(new ParsedMediaInfo("The Matrix", 1999, "movie"));
+            .Returns(new ParsedMediaInfo("The Matrix", 1999, "movie"));
 
         _tmdb.SearchMediaAsync("The Matrix 1999", "en", Arg.Any<CancellationToken>())
-             .Returns(MatrixSearchResult);
+            .Returns(MatrixSearchResult);
 
         _importer.ImportOrGetExistingAsync(603, "movie", "en", Arg.Any<CancellationToken>())
-                 .Returns(Result.Success(mediaId));
+            .Returns(Result.Success(mediaId));
 
         // Act
         var result = await _service.MatchAndLinkUnlinkedFilesAsync([file], "en", CancellationToken.None);
@@ -102,13 +102,13 @@ public class MediaAutoMatchServiceTests
         var file = new MediaFile { FilePath = "/Movies/Unknown.Movie.2099.mkv" };
 
         _parser.Parse(file.FilePath)
-               .Returns(new ParsedMediaInfo("Unknown Movie", 2099, null));
+            .Returns(new ParsedMediaInfo("Unknown Movie", 2099, null));
 
         _tmdb.SearchMediaAsync("Unknown Movie 2099", "en", Arg.Any<CancellationToken>())
-             .Returns((TmdbMediaDto?)null);
+            .Returns((TmdbMediaDto?)null);
         // Fallback search without year also returns nothing
         _tmdb.SearchMediaAsync("Unknown Movie", "en", Arg.Any<CancellationToken>())
-             .Returns((TmdbMediaDto?)null);
+            .Returns((TmdbMediaDto?)null);
 
         // Act
         var result = await _service.MatchAndLinkUnlinkedFilesAsync([file], "en", CancellationToken.None);
@@ -132,13 +132,13 @@ public class MediaAutoMatchServiceTests
         var file = new MediaFile { FilePath = "/Movies/The.Matrix.1999.mkv" };
 
         _parser.Parse(file.FilePath)
-               .Returns(new ParsedMediaInfo("The Matrix", 1999, "movie"));
+            .Returns(new ParsedMediaInfo("The Matrix", 1999, "movie"));
 
         _tmdb.SearchMediaAsync("The Matrix 1999", "en", Arg.Any<CancellationToken>())
-             .Returns(MatrixSearchResult);
+            .Returns(MatrixSearchResult);
 
         _importer.ImportOrGetExistingAsync(603, "movie", "en", Arg.Any<CancellationToken>())
-                 .Returns(Result.Fail<Guid>("TMDB returned no details."));
+            .Returns(Result.Fail<Guid>("TMDB returned no details."));
 
         // Act
         var result = await _service.MatchAndLinkUnlinkedFilesAsync([file], "en", CancellationToken.None);
@@ -151,4 +151,3 @@ public class MediaAutoMatchServiceTests
         file.MediaId.Should().BeNull();
     }
 }
-

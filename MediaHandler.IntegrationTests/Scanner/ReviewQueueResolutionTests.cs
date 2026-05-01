@@ -1,4 +1,3 @@
-#nullable enable
 // ReviewQueueResolutionTests — integration test for the full review-queue round-trip.
 // Verifies: scan → review item created → admin resolves → next scan honours resolution.
 
@@ -6,20 +5,24 @@ using FluentAssertions;
 using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models.Scanner;
+using MediaHandler.Application.Features.Review.Commands.ResolveReviewItem;
 using MediaHandler.Domain.Entities;
 using MediaHandler.Domain.Enums;
+using MediaHandler.Infrastructure.Nas;
 using MediaHandler.Infrastructure.Nas.Scanner;
+using MediaHandler.Infrastructure.Persistence;
 using MediaHandler.Infrastructure.Services;
 using MediaHandler.IntegrationTests.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using TmdbIdLookupResult = MediaHandler.Application.Common.Interfaces.TmdbIdLookupResult;
 
 namespace MediaHandler.IntegrationTests.Scanner;
 
 /// <summary>
-/// Integration test for the review queue resolution round-trip.
-/// Scenario: scan → review item created → POST resolve → re-scan respects resolution (no re-flag).
+///     Integration test for the review queue resolution round-trip.
+///     Scenario: scan → review item created → POST resolve → re-scan respects resolution (no re-flag).
 /// </summary>
 public class ReviewQueueResolutionTests : ScannerIntegrationTestBase
 {
@@ -34,12 +37,13 @@ public class ReviewQueueResolutionTests : ScannerIntegrationTestBase
         // Seed a single ambiguous-title movie that will not resolve automatically
         var entries = new[]
         {
-            new NasFileInfo("/nas/Movies", "Movies", 0, null, DateTime.UtcNow, DateTime.UtcNow, IsDirectory: true),
-            new NasFileInfo("/nas/Movies/Ambiguous Title", "Ambiguous Title", 0, null, DateTime.UtcNow, DateTime.UtcNow, IsDirectory: true),
+            new NasFileInfo("/nas/Movies", "Movies", 0, null, DateTime.UtcNow, DateTime.UtcNow, true),
+            new NasFileInfo("/nas/Movies/Ambiguous Title", "Ambiguous Title", 0, null, DateTime.UtcNow, DateTime.UtcNow,
+                true),
             new NasFileInfo(MoviePath, "Ambiguous.Title.mkv", 1_073_741_824, "MKV", DateTime.UtcNow, DateTime.UtcNow)
         };
 
-        WithFakeNasService(entries, configuredPaths: ["/nas"]);
+        WithFakeNasService(entries, ["/nas"]);
     }
 
     [Fact]
@@ -80,11 +84,11 @@ public class ReviewQueueResolutionTests : ScannerIntegrationTestBase
             .FirstOrDefaultAsync(r => r.FilePath == MoviePath && r.Status == ReviewStatus.Open, ct);
 
         reviewItem.Should().NotBeNull(
-            because: "the ambiguous-candidate file should produce a ReviewItem after the first scan");
+            "the ambiguous-candidate file should produce a ReviewItem after the first scan");
         reviewItem!.Reason.Should().Be(ReviewReason.MultipleCandidates);
 
         // ── Step 2: Resolve the review item via the command handler
-        var resolveHandler = new Application.Features.Review.Commands.ResolveReviewItem.ResolveReviewItemCommandHandler(
+        var resolveHandler = new ResolveReviewItemCommandHandler(
             DbContext,
             Substitute.For<ITmdbService>(),
             Substitute.For<ICurrentUserService>());
@@ -97,17 +101,17 @@ public class ReviewQueueResolutionTests : ScannerIntegrationTestBase
         resolveFakeTmdb.GetMovieByIdAsync(ResolvedTmdbId, Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new TmdbIdLookupResult(ResolvedTmdbId, MediaType.Film, ResolvedTmdbTitle, 2020, null));
 
-        var resolveHandlerWired = new Application.Features.Review.Commands.ResolveReviewItem.ResolveReviewItemCommandHandler(
+        var resolveHandlerWired = new ResolveReviewItemCommandHandler(
             DbContext,
             resolveFakeTmdb,
             currentUser);
 
         var resolveResult = await resolveHandlerWired.Handle(
-            new Application.Features.Review.Commands.ResolveReviewItem.ResolveReviewItemCommand(
+            new ResolveReviewItemCommand(
                 reviewItem.Id,
                 ReviewResolutionAction.Assign,
-                TmdbId: ResolvedTmdbId,
-                Kind: MediaType.Film),
+                ResolvedTmdbId,
+                MediaType.Film),
             ct);
 
         resolveResult.IsSuccess.Should().BeTrue("the Assign resolve should succeed");
@@ -136,7 +140,7 @@ public class ReviewQueueResolutionTests : ScannerIntegrationTestBase
         var matcher2 = new TmdbMatcher(fakeTmdbSecondScan);
 
         // Use a fresh coordinator with a separate DbContext
-        var coordinatorDb2 = new MediaHandler.Infrastructure.Persistence.MediaHandlerDbContext(DbContextOptions);
+        var coordinatorDb2 = new MediaHandlerDbContext(DbContextOptions);
         var coordinator2 = BuildCoordinatorWithDb(matcher2, coordinatorDb2);
 
         var handle2 = await coordinator2.StartAsync(
@@ -151,7 +155,7 @@ public class ReviewQueueResolutionTests : ScannerIntegrationTestBase
             .CountAsync(ct);
 
         openReviewItemsAfterRescan.Should().Be(0,
-            because: "the pipeline should re-use the saved resolution rather than re-flagging the file");
+            "the pipeline should re-use the saved resolution rather than re-flagging the file");
     }
 
     // =========================================================================
@@ -166,7 +170,11 @@ public class ReviewQueueResolutionTests : ScannerIntegrationTestBase
             var run = await DbContext.ScanRuns.AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Id == scanRunId, ct);
 
-            if (run is null) { await Task.Delay(500, ct); continue; }
+            if (run is null)
+            {
+                await Task.Delay(500, ct);
+                continue;
+            }
 
             if (run.Status is ScanStatus.Completed or ScanStatus.Failed or ScanStatus.Cancelled)
                 return;
@@ -178,20 +186,22 @@ public class ReviewQueueResolutionTests : ScannerIntegrationTestBase
     }
 
     private ScanRunCoordinator BuildCoordinator(ITmdbMatcher matcher)
-        => BuildCoordinatorWithDb(matcher, new MediaHandler.Infrastructure.Persistence.MediaHandlerDbContext(DbContextOptions));
-
-    private ScanRunCoordinator BuildCoordinatorWithDb(ITmdbMatcher matcher, MediaHandler.Infrastructure.Persistence.MediaHandlerDbContext coordinatorDb)
     {
-        var nasEnumerator = new MediaHandler.Infrastructure.Nas.NasFileEnumerator(
-            FakeNas!, Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaHandler.Infrastructure.Nas.NasFileEnumerator>.Instance);
+        return BuildCoordinatorWithDb(matcher, new MediaHandlerDbContext(DbContextOptions));
+    }
+
+    private ScanRunCoordinator BuildCoordinatorWithDb(ITmdbMatcher matcher, MediaHandlerDbContext coordinatorDb)
+    {
+        var nasEnumerator = new NasFileEnumerator(
+            FakeNas!, NullLogger<NasFileEnumerator>.Instance);
 
         var parser = new KodiNameParser();
         var exclusionEvaluator = new ExclusionEvaluator();
         var stackDetector = new StackingDetector();
         var episodeMatcher = new TvEpisodeMatcher();
 
-        var pipelineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScanPipeline>.Instance;
-        var coordinatorLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScanRunCoordinator>.Instance;
+        var pipelineLogger = NullLogger<ScanPipeline>.Instance;
+        var coordinatorLogger = NullLogger<ScanRunCoordinator>.Instance;
 
         var pipeline = new ScanPipeline(
             coordinatorDb,
@@ -203,7 +213,6 @@ public class ReviewQueueResolutionTests : ScannerIntegrationTestBase
             matcher,
             pipelineLogger);
 
-        return new ScanRunCoordinator(coordinatorLogger, pipeline, coordinatorDb);
+        return CreateScanRunCoordinator(pipeline, coordinatorDb);
     }
 }
-

@@ -1,6 +1,5 @@
 using AutoMapper;
 using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Mappings;
 using MediaHandler.Application.Features.Admin.Commands.SetUserActive;
@@ -9,6 +8,7 @@ using MediaHandler.Application.Features.Admin.Queries.GetUsers;
 using MediaHandler.Domain.Entities;
 using MediaHandler.Domain.Enums;
 using MediaHandler.Tests.Common;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MediaHandler.Tests.Features.Admin;
 
@@ -37,7 +37,7 @@ public class AdminHandlerTests
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var handler = new GetUsersQueryHandler(_context, _mapper);
-        var result = await handler.Handle(new GetUsersQuery(Page: 1, PageSize: 2), CancellationToken.None);
+        var result = await handler.Handle(new GetUsersQuery(1, 2), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.TotalCount.Should().Be(3);
@@ -62,7 +62,8 @@ public class AdminHandlerTests
     public async Task SetUserRole_NonExistentUser_ReturnsFailResult()
     {
         var handler = new SetUserRoleCommandHandler(_context);
-        var result = await handler.Handle(new SetUserRoleCommand(Guid.NewGuid(), UserRole.Admin), CancellationToken.None);
+        var result = await handler.Handle(new SetUserRoleCommand(Guid.NewGuid(), UserRole.Admin),
+            CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain("User not found.");

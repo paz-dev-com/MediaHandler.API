@@ -3,7 +3,7 @@ using MediaHandler.Domain.Enums;
 namespace MediaHandler.API.Contracts.Admin;
 
 /// <summary>
-/// Request body for <c>POST /api/v1/admin/review-items/{id}/resolve</c>.
+///     Request body for <c>POST /api/v1/admin/review-items/{id}/resolve</c>.
 /// </summary>
 public record ResolveReviewRequest(
     /// <summary>
@@ -19,4 +19,3 @@ public record ResolveReviewRequest(
     int? TmdbId,
     /// <summary>Required when <see cref="Action"/> is <see cref="ReviewResolutionAction.Assign"/>.</summary>
     MediaType? Kind);
-

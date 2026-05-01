@@ -1,20 +1,18 @@
-#nullable enable
 // All patterns are derived clean-room from documented Kodi behaviour.
 // SOURCE references point only to public documentation, never to GPL source.
 
 using FluentAssertions;
 using MediaHandler.Application.Common.Models.Scanner;
-using MediaHandler.Domain.Enums;
 using MediaHandler.Infrastructure.Nas.Scanner;
 
 namespace MediaHandler.Tests.Scanner;
 
 /// <summary>
-/// Table-driven tests for <see cref="KodiNameParser"/>.
-/// Every [Theory] row includes an XML-doc comment citing the public source that
-/// justifies the expected parse result.
-/// No string in this file copies text from /home/tpfeifer/Repos/xbmc-master/
-/// (R-001 clean-room policy).
+///     Table-driven tests for <see cref="KodiNameParser" />.
+///     Every [Theory] row includes an XML-doc comment citing the public source that
+///     justifies the expected parse result.
+///     No string in this file copies text from /home/tpfeifer/Repos/xbmc-master/
+///     (R-001 clean-room policy).
 /// </summary>
 public class KodiNameParserTests
 {
@@ -26,8 +24,8 @@ public class KodiNameParserTests
     // =========================================================================
 
     /// <summary>
-    /// Movie rows: (fullPath, expectedTitle, expectedYear).
-    /// SOURCE: Kodi wiki "File naming / Movies" — folder-name with (YEAR) takes precedence.
+    ///     Movie rows: (fullPath, expectedTitle, expectedYear).
+    ///     SOURCE: Kodi wiki "File naming / Movies" — folder-name with (YEAR) takes precedence.
     /// </summary>
     public static TheoryData<string, string, int?> MovieData => new()
     {
@@ -43,7 +41,10 @@ public class KodiNameParserTests
         { "/nas/Movies/12 Angry Men (1957)/12.Angry.Men.1957.mkv", "12 Angry Men", 1957 },
         { "/nas/Movies/2001 A Space Odyssey (1968)/file.mkv", "2001 A Space Odyssey", 1968 },
         { "/nas/Movies/Se7en (1995)/Se7en.mkv", "Se7en", 1995 },
-        { "/nas/Movies/The Lord of the Rings The Fellowship of the Ring (2001)/lotr.mkv", "The Lord of the Rings The Fellowship of the Ring", 2001 },
+        {
+            "/nas/Movies/The Lord of the Rings The Fellowship of the Ring (2001)/lotr.mkv",
+            "The Lord of the Rings The Fellowship of the Ring", 2001
+        },
         { "/nas/Movies/Pan's Labyrinth (2006)/file.mkv", "Pan's Labyrinth", 2006 },
         { "/nas/Movies/Kill Bill Vol 1 (2003)/movie.mkv", "Kill Bill Vol 1", 2003 },
         { "/nas/Movies/Blade Runner 2049 (2017)/movie.mkv", "Blade Runner 2049", 2017 },
@@ -99,40 +100,8 @@ public class KodiNameParserTests
         // SOURCE: Observed Kodi default behaviour — folder beats filename heuristic
         { "/nas/Movies/1917 (2019)/1917.2019.mkv", "1917", 2019 },
         { "/nas/Movies/2001 (1968)/2001.mkv", "2001", 1968 },
-        { "/nas/Movies/300 (2006)/300.mkv", "300", 2006 },
+        { "/nas/Movies/300 (2006)/300.mkv", "300", 2006 }
     };
-
-    [Theory]
-    [MemberData(nameof(MovieData))]
-    public void ParseMovie_VariousPatterns_ReturnsExpectedResult(
-        string fullPath, string expectedTitle, int? expectedYear)
-    {
-        var result = _sut.ParseMovie(fullPath);
-
-        result.IsSuccess.Should().BeTrue(because: $"path '{fullPath}' should parse successfully");
-        result.Title.Should().Be(expectedTitle, because: $"path '{fullPath}'");
-        result.Year.Should().Be(expectedYear, because: $"path '{fullPath}'");
-    }
-
-    [Fact]
-    public void ParseMovie_FolderNameTakesPrecedenceOverFilename()
-    {
-        // SOURCE: Kodi wiki — "The folder name is used as the movie title"
-        var result = _sut.ParseMovie("/nas/Movies/Inception (2010)/Inception.2010.BluRay.1080p.x264-GROUP.mkv");
-
-        result.Title.Should().Be("Inception");
-        result.Year.Should().Be(2010);
-    }
-
-    [Fact]
-    public void ParseMovie_FolderTitleTakesPrecedenceWhenDifferentFromFilename()
-    {
-        // SOURCE: Kodi wiki folder-precedence rule
-        var result = _sut.ParseMovie("/nas/Movies/The Real Title (2015)/completely-different-filename.mkv");
-
-        result.Title.Should().Be("The Real Title");
-        result.Year.Should().Be(2015);
-    }
 
     // =========================================================================
     // Episode parsing — ParseEpisode
@@ -140,8 +109,8 @@ public class KodiNameParserTests
     // =========================================================================
 
     /// <summary>
-    /// Episode rows: (fullPath, hint, expectedTitle, expectedSeason, expectedEpisodeStart).
-    /// SOURCE: Kodi wiki "File naming / TV shows"
+    ///     Episode rows: (fullPath, hint, expectedTitle, expectedSeason, expectedEpisodeStart).
+    ///     SOURCE: Kodi wiki "File naming / TV shows"
     /// </summary>
     public static TheoryData<string, EpisodeNumberingHint, int, int> EpisodeData => new()
     {
@@ -171,12 +140,14 @@ public class KodiNameParserTests
 
         // ── Date-based YYYY.MM.DD ─────────────────────────────────────────────
         // SOURCE: Kodi wiki — "Date-based shows use YYYY-MM-DD or YYYY.MM.DD format"
-        { "/nas/TV/The Daily Show/2024/The.Daily.Show.2024.03.19.mkv", new EpisodeNumberingHint(), 2024, 78 }, // 78 = day of year
+        {
+            "/nas/TV/The Daily Show/2024/The.Daily.Show.2024.03.19.mkv", new EpisodeNumberingHint(), 2024, 78
+        }, // 78 = day of year
         { "/nas/TV/Late Night/2023/Late.Night.2023.11.04.mkv", new EpisodeNumberingHint(), 2023, 308 },
 
         // ── Folder-hint override (season from folder, no SxxExx in filename) ──
         // SOURCE: Observed Kodi behaviour — parent folder "Season 03" sets season context
-        { "/nas/TV/Show/Season 03/episode_title.mkv", new EpisodeNumberingHint(SeasonFromFolder: 3), 3, -1 },
+        { "/nas/TV/Show/Season 03/episode_title.mkv", new EpisodeNumberingHint(3), 3, -1 },
 
         // ── Absolute episode numbering (no season) ────────────────────────────
         // SOURCE: Kodi wiki — absolute episode numbering used for anime
@@ -202,9 +173,41 @@ public class KodiNameParserTests
 
         // ── Specials Season 0 ─────────────────────────────────────────────────
         // SOURCE: Kodi wiki — "Specials are placed in Season 00 or Specials folder"
-        { "/nas/TV/Breaking Bad/Specials/Breaking.Bad.S00E01.mkv", new EpisodeNumberingHint(SeasonFromFolder: 0), 0, 1 },
-        { "/nas/TV/Breaking Bad/Season 00/Breaking.Bad.S00E02.mkv", new EpisodeNumberingHint(), 0, 2 },
+        { "/nas/TV/Breaking Bad/Specials/Breaking.Bad.S00E01.mkv", new EpisodeNumberingHint(0), 0, 1 },
+        { "/nas/TV/Breaking Bad/Season 00/Breaking.Bad.S00E02.mkv", new EpisodeNumberingHint(), 0, 2 }
     };
+
+    [Theory]
+    [MemberData(nameof(MovieData))]
+    public void ParseMovie_VariousPatterns_ReturnsExpectedResult(
+        string fullPath, string expectedTitle, int? expectedYear)
+    {
+        var result = _sut.ParseMovie(fullPath);
+
+        result.IsSuccess.Should().BeTrue($"path '{fullPath}' should parse successfully");
+        result.Title.Should().Be(expectedTitle, $"path '{fullPath}'");
+        result.Year.Should().Be(expectedYear, $"path '{fullPath}'");
+    }
+
+    [Fact]
+    public void ParseMovie_FolderNameTakesPrecedenceOverFilename()
+    {
+        // SOURCE: Kodi wiki — "The folder name is used as the movie title"
+        var result = _sut.ParseMovie("/nas/Movies/Inception (2010)/Inception.2010.BluRay.1080p.x264-GROUP.mkv");
+
+        result.Title.Should().Be("Inception");
+        result.Year.Should().Be(2010);
+    }
+
+    [Fact]
+    public void ParseMovie_FolderTitleTakesPrecedenceWhenDifferentFromFilename()
+    {
+        // SOURCE: Kodi wiki folder-precedence rule
+        var result = _sut.ParseMovie("/nas/Movies/The Real Title (2015)/completely-different-filename.mkv");
+
+        result.Title.Should().Be("The Real Title");
+        result.Year.Should().Be(2015);
+    }
 
     [Theory]
     [MemberData(nameof(EpisodeData))]
@@ -213,9 +216,9 @@ public class KodiNameParserTests
     {
         var result = _sut.ParseEpisode(fullPath, hint);
 
-        result.IsSuccess.Should().BeTrue(because: $"'{fullPath}' should parse (expected episode {expectedEpisode})");
+        result.IsSuccess.Should().BeTrue($"'{fullPath}' should parse (expected episode {expectedEpisode})");
         if (expectedSeason >= 0)
-            result.EpisodeNumbers.Should().NotBeEmpty(because: $"'{fullPath}' should yield at least one episode number");
+            result.EpisodeNumbers.Should().NotBeEmpty($"'{fullPath}' should yield at least one episode number");
     }
 
     [Fact]
@@ -263,9 +266,9 @@ public class KodiNameParserTests
     // =========================================================================
 
     /// <summary>
-    /// Documents a deliberately misnamed file so the reader understands why the NFO
-    /// override matters: the filename parser alone cannot produce the correct TMDB id.
-    /// The ScanPipeline replaces the parser's title/year with NFO values (US3 wiring).
+    ///     Documents a deliberately misnamed file so the reader understands why the NFO
+    ///     override matters: the filename parser alone cannot produce the correct TMDB id.
+    ///     The ScanPipeline replaces the parser's title/year with NFO values (US3 wiring).
     /// </summary>
     [Fact]
     public void ParseMovie_MisnamedFile_ProducesFilenameGuess_NfoWouldOverride()
@@ -282,10 +285,10 @@ public class KodiNameParserTests
     }
 
     /// <summary>
-    /// Documents that an NFO id in a tvshow.nfo overrides even a well-formed filename.
-    /// The KodiNameParser itself is unaware of NFO files; it only parses filename tokens.
-    /// The pipeline supplies the NFO id to the MatchQuery before sending to TmdbMatcher,
-    /// ensuring the NFO id always wins the resolution chain.
+    ///     Documents that an NFO id in a tvshow.nfo overrides even a well-formed filename.
+    ///     The KodiNameParser itself is unaware of NFO files; it only parses filename tokens.
+    ///     The pipeline supplies the NFO id to the MatchQuery before sending to TmdbMatcher,
+    ///     ensuring the NFO id always wins the resolution chain.
     /// </summary>
     [Fact]
     public void ParseEpisode_WellFormedFilename_ProducesEpisodeResult_NfoTmdbIdWouldOverride()
@@ -295,7 +298,7 @@ public class KodiNameParserTests
         // precedence over both this title guess and any ExplicitTokenId in the path.
         var result = _sut.ParseEpisode(
             "/nas/TV/Breaking Bad/Season 1/Breaking.Bad.S01E01.mkv",
-            new EpisodeNumberingHint(SeasonFromFolder: 1));
+            new EpisodeNumberingHint(1));
 
         // The parser successfully extracts the episode numbers from the well-named file.
         // The title output from the parser (which may be null or partial) is irrelevant
@@ -306,5 +309,3 @@ public class KodiNameParserTests
         result.EpisodeNumbers[0].Episode.Should().Be(1);
     }
 }
-
-

@@ -38,9 +38,9 @@ public class FilesController(ISender sender) : ControllerBase
     }
 
     /// <summary>
-    /// Scans the NAS for new media files, then automatically matches every unlinked
-    /// <c>MediaFile</c> against TMDB and imports the corresponding <c>Media</c> entity.
-    /// The operation is idempotent: re-running it will not create duplicate records.
+    ///     Scans the NAS for new media files, then automatically matches every unlinked
+    ///     <c>MediaFile</c> against TMDB and imports the corresponding <c>Media</c> entity.
+    ///     The operation is idempotent: re-running it will not create duplicate records.
     /// </summary>
     [HttpPost("scan-and-import")]
     [Authorize(Policy = "AdminOnly")]
@@ -57,9 +57,9 @@ public class FilesController(ISender sender) : ControllerBase
     }
 
     /// <summary>
-    /// Attempts TMDB matching and import for all existing <c>MediaFile</c> records
-    /// where <c>MediaId IS NULL</c>, without triggering a new NAS scan.
-    /// Useful for retrying previously failed or skipped files.
+    ///     Attempts TMDB matching and import for all existing <c>MediaFile</c> records
+    ///     where <c>MediaId IS NULL</c>, without triggering a new NAS scan.
+    ///     Useful for retrying previously failed or skipped files.
     /// </summary>
     [HttpPost("auto-import")]
     [Authorize(Policy = "AdminOnly")]
@@ -74,4 +74,3 @@ public class FilesController(ISender sender) : ControllerBase
         return Ok(ApiResponse<AutoImportResult>.Success(result.Value));
     }
 }
-

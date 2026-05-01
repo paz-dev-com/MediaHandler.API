@@ -1,5 +1,3 @@
-#nullable enable
-
 using System.Text.Json;
 using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
@@ -11,8 +9,8 @@ using Microsoft.EntityFrameworkCore;
 namespace MediaHandler.Application.Features.Scan.Queries.GetActiveScan;
 
 /// <summary>
-/// Returns the currently running scan, or <c>null</c> in <c>Data</c> if none is active.
-/// Always returns HTTP 200.
+///     Returns the currently running scan, or <c>null</c> in <c>Data</c> if none is active.
+///     Always returns HTTP 200.
 /// </summary>
 public record GetActiveScanQuery : IRequest<Result<ScanRunDto?>>;
 
@@ -50,4 +48,3 @@ public sealed class GetActiveScanQueryHandler(IApplicationDbContext db)
                 run.NeedsReview)));
     }
 }
-

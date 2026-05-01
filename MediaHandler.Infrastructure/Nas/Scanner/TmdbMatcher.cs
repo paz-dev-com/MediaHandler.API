@@ -1,11 +1,8 @@
-#nullable enable
 // TmdbMatcher — resolves parsed file metadata to a TMDB entry using the precedence chain:
 //   NfoTmdbId → ExplicitTokenId → Title+Year → Title
 // Maintains an in-process LRU cache and applies the ambiguity / year-mismatch policy.
 // Transient HTTP failures are caught and surfaced as NeedsReview without aborting the scan.
 
-using System.Collections.Concurrent;
-using System.Runtime.CompilerServices;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models.Scanner;
 using MediaHandler.Domain.Enums;
@@ -15,21 +12,21 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace MediaHandler.Infrastructure.Nas.Scanner;
 
 /// <summary>
-/// Production implementation of <see cref="ITmdbMatcher"/>.
-/// Wraps <see cref="ITmdbService"/> and applies:
-/// <list type="bullet">
-///   <item>Precedence chain: NfoTmdbId → ExplicitTokenId → Title+Year → Title</item>
-///   <item>Ambiguity policy: ≥ 2 candidates within 5 % popularity gap → <see cref="ReviewReason.MultipleCandidates"/></item>
-///   <item>Year tolerance: mismatch &gt; ±1 → <see cref="ReviewReason.YearMismatch"/></item>
-///   <item>LRU cache keyed on <c>(title, year, kind)</c> — max 1,000 entries per scan instance</item>
-///   <item>Transient error tolerance: <see cref="HttpRequestException"/> caught, result surfaced as NeedsReview</item>
-/// </list>
+///     Production implementation of <see cref="ITmdbMatcher" />.
+///     Wraps <see cref="ITmdbService" /> and applies:
+///     <list type="bullet">
+///         <item>Precedence chain: NfoTmdbId → ExplicitTokenId → Title+Year → Title</item>
+///         <item>
+///             Ambiguity policy: ≥ 2 candidates within 5 % popularity gap →
+///             <see cref="ReviewReason.MultipleCandidates" />
+///         </item>
+///         <item>Year tolerance: mismatch &gt; ±1 → <see cref="ReviewReason.YearMismatch" /></item>
+///         <item>LRU cache keyed on <c>(title, year, kind)</c> — max 1,000 entries per scan instance</item>
+///         <item>Transient error tolerance: <see cref="HttpRequestException" /> caught, result surfaced as NeedsReview</item>
+///     </list>
 /// </summary>
 public sealed class TmdbMatcher : ITmdbMatcher
 {
-    private readonly ITmdbService _tmdb;
-    private readonly ILogger<TmdbMatcher> _logger;
-
     // Popularity gap threshold: if the second-best candidate is within this fraction of the best,
     // the result is ambiguous and goes to review.
     private const double AmbiguityGapFraction = 0.05; // 5 %
@@ -39,15 +36,17 @@ public sealed class TmdbMatcher : ITmdbMatcher
 
     // LRU cache: keyed on (title, year, kind) — stores the final TmdbMatchResult
     private readonly LruCache<(string title, int? year, MediaType? kind), TmdbMatchResult> _cache;
+    private readonly ILogger<TmdbMatcher> _logger;
+    private readonly ITmdbService _tmdb;
 
     public TmdbMatcher(ITmdbService tmdb, ILogger<TmdbMatcher>? logger = null)
     {
         _tmdb = tmdb;
         _logger = logger ?? NullLogger<TmdbMatcher>.Instance;
-        _cache = new LruCache<(string, int?, MediaType?), TmdbMatchResult>(capacity: 1_000);
+        _cache = new LruCache<(string, int?, MediaType?), TmdbMatchResult>(1_000);
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<TmdbMatchResult> ResolveAsync(MatchQuery query, CancellationToken ct = default)
     {
         try
@@ -211,37 +210,43 @@ public sealed class TmdbMatcher : ITmdbMatcher
         }
 
         return new TmdbMatchResult(
-            IsMatched: true,
-            TmdbId: best.TmdbId,
-            Kind: best.Kind,
-            NeedsReview: false,
-            ReviewReason: null,
-            Candidates: ToTmdbCandidates(candidates));
+            true,
+            best.TmdbId,
+            best.Kind,
+            false,
+            null,
+            ToTmdbCandidates(candidates));
     }
 
     // =========================================================================
     // Helpers
     // =========================================================================
 
-    private static TmdbMatchResult Matched(TmdbIdLookupResult lookup) =>
-        new(IsMatched: true,
-            TmdbId: lookup.TmdbId,
-            Kind: lookup.Kind,
-            NeedsReview: false,
-            ReviewReason: null,
-            Candidates: []);
+    private static TmdbMatchResult Matched(TmdbIdLookupResult lookup)
+    {
+        return new TmdbMatchResult(true,
+            lookup.TmdbId,
+            lookup.Kind,
+            false,
+            null,
+            []);
+    }
 
-    private static TmdbMatchResult NeedsReview(ReviewReason reason, IReadOnlyList<TmdbSearchCandidate> candidates) =>
-        new(IsMatched: false,
-            TmdbId: null,
-            Kind: null,
-            NeedsReview: true,
-            ReviewReason: reason,
-            Candidates: ToTmdbCandidates(candidates));
+    private static TmdbMatchResult NeedsReview(ReviewReason reason, IReadOnlyList<TmdbSearchCandidate> candidates)
+    {
+        return new TmdbMatchResult(false,
+            null,
+            null,
+            true,
+            reason,
+            ToTmdbCandidates(candidates));
+    }
 
-    private static IReadOnlyList<TmdbCandidate> ToTmdbCandidates(IReadOnlyList<TmdbSearchCandidate> src) =>
-        src.Select(c => new TmdbCandidate(c.TmdbId, c.Kind, c.Title, c.Year, c.PopularityScore, c.PosterPath))
-           .ToList();
+    private static IReadOnlyList<TmdbCandidate> ToTmdbCandidates(IReadOnlyList<TmdbSearchCandidate> src)
+    {
+        return src.Select(c => new TmdbCandidate(c.TmdbId, c.Kind, c.Title, c.Year, c.PopularityScore, c.PosterPath))
+            .ToList();
+    }
 
     // =========================================================================
     // Bounded LRU cache (simple linked-list + dictionary implementation)
@@ -250,8 +255,8 @@ public sealed class TmdbMatcher : ITmdbMatcher
     private sealed class LruCache<TKey, TValue>(int capacity) where TKey : notnull
     {
         private readonly int _capacity = capacity;
-        private readonly Dictionary<TKey, LinkedListNode<(TKey key, TValue value)>> _map = new();
         private readonly LinkedList<(TKey key, TValue value)> _list = new();
+        private readonly Dictionary<TKey, LinkedListNode<(TKey key, TValue value)>> _map = new();
 
         public bool TryGet(TKey key, out TValue? value)
         {
@@ -260,6 +265,7 @@ public sealed class TmdbMatcher : ITmdbMatcher
                 value = default;
                 return false;
             }
+
             // Move to front (most recently used)
             _list.Remove(node);
             _list.AddFirst(node);
@@ -288,4 +294,3 @@ public sealed class TmdbMatcher : ITmdbMatcher
         }
     }
 }
-

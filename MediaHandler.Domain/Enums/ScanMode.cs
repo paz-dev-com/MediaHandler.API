@@ -1,7 +1,7 @@
 namespace MediaHandler.Domain.Enums;
 
 /// <summary>
-/// Determines whether a <c>ScanRun</c> should walk every file or only changed ones.
+///     Determines whether a <c>ScanRun</c> should walk every file or only changed ones.
 /// </summary>
 public enum ScanMode
 {
@@ -9,9 +9,8 @@ public enum ScanMode
     Full,
 
     /// <summary>
-    /// Skips files whose <c>MediaFile.Fingerprint</c> matches the stored value,
-    /// reducing scan time for large, predominantly unchanged libraries (SC-005).
+    ///     Skips files whose <c>MediaFile.Fingerprint</c> matches the stored value,
+    ///     reducing scan time for large, predominantly unchanged libraries (SC-005).
     /// </summary>
     Incremental
 }
-

@@ -12,10 +12,10 @@ using NSubstitute;
 namespace MediaHandler.IntegrationTests.Features.Files;
 
 /// <summary>
-/// End-to-end integration tests for the scan-and-import pipeline against a real
-/// SQL Server instance via Testcontainers.
-/// TMDB and NAS are mocked; the filename parser, import service and auto-match
-/// service run against the real database.
+///     End-to-end integration tests for the scan-and-import pipeline against a real
+///     SQL Server instance via Testcontainers.
+///     TMDB and NAS are mocked; the filename parser, import service and auto-match
+///     service run against the real database.
 /// </summary>
 public class ScanAndImportIntegrationTests : IntegrationTestBase
 {
@@ -58,9 +58,11 @@ public class ScanAndImportIntegrationTests : IntegrationTestBase
         var tmdb = Substitute.For<ITmdbService>();
 
         // Configure TMDB mock — search by query
-        tmdb.SearchMediaAsync(Arg.Is<string>(q => q.Contains("Matrix")), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        tmdb.SearchMediaAsync(Arg.Is<string>(q => q.Contains("Matrix")), Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
             .Returns(MatrixSearchResult);
-        tmdb.SearchMediaAsync(Arg.Is<string>(q => q.Contains("Inception")), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        tmdb.SearchMediaAsync(Arg.Is<string>(q => q.Contains("Inception")), Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
             .Returns(InceptionSearchResult);
 
         // Configure TMDB details mock
@@ -72,7 +74,8 @@ public class ScanAndImportIntegrationTests : IntegrationTestBase
         // Real services wired together with the real DbContext
         var importer = new MediaImportService(DbContext, tmdb, NullLogger<MediaImportService>.Instance);
         var parser = new MediaFileNameParser();
-        var autoMatcher = new MediaAutoMatchService(parser, tmdb, importer, DbContext, NullLogger<MediaAutoMatchService>.Instance);
+        var autoMatcher = new MediaAutoMatchService(parser, tmdb, importer, DbContext,
+            NullLogger<MediaAutoMatchService>.Instance);
 
         var handler = new ScanAndImportNasCommandHandler(
             DbContext, nas, autoMatcher, NullLogger<ScanAndImportNasCommandHandler>.Instance);
@@ -88,7 +91,7 @@ public class ScanAndImportIntegrationTests : IntegrationTestBase
         // Arrange
         var (nas, _, handler) = BuildHandler();
         nas.ScanDirectoryAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
-           .Returns(TestNasFiles);
+            .Returns(TestNasFiles);
 
         // Act
         var result = await handler.Handle(
@@ -115,7 +118,7 @@ public class ScanAndImportIntegrationTests : IntegrationTestBase
         var matrix = medias.FirstOrDefault(m => m.TmdbId == 603);
         matrix.Should().NotBeNull();
         matrix!.Title.Should().Be("The Matrix");
-        matrix.Genres.Select(g => g.Name).Should().BeEquivalentTo(["Action", "Science Fiction"]);
+        matrix.Genres.Select(g => g.Name).Should().BeEquivalentTo("Action", "Science Fiction");
 
         var inception = medias.FirstOrDefault(m => m.TmdbId == 27205);
         inception.Should().NotBeNull();
@@ -132,7 +135,7 @@ public class ScanAndImportIntegrationTests : IntegrationTestBase
         // Arrange — run 1
         var (nas, _, handler) = BuildHandler();
         nas.ScanDirectoryAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
-           .Returns(TestNasFiles);
+            .Returns(TestNasFiles);
 
         var firstRun = await handler.Handle(
             new ScanAndImportNasCommand(Language: "en"),
@@ -161,4 +164,3 @@ public class ScanAndImportIntegrationTests : IntegrationTestBase
         medias.Should().HaveCount(2, "no duplicate Media rows");
     }
 }
-

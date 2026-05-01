@@ -1,5 +1,4 @@
 using MediaHandler.Domain.Entities;
-using MediaHandler.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -42,4 +41,3 @@ public class ScanRunConfiguration : IEntityTypeConfiguration<ScanRun>
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
-

@@ -3,7 +3,7 @@ using MediaHandler.Domain.Enums;
 namespace MediaHandler.Application.Common.Models.Scanner;
 
 /// <summary>
-/// A single TMDB candidate returned as part of a <see cref="TmdbMatchResult"/>.
+///     A single TMDB candidate returned as part of a <see cref="TmdbMatchResult" />.
 /// </summary>
 public record TmdbCandidate(
     int TmdbId,
@@ -15,9 +15,9 @@ public record TmdbCandidate(
     string? PosterPath);
 
 /// <summary>
-/// Query input for <c>ITmdbMatcher.ResolveAsync</c>.
-/// Precedence chain enforced by the implementation:
-/// <c>NfoTmdbId → ExplicitTokenId → Title+Year → Title</c>.
+///     Query input for <c>ITmdbMatcher.ResolveAsync</c>.
+///     Precedence chain enforced by the implementation:
+///     <c>NfoTmdbId → ExplicitTokenId → Title+Year → Title</c>.
 /// </summary>
 public record MatchQuery(
     string Title,
@@ -30,9 +30,9 @@ public record MatchQuery(
     string Language = "en-US");
 
 /// <summary>
-/// Result of <c>ITmdbMatcher.ResolveAsync</c>.
-/// When <see cref="NeedsReview"/> is <c>true</c>, the scanner creates a
-/// <c>ReviewItem</c> instead of mapping the file to a <c>Media</c> row.
+///     Result of <c>ITmdbMatcher.ResolveAsync</c>.
+///     When <see cref="NeedsReview" /> is <c>true</c>, the scanner creates a
+///     <c>ReviewItem</c> instead of mapping the file to a <c>Media</c> row.
 /// </summary>
 public record TmdbMatchResult(
     bool IsMatched,
@@ -41,4 +41,3 @@ public record TmdbMatchResult(
     bool NeedsReview,
     ReviewReason? ReviewReason,
     IReadOnlyList<TmdbCandidate> Candidates);
-

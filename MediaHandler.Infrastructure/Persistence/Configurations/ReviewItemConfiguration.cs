@@ -46,4 +46,3 @@ public class ReviewItemConfiguration : IEntityTypeConfiguration<ReviewItem>
             .IsUnique();
     }
 }
-

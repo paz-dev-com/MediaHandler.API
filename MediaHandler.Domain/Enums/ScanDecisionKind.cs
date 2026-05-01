@@ -1,8 +1,8 @@
 namespace MediaHandler.Domain.Enums;
 
 /// <summary>
-/// Outcome that the scanner pipeline assigned to a single file path during a <c>ScanRun</c>.
-/// Every processed path produces exactly one <c>ScanItemDecision</c> row carrying this kind.
+///     Outcome that the scanner pipeline assigned to a single file path during a <c>ScanRun</c>.
+///     Every processed path produces exactly one <c>ScanItemDecision</c> row carrying this kind.
 /// </summary>
 public enum ScanDecisionKind
 {
@@ -22,9 +22,8 @@ public enum ScanDecisionKind
     Excluded,
 
     /// <summary>
-    /// File could not be fully resolved (TMDB miss, ambiguous match, unparseable name …)
-    /// and an open <c>ReviewItem</c> was created for admin attention.
+    ///     File could not be fully resolved (TMDB miss, ambiguous match, unparseable name …)
+    ///     and an open <c>ReviewItem</c> was created for admin attention.
     /// </summary>
     NeedsReview
 }
-

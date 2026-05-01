@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using MediaHandler.Application.Common.DTOs;
@@ -10,11 +11,12 @@ namespace MediaHandler.Infrastructure.Tmdb;
 public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logger)
     : ITmdbService
 {
-
-    public async Task<TmdbMediaDto?> SearchMediaAsync(string query, string language, CancellationToken cancellationToken = default)
+    public async Task<TmdbMediaDto?> SearchMediaAsync(string query, string language,
+        CancellationToken cancellationToken = default)
     {
         var url = $"/3/search/multi?query={Uri.EscapeDataString(query)}&language={language}";
-        var response = await httpClient.GetFromJsonAsync<TmdbPagedResponse<TmdbSearchResultJson>>(url, cancellationToken);
+        var response =
+            await httpClient.GetFromJsonAsync<TmdbPagedResponse<TmdbSearchResultJson>>(url, cancellationToken);
         var first = response?.Results?.FirstOrDefault(r => r.MediaType is "movie" or "tv");
         if (first is null) return null;
 
@@ -30,7 +32,8 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
             (decimal?)first.VoteAverage);
     }
 
-    public async Task<TmdbMediaDetailsDto?> GetMediaDetailsAsync(int tmdbId, string mediaType, string language, CancellationToken cancellationToken = default)
+    public async Task<TmdbMediaDetailsDto?> GetMediaDetailsAsync(int tmdbId, string mediaType, string language,
+        CancellationToken cancellationToken = default)
     {
         var isMovie = mediaType.Equals("movie", StringComparison.OrdinalIgnoreCase);
 
@@ -78,7 +81,8 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
         }
     }
 
-    public async Task<IEnumerable<TmdbSeasonDto>> GetTvShowSeasonsAsync(int tmdbId, string language, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<TmdbSeasonDto>> GetTvShowSeasonsAsync(int tmdbId, string language,
+        CancellationToken cancellationToken = default)
     {
         var url = $"/3/tv/{tmdbId}?language={language}";
         var tv = await httpClient.GetFromJsonAsync<TmdbTvDetailsJson>(url, cancellationToken);
@@ -95,7 +99,8 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to fetch season {SeasonNumber} for TMDB show {TmdbId}.", season.SeasonNumber, tmdbId);
+                logger.LogWarning(ex, "Failed to fetch season {SeasonNumber} for TMDB show {TmdbId}.",
+                    season.SeasonNumber, tmdbId);
                 continue;
             }
 
@@ -120,14 +125,11 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
         return seasons;
     }
 
-    private static DateTime? ParseDate(string? date) =>
-        DateTime.TryParse(date, out var result) ? result : null;
-
     // =========================================================================
     // Scanner: id-based lookups
     // =========================================================================
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<TmdbIdLookupResult?> GetMovieByIdAsync(
         int tmdbId, string language = "en-US", CancellationToken cancellationToken = default)
     {
@@ -144,7 +146,7 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
                 ParseDate(movie.ReleaseDate)?.Year,
                 movie.PosterPath);
         }
-        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             return null;
         }
@@ -155,7 +157,7 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
         }
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<TmdbIdLookupResult?> GetTvShowByIdAsync(
         int tmdbId, string language = "en-US", CancellationToken cancellationToken = default)
     {
@@ -172,7 +174,7 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
                 ParseDate(tv.FirstAirDate)?.Year,
                 tv.PosterPath);
         }
-        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             return null;
         }
@@ -187,7 +189,7 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
     // Scanner: multi-candidate search
     // =========================================================================
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<IReadOnlyList<TmdbSearchCandidate>> SearchCandidatesAsync(
         string query,
         int? year,
@@ -216,7 +218,8 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
         TmdbPagedResponse<TmdbSearchResultJson>? response;
         try
         {
-            response = await httpClient.GetFromJsonAsync<TmdbPagedResponse<TmdbSearchResultJson>>(url, cancellationToken);
+            response = await httpClient.GetFromJsonAsync<TmdbPagedResponse<TmdbSearchResultJson>>(url,
+                cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -243,25 +246,43 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
         return candidates;
     }
 
+    private static DateTime? ParseDate(string? date)
+    {
+        return DateTime.TryParse(date, out var result) ? result : null;
+    }
+
     private record TmdbPagedResponse<T>(
-        [property: JsonPropertyName("results")] List<T>? Results,
-        [property: JsonPropertyName("total_results")] int TotalResults,
-        [property: JsonPropertyName("total_pages")] int TotalPages);
+        [property: JsonPropertyName("results")]
+        List<T>? Results,
+        [property: JsonPropertyName("total_results")]
+        int TotalResults,
+        [property: JsonPropertyName("total_pages")]
+        int TotalPages);
 
     private record TmdbSearchResultJson(
         [property: JsonPropertyName("id")] int Id,
         [property: JsonPropertyName("title")] string? Title,
         [property: JsonPropertyName("name")] string? Name,
-        [property: JsonPropertyName("original_title")] string? OriginalTitle,
-        [property: JsonPropertyName("original_name")] string? OriginalName,
-        [property: JsonPropertyName("overview")] string? Overview,
-        [property: JsonPropertyName("media_type")] string? MediaType,
-        [property: JsonPropertyName("release_date")] string? ReleaseDate,
-        [property: JsonPropertyName("first_air_date")] string? FirstAirDate,
-        [property: JsonPropertyName("poster_path")] string? PosterPath,
-        [property: JsonPropertyName("backdrop_path")] string? BackdropPath,
-        [property: JsonPropertyName("vote_average")] double? VoteAverage,
-        [property: JsonPropertyName("popularity")] double? Popularity);
+        [property: JsonPropertyName("original_title")]
+        string? OriginalTitle,
+        [property: JsonPropertyName("original_name")]
+        string? OriginalName,
+        [property: JsonPropertyName("overview")]
+        string? Overview,
+        [property: JsonPropertyName("media_type")]
+        string? MediaType,
+        [property: JsonPropertyName("release_date")]
+        string? ReleaseDate,
+        [property: JsonPropertyName("first_air_date")]
+        string? FirstAirDate,
+        [property: JsonPropertyName("poster_path")]
+        string? PosterPath,
+        [property: JsonPropertyName("backdrop_path")]
+        string? BackdropPath,
+        [property: JsonPropertyName("vote_average")]
+        double? VoteAverage,
+        [property: JsonPropertyName("popularity")]
+        double? Popularity);
 
     private record TmdbGenreJson(
         [property: JsonPropertyName("id")] int Id,
@@ -270,49 +291,79 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
     private record TmdbMovieDetailsJson(
         [property: JsonPropertyName("id")] int Id,
         [property: JsonPropertyName("title")] string? Title,
-        [property: JsonPropertyName("original_title")] string? OriginalTitle,
-        [property: JsonPropertyName("overview")] string? Overview,
-        [property: JsonPropertyName("release_date")] string? ReleaseDate,
-        [property: JsonPropertyName("runtime")] int? Runtime,
-        [property: JsonPropertyName("poster_path")] string? PosterPath,
-        [property: JsonPropertyName("backdrop_path")] string? BackdropPath,
-        [property: JsonPropertyName("vote_average")] double? VoteAverage,
-        [property: JsonPropertyName("vote_count")] int? VoteCount,
+        [property: JsonPropertyName("original_title")]
+        string? OriginalTitle,
+        [property: JsonPropertyName("overview")]
+        string? Overview,
+        [property: JsonPropertyName("release_date")]
+        string? ReleaseDate,
+        [property: JsonPropertyName("runtime")]
+        int? Runtime,
+        [property: JsonPropertyName("poster_path")]
+        string? PosterPath,
+        [property: JsonPropertyName("backdrop_path")]
+        string? BackdropPath,
+        [property: JsonPropertyName("vote_average")]
+        double? VoteAverage,
+        [property: JsonPropertyName("vote_count")]
+        int? VoteCount,
         [property: JsonPropertyName("genres")] List<TmdbGenreJson>? Genres,
-        [property: JsonPropertyName("original_language")] string? OriginalLanguage);
+        [property: JsonPropertyName("original_language")]
+        string? OriginalLanguage);
 
     private record TmdbTvSeasonSummaryJson(
-        [property: JsonPropertyName("season_number")] int SeasonNumber,
+        [property: JsonPropertyName("season_number")]
+        int SeasonNumber,
         [property: JsonPropertyName("name")] string? Name);
 
     private record TmdbTvDetailsJson(
         [property: JsonPropertyName("id")] int Id,
         [property: JsonPropertyName("name")] string? Name,
-        [property: JsonPropertyName("original_name")] string? OriginalName,
-        [property: JsonPropertyName("overview")] string? Overview,
-        [property: JsonPropertyName("first_air_date")] string? FirstAirDate,
-        [property: JsonPropertyName("episode_run_time")] List<int>? EpisodeRunTime,
-        [property: JsonPropertyName("poster_path")] string? PosterPath,
-        [property: JsonPropertyName("backdrop_path")] string? BackdropPath,
-        [property: JsonPropertyName("vote_average")] double? VoteAverage,
-        [property: JsonPropertyName("vote_count")] int? VoteCount,
+        [property: JsonPropertyName("original_name")]
+        string? OriginalName,
+        [property: JsonPropertyName("overview")]
+        string? Overview,
+        [property: JsonPropertyName("first_air_date")]
+        string? FirstAirDate,
+        [property: JsonPropertyName("episode_run_time")]
+        List<int>? EpisodeRunTime,
+        [property: JsonPropertyName("poster_path")]
+        string? PosterPath,
+        [property: JsonPropertyName("backdrop_path")]
+        string? BackdropPath,
+        [property: JsonPropertyName("vote_average")]
+        double? VoteAverage,
+        [property: JsonPropertyName("vote_count")]
+        int? VoteCount,
         [property: JsonPropertyName("genres")] List<TmdbGenreJson>? Genres,
-        [property: JsonPropertyName("original_language")] string? OriginalLanguage,
-        [property: JsonPropertyName("seasons")] List<TmdbTvSeasonSummaryJson>? Seasons);
+        [property: JsonPropertyName("original_language")]
+        string? OriginalLanguage,
+        [property: JsonPropertyName("seasons")]
+        List<TmdbTvSeasonSummaryJson>? Seasons);
 
     private record TmdbEpisodeJson(
-        [property: JsonPropertyName("episode_number")] int EpisodeNumber,
+        [property: JsonPropertyName("episode_number")]
+        int EpisodeNumber,
         [property: JsonPropertyName("name")] string? Name,
-        [property: JsonPropertyName("overview")] string? Overview,
-        [property: JsonPropertyName("air_date")] string? AirDate,
-        [property: JsonPropertyName("still_path")] string? StillPath,
-        [property: JsonPropertyName("runtime")] int? Runtime);
+        [property: JsonPropertyName("overview")]
+        string? Overview,
+        [property: JsonPropertyName("air_date")]
+        string? AirDate,
+        [property: JsonPropertyName("still_path")]
+        string? StillPath,
+        [property: JsonPropertyName("runtime")]
+        int? Runtime);
 
     private record TmdbSeasonDetailsJson(
-        [property: JsonPropertyName("season_number")] int SeasonNumber,
+        [property: JsonPropertyName("season_number")]
+        int SeasonNumber,
         [property: JsonPropertyName("name")] string? Name,
-        [property: JsonPropertyName("overview")] string? Overview,
-        [property: JsonPropertyName("air_date")] string? AirDate,
-        [property: JsonPropertyName("poster_path")] string? PosterPath,
-        [property: JsonPropertyName("episodes")] List<TmdbEpisodeJson>? Episodes);
+        [property: JsonPropertyName("overview")]
+        string? Overview,
+        [property: JsonPropertyName("air_date")]
+        string? AirDate,
+        [property: JsonPropertyName("poster_path")]
+        string? PosterPath,
+        [property: JsonPropertyName("episodes")]
+        List<TmdbEpisodeJson>? Episodes);
 }

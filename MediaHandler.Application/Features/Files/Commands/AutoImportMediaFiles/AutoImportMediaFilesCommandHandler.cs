@@ -7,9 +7,9 @@ using Microsoft.Extensions.Logging;
 namespace MediaHandler.Application.Features.Files.Commands.AutoImportMediaFiles;
 
 /// <summary>
-/// Queries all <c>MediaFile</c> records where <c>MediaId IS NULL</c> and delegates them
-/// to <see cref="IMediaAutoMatchService"/> for TMDB matching and linking.
-/// Does not trigger a NAS scan — useful for retrying previously failed or skipped files.
+///     Queries all <c>MediaFile</c> records where <c>MediaId IS NULL</c> and delegates them
+///     to <see cref="IMediaAutoMatchService" /> for TMDB matching and linking.
+///     Does not trigger a NAS scan — useful for retrying previously failed or skipped files.
 /// </summary>
 public class AutoImportMediaFilesCommandHandler(
     IApplicationDbContext context,
@@ -34,11 +34,11 @@ public class AutoImportMediaFilesCommandHandler(
         {
             logger.LogInformation("No unlinked MediaFiles found. Nothing to import.");
             return Result.Success(new AutoImportResult(
-                TotalUnlinked: 0,
-                Matched: 0,
-                Skipped: 0,
-                Failed: 0,
-                Errors: []));
+                0,
+                0,
+                0,
+                0,
+                []));
         }
 
         var language = request.Language ?? "en";
@@ -51,11 +51,10 @@ public class AutoImportMediaFilesCommandHandler(
             unlinked.Count, matchResult.Matched, matchResult.Skipped, matchResult.Failed);
 
         return Result.Success(new AutoImportResult(
-            TotalUnlinked: unlinked.Count,
-            Matched: matchResult.Matched,
-            Skipped: matchResult.Skipped,
-            Failed: matchResult.Failed,
-            Errors: matchResult.Errors));
+            unlinked.Count,
+            matchResult.Matched,
+            matchResult.Skipped,
+            matchResult.Failed,
+            matchResult.Errors));
     }
 }
-

@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MediaHandler.Application.Features.Wishlist.Commands.AddToWishlist;
 
-public record AddToWishlistCommand(int TmdbId, string Title, string? PosterPath, DateTime? ReleaseDate, string? Notes) : IRequest<Result<Guid>>;
+public record AddToWishlistCommand(int TmdbId, string Title, string? PosterPath, DateTime? ReleaseDate, string? Notes)
+    : IRequest<Result<Guid>>;
 
 public class AddToWishlistCommandHandler(IApplicationDbContext context, ICurrentUserService currentUser)
     : IRequestHandler<AddToWishlistCommand, Result<Guid>>

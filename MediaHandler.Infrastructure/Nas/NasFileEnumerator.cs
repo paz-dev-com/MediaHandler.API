@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models.Scanner;
@@ -7,13 +8,13 @@ using Microsoft.Extensions.Logging;
 namespace MediaHandler.Infrastructure.Nas;
 
 /// <summary>
-/// Wraps <see cref="INasService"/> to yield <see cref="NasFileEntry"/> items as an
-/// <see cref="IAsyncEnumerable{T}"/> consumed by the scanner pipeline.
+///     Wraps <see cref="INasService" /> to yield <see cref="NasFileEntry" /> items as an
+///     <see cref="IAsyncEnumerable{T}" /> consumed by the scanner pipeline.
 /// </summary>
 /// <remarks>
-/// The underlying <c>INasService.ScanDirectoryAsync</c> returns a materialised list,
-/// so this adapter simply projects and yields each item.  When the pipeline
-/// architecture moves to a true streaming NAS client the adapter boundary stays intact.
+///     The underlying <c>INasService.ScanDirectoryAsync</c> returns a materialised list,
+///     so this adapter simply projects and yields each item.  When the pipeline
+///     architecture moves to a true streaming NAS client the adapter boundary stays intact.
 /// </remarks>
 public sealed class NasFileEnumerator(
     INasService nasService,
@@ -21,7 +22,7 @@ public sealed class NasFileEnumerator(
 {
     public async IAsyncEnumerable<NasFileEntry> EnumerateAsync(
         LibraryRoot root,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+        [EnumeratorCancellation] CancellationToken ct = default)
     {
         IEnumerable<NasFileInfo> entries;
         try
@@ -44,13 +45,12 @@ public sealed class NasFileEnumerator(
                 : entry.Format.ToLowerInvariant();
 
             yield return new NasFileEntry(
-                AbsolutePath: entry.FilePath,
-                FileName: entry.FileName,
-                SizeBytes: entry.SizeBytes,
-                MtimeUtc: entry.ModifiedAt.ToUniversalTime(),
-                IsDirectory: entry.IsDirectory,
-                Extension: ext);
+                entry.FilePath,
+                entry.FileName,
+                entry.SizeBytes,
+                entry.ModifiedAt.ToUniversalTime(),
+                entry.IsDirectory,
+                ext);
         }
     }
 }
-

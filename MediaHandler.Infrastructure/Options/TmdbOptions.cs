@@ -8,6 +8,6 @@ public class TmdbOptions
 
     public string BaseUrl { get; set; } = "https://api.themoviedb.org/3";
     public string ImageBaseUrl { get; set; } = "https://image.tmdb.org/t/p";
-    [Required]
-    public required string ReadAccessToken { get; set; }
+
+    [Required] public required string ReadAccessToken { get; set; }
 }

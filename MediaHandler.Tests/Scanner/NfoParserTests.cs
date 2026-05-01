@@ -1,4 +1,3 @@
-#nullable enable
 // Unit tests for the NFO sidecar file parser.
 // These tests MUST fail before NfoParser.cs is implemented (T097).
 
@@ -8,27 +7,33 @@ using MediaHandler.Infrastructure.Nas.Scanner;
 namespace MediaHandler.Tests.Scanner;
 
 /// <summary>
-/// Unit tests for <see cref="NfoParser"/>.
-/// Covers: well-formed movie.nfo with tmdbid; malformed XML returns Malformed result (not throws);
-/// missing optional fields return null without failing; tvshow.nfo and per-episode .nfo shapes.
-///
-/// Tests write temporary files to exercise the file-reading path of the parser.
+///     Unit tests for <see cref="NfoParser" />.
+///     Covers: well-formed movie.nfo with tmdbid; malformed XML returns Malformed result (not throws);
+///     missing optional fields return null without failing; tvshow.nfo and per-episode .nfo shapes.
+///     Tests write temporary files to exercise the file-reading path of the parser.
 /// </summary>
 public class NfoParserTests : IAsyncLifetime
 {
     private readonly NfoParser _sut = new();
     private readonly List<string> _tempFiles = [];
 
-    public ValueTask InitializeAsync() => ValueTask.CompletedTask;
+    public ValueTask InitializeAsync()
+    {
+        return ValueTask.CompletedTask;
+    }
 
     public async ValueTask DisposeAsync()
     {
         // Clean up temp files after each test class run
         foreach (var path in _tempFiles)
-        {
-            try { File.Delete(path); }
-            catch { /* ignore cleanup errors */ }
-        }
+            try
+            {
+                File.Delete(path);
+            }
+            catch
+            {
+                /* ignore cleanup errors */
+            }
 
         await ValueTask.CompletedTask;
     }
@@ -51,18 +56,18 @@ public class NfoParserTests : IAsyncLifetime
     // =========================================================================
 
     /// <remarks>
-    /// A well-formed movie.nfo with title, year and tmdbid must parse all three fields.
+    ///     A well-formed movie.nfo with title, year and tmdbid must parse all three fields.
     /// </remarks>
     [Fact]
     public async Task ParseAsync_WellFormedMovieNfo_WithTmdbId_ReturnsParsedSuccessfully()
     {
         var xml = """
-            <movie>
-                <title>Inception</title>
-                <year>2010</year>
-                <tmdbid>27205</tmdbid>
-            </movie>
-            """;
+                  <movie>
+                      <title>Inception</title>
+                      <year>2010</year>
+                      <tmdbid>27205</tmdbid>
+                  </movie>
+                  """;
 
         var path = await WriteTempNfoAsync(xml);
         var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
@@ -75,24 +80,24 @@ public class NfoParserTests : IAsyncLifetime
     }
 
     /// <remarks>
-    /// Additional fields (imdbid, plot) that Kodi writes are tolerated and ignored.
-    /// SOURCE: Kodi wiki — NFO files contain many optional elements; scanners must not fail on unknown elements.
+    ///     Additional fields (imdbid, plot) that Kodi writes are tolerated and ignored.
+    ///     SOURCE: Kodi wiki — NFO files contain many optional elements; scanners must not fail on unknown elements.
     /// </remarks>
     [Fact]
     public async Task ParseAsync_NfoWithUnknownElements_ParsesKnownFieldsAndIgnoresRest()
     {
         var xml = """
-            <movie>
-                <title>The Dark Knight</title>
-                <year>2008</year>
-                <tmdbid>155</tmdbid>
-                <imdbid>tt0468569</imdbid>
-                <plot>Some plot description</plot>
-                <runtime>152</runtime>
-                <rating>9.0</rating>
-                <unknownfutureelement>data</unknownfutureelement>
-            </movie>
-            """;
+                  <movie>
+                      <title>The Dark Knight</title>
+                      <year>2008</year>
+                      <tmdbid>155</tmdbid>
+                      <imdbid>tt0468569</imdbid>
+                      <plot>Some plot description</plot>
+                      <runtime>152</runtime>
+                      <rating>9.0</rating>
+                      <unknownfutureelement>data</unknownfutureelement>
+                  </movie>
+                  """;
 
         var path = await WriteTempNfoAsync(xml);
         var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
@@ -171,11 +176,11 @@ public class NfoParserTests : IAsyncLifetime
     public async Task ParseAsync_NfoWithNoTmdbId_ReturnsSuccessWithNullTmdbId()
     {
         var xml = """
-            <movie>
-                <title>Parasite</title>
-                <year>2019</year>
-            </movie>
-            """;
+                  <movie>
+                      <title>Parasite</title>
+                      <year>2019</year>
+                  </movie>
+                  """;
 
         var path = await WriteTempNfoAsync(xml);
         var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
@@ -190,10 +195,10 @@ public class NfoParserTests : IAsyncLifetime
     public async Task ParseAsync_NfoWithOnlyTitle_ReturnsSuccessWithNullYearAndNullTmdbId()
     {
         var xml = """
-            <movie>
-                <title>Minimal Movie</title>
-            </movie>
-            """;
+                  <movie>
+                      <title>Minimal Movie</title>
+                  </movie>
+                  """;
 
         var path = await WriteTempNfoAsync(xml);
         var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
@@ -208,11 +213,11 @@ public class NfoParserTests : IAsyncLifetime
     public async Task ParseAsync_NfoWithNoTitle_ReturnsSuccessWithNullTitle()
     {
         var xml = """
-            <movie>
-                <tmdbid>12345</tmdbid>
-                <year>2020</year>
-            </movie>
-            """;
+                  <movie>
+                      <tmdbid>12345</tmdbid>
+                      <year>2020</year>
+                  </movie>
+                  """;
 
         var path = await WriteTempNfoAsync(xml);
         var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
@@ -232,13 +237,13 @@ public class NfoParserTests : IAsyncLifetime
     public async Task ParseAsync_TvShowNfo_ParsesTitleYearAndTmdbId()
     {
         var xml = """
-            <tvshow>
-                <title>Breaking Bad</title>
-                <year>2008</year>
-                <tmdbid>1396</tmdbid>
-                <imdbid>tt0903747</imdbid>
-            </tvshow>
-            """;
+                  <tvshow>
+                      <title>Breaking Bad</title>
+                      <year>2008</year>
+                      <tmdbid>1396</tmdbid>
+                      <imdbid>tt0903747</imdbid>
+                  </tvshow>
+                  """;
 
         var path = await WriteTempNfoAsync(xml);
         var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
@@ -257,11 +262,11 @@ public class NfoParserTests : IAsyncLifetime
     public async Task ParseAsync_TvShowNfo_FailsGracefully_WhenTmdbIdAbsent()
     {
         var xml = """
-            <tvshow>
-                <title>Some Show</title>
-                <year>2015</year>
-            </tvshow>
-            """;
+                  <tvshow>
+                      <title>Some Show</title>
+                      <year>2015</year>
+                  </tvshow>
+                  """;
 
         var path = await WriteTempNfoAsync(xml);
         var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
@@ -280,13 +285,13 @@ public class NfoParserTests : IAsyncLifetime
     public async Task ParseAsync_EpisodeNfo_ParseesSeasonAndEpisodeNumbers()
     {
         var xml = """
-            <episodedetails>
-                <title>Pilot</title>
-                <season>1</season>
-                <episode>1</episode>
-                <tmdbid>7200</tmdbid>
-            </episodedetails>
-            """;
+                  <episodedetails>
+                      <title>Pilot</title>
+                      <season>1</season>
+                      <episode>1</episode>
+                      <tmdbid>7200</tmdbid>
+                  </episodedetails>
+                  """;
 
         var path = await WriteTempNfoAsync(xml);
         var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
@@ -302,10 +307,10 @@ public class NfoParserTests : IAsyncLifetime
     public async Task ParseAsync_EpisodeNfo_MissingSeasonAndEpisode_ReturnsNulls()
     {
         var xml = """
-            <episodedetails>
-                <title>Some Episode Without Numbers</title>
-            </episodedetails>
-            """;
+                  <episodedetails>
+                      <title>Some Episode Without Numbers</title>
+                  </episodedetails>
+                  """;
 
         var path = await WriteTempNfoAsync(xml);
         var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
@@ -324,12 +329,12 @@ public class NfoParserTests : IAsyncLifetime
     public async Task ParseAsync_NfoWithLegacyIdElement_ExtractsImdbId()
     {
         var xml = """
-            <movie>
-                <title>Se7en</title>
-                <year>1995</year>
-                <id>tt0114369</id>
-            </movie>
-            """;
+                  <movie>
+                      <title>Se7en</title>
+                      <year>1995</year>
+                      <id>tt0114369</id>
+                  </movie>
+                  """;
 
         var path = await WriteTempNfoAsync(xml);
         var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
@@ -346,12 +351,12 @@ public class NfoParserTests : IAsyncLifetime
     public async Task ParseAsync_NfoWithWhitespacePaddedValues_TrimsValues()
     {
         var xml = """
-            <movie>
-                <title>  Inception  </title>
-                <year>  2010  </year>
-                <tmdbid>  27205  </tmdbid>
-            </movie>
-            """;
+                  <movie>
+                      <title>  Inception  </title>
+                      <year>  2010  </year>
+                      <tmdbid>  27205  </tmdbid>
+                  </movie>
+                  """;
 
         var path = await WriteTempNfoAsync(xml);
         var result = await _sut.ParseAsync(path, TestContext.Current.CancellationToken);
@@ -362,6 +367,3 @@ public class NfoParserTests : IAsyncLifetime
         result.TmdbId.Should().Be(27205);
     }
 }
-
-
-

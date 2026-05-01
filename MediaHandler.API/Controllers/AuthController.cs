@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using MediaHandler.API.Contracts.Auth;
 using MediaHandler.API.Models;
 using MediaHandler.Application.Features.Auth.Commands.SyncUser;
@@ -8,7 +9,6 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using System.Security.Claims;
 
 namespace MediaHandler.API.Controllers;
 
@@ -36,9 +36,9 @@ public class AuthController(ISender sender) : ControllerBase
         // as a reliable fallback. JWT claims always take priority when present (e.g. when an
         // Auth0 Action explicitly adds them to the access token).
         var email = User.FindFirstValue(ClaimTypes.Email)
-            ?? User.FindFirstValue("email")
-            ?? User.FindFirstValue("preferred_username")
-            ?? body?.Email;
+                    ?? User.FindFirstValue("email")
+                    ?? User.FindFirstValue("preferred_username")
+                    ?? body?.Email;
 
         if (string.IsNullOrEmpty(email))
             return BadRequest(ApiResponse<object>.Fail(new ApiError("MISSING_CLAIM",
@@ -46,8 +46,8 @@ public class AuthController(ISender sender) : ControllerBase
 
         // Display name: JWT claims first, then request body fallback
         var name = User.FindFirstValue("name")
-            ?? User.FindFirstValue("given_name")
-            ?? body?.Name;
+                   ?? User.FindFirstValue("given_name")
+                   ?? body?.Name;
 
         // Accept both "Admin" and "Administrator" as admin role names to be resilient
         // to differences in how the role is named in the identity provider.
@@ -69,14 +69,16 @@ public class AuthController(ISender sender) : ControllerBase
         var result = await sender.Send(new GetCurrentUserQuery(), ct);
         return result.IsSuccess
             ? Ok(ApiResponse<object>.Success(result.Value))
-            : NotFound(ApiResponse<object>.Fail(new ApiError("NOT_FOUND", result.Errors.FirstOrDefault() ?? "User not found")));
+            : NotFound(ApiResponse<object>.Fail(new ApiError("NOT_FOUND",
+                result.Errors.FirstOrDefault() ?? "User not found")));
     }
 
     [HttpPut("preferences")]
     [ProducesResponseType<ApiResponse<UserDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> UpdatePreferences([FromBody] UpdatePreferencesRequest request, CancellationToken ct)
+    public async Task<IActionResult> UpdatePreferences([FromBody] UpdatePreferencesRequest request,
+        CancellationToken ct)
     {
         var result = await sender.Send(new UpdatePreferencesCommand(request.PreferredLanguage), ct);
         return result.IsSuccess

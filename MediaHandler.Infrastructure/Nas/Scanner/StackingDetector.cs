@@ -1,4 +1,3 @@
-#nullable enable
 // StackingDetector — clean-room implementation of Kodi multi-part movie stacking detection.
 //
 // R-001 CLEAN-ROOM DECLARATION
@@ -13,11 +12,11 @@ using MediaHandler.Application.Common.Models.Scanner;
 namespace MediaHandler.Infrastructure.Nas.Scanner;
 
 /// <summary>
-/// Detects stacked multi-part movie files using Kodi-equivalent suffix patterns.
-/// <para>
-/// SOURCE: Kodi wiki advancedsettings <c>stackingregex</c> — recognised suffixes are:
-/// cd1/cd2, disc1/disc2, disk1/disk2, part1/part2, pt1/pt2, (a)/(b)...(e).
-/// </para>
+///     Detects stacked multi-part movie files using Kodi-equivalent suffix patterns.
+///     <para>
+///         SOURCE: Kodi wiki advancedsettings <c>stackingregex</c> — recognised suffixes are:
+///         cd1/cd2, disc1/disc2, disk1/disk2, part1/part2, pt1/pt2, (a)/(b)...(e).
+///     </para>
 /// </summary>
 public sealed class StackingDetector : IStackingDetector
 {
@@ -30,7 +29,7 @@ public sealed class StackingDetector : IStackingDetector
         // Group files by folder path first
         var byFolder = files
             .Where(f => !f.IsDirectory)
-            .GroupBy(f => System.IO.Path.GetDirectoryName(f.AbsolutePath) ?? string.Empty);
+            .GroupBy(f => Path.GetDirectoryName(f.AbsolutePath) ?? string.Empty);
 
         var results = new List<StackGroupCandidate>();
 
@@ -47,7 +46,7 @@ public sealed class StackingDetector : IStackingDetector
 
                 foreach (var file in folderFiles)
                 {
-                    var nameNoExt = System.IO.Path.GetFileNameWithoutExtension(file.FileName);
+                    var nameNoExt = Path.GetFileNameWithoutExtension(file.FileName);
                     var m = pattern.Match(nameNoExt);
                     if (!m.Success) continue;
 
@@ -59,7 +58,9 @@ public sealed class StackingDetector : IStackingDetector
                     // For letter-based stacking "(a)"/"(b)" convert to ordinal
                     var ordinal = discriminator == "()"
                         ? ordinalStr.ToLowerInvariant()[0] - 'a' + 1
-                        : int.TryParse(ordinalStr, out var n) ? n : 0;
+                        : int.TryParse(ordinalStr, out var n)
+                            ? n
+                            : 0;
 
                     if (!candidates.TryGetValue(baseName, out var list))
                         candidates[baseName] = list = [];
@@ -79,10 +80,10 @@ public sealed class StackingDetector : IStackingDetector
                         .AsReadOnly();
 
                     results.Add(new StackGroupCandidate(
-                        BaseTitle: baseName,
-                        FolderPath: folderPath,
-                        Discriminator: discriminator.TrimStart('(').TrimEnd(')'),
-                        Parts: ordered));
+                        baseName,
+                        folderPath,
+                        discriminator.TrimStart('(').TrimEnd(')'),
+                        ordered));
                 }
             }
         }
@@ -90,4 +91,3 @@ public sealed class StackingDetector : IStackingDetector
         return results;
     }
 }
-

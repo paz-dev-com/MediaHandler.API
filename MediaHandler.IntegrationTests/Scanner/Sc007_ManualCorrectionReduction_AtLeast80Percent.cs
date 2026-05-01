@@ -1,36 +1,36 @@
-#nullable enable
 // SC-007: ≥ 80% reduction in manual corrections compared to the previous implementation.
 // Operates against the synthetic benchmark plus an injected baseline number representing
 // the previous implementation's review count (since the prod library cannot be checked into CI).
 
 using FluentAssertions;
-using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models.Scanner;
-using NasFileInfo = MediaHandler.Application.Common.DTOs.NasFileInfo;
 using MediaHandler.Domain.Entities;
 using MediaHandler.Domain.Enums;
+using MediaHandler.Infrastructure.Nas;
 using MediaHandler.Infrastructure.Nas.Scanner;
+using MediaHandler.Infrastructure.Persistence;
 using MediaHandler.Infrastructure.Services;
 using MediaHandler.IntegrationTests.Common;
 using MediaHandler.IntegrationTests.Scanner.Fixtures;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace MediaHandler.IntegrationTests.Scanner;
 
 /// <summary>
-/// SC-007: ≥ 80% reduction in manual corrections.
-/// Compares (open ReviewItems after fresh full scan) against an injected baseline number.
-/// The baseline represents the number of manual corrections required by the old implementation
-/// on the same benchmark fixture.
+///     SC-007: ≥ 80% reduction in manual corrections.
+///     Compares (open ReviewItems after fresh full scan) against an injected baseline number.
+///     The baseline represents the number of manual corrections required by the old implementation
+///     on the same benchmark fixture.
 /// </summary>
 public class Sc007_ManualCorrectionReduction_AtLeast80Percent : ScannerIntegrationTestBase
 {
     /// <summary>
-    /// Injected baseline: the number of manual corrections required by the previous (pre-Kodi)
-    /// implementation when run against the same benchmark fixture. In the old scanner, roughly
-    /// 25% of all media items needed manual correction because it lacked Kodi-style parsing.
+    ///     Injected baseline: the number of manual corrections required by the previous (pre-Kodi)
+    ///     implementation when run against the same benchmark fixture. In the old scanner, roughly
+    ///     25% of all media items needed manual correction because it lacked Kodi-style parsing.
     /// </summary>
     private const int BaselineManualCorrections = 100;
 
@@ -40,7 +40,7 @@ public class Sc007_ManualCorrectionReduction_AtLeast80Percent : ScannerIntegrati
     {
         await base.InitializeAsync();
         _fixture = FixtureBuilder.LoadFromManifest();
-        WithFakeNasService(_fixture.ToNasFileInfos(), configuredPaths: ["/nas"]);
+        WithFakeNasService(_fixture.ToNasFileInfos(), ["/nas"]);
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class Sc007_ManualCorrectionReduction_AtLeast80Percent : ScannerIntegrati
             new ScanStartParameters(Guid.NewGuid(), [moviesRoot.Id, tvRoot.Id], ScanMode.Full),
             TestContext.Current.CancellationToken);
 
-        await WaitForScanCompletion(handle.ScanRunId, timeoutSeconds: 120);
+        await WaitForScanCompletion(handle.ScanRunId, 120);
 
         // Count open ReviewItems created by this scan
         var openReviewCount = await DbContext.ReviewItems
@@ -84,13 +84,13 @@ public class Sc007_ManualCorrectionReduction_AtLeast80Percent : ScannerIntegrati
 
         // Calculate reduction percentage
         var reductionPct = BaselineManualCorrections > 0
-            ? 1.0 - ((double)openReviewCount / BaselineManualCorrections)
+            ? 1.0 - (double)openReviewCount / BaselineManualCorrections
             : 1.0;
 
         reductionPct.Should().BeGreaterThanOrEqualTo(0.80,
-            because: $"SC-007 requires ≥ 80% reduction in manual corrections. " +
-                     $"Baseline={BaselineManualCorrections}, NewReviewItems={openReviewCount}, " +
-                     $"Reduction={reductionPct:P1}");
+            $"SC-007 requires ≥ 80% reduction in manual corrections. " +
+            $"Baseline={BaselineManualCorrections}, NewReviewItems={openReviewCount}, " +
+            $"Reduction={reductionPct:P1}");
     }
 
     private async Task WaitForScanCompletion(Guid scanRunId, int timeoutSeconds)
@@ -104,27 +104,27 @@ public class Sc007_ManualCorrectionReduction_AtLeast80Percent : ScannerIntegrati
                 return;
             await Task.Delay(200, TestContext.Current.CancellationToken);
         }
+
         throw new TimeoutException($"Scan {scanRunId} did not complete within {timeoutSeconds}s");
     }
 
     private ScanRunCoordinator BuildCoordinatorWithMatcher(ITmdbMatcher tmdbMatcher)
     {
-        var nasEnumerator = new MediaHandler.Infrastructure.Nas.NasFileEnumerator(
-            FakeNas!, Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaHandler.Infrastructure.Nas.NasFileEnumerator>.Instance);
+        var nasEnumerator = new NasFileEnumerator(
+            FakeNas!, NullLogger<NasFileEnumerator>.Instance);
 
         var parser = new KodiNameParser();
         var exclusionEvaluator = new ExclusionEvaluator();
         var stackDetector = new StackingDetector();
         var episodeMatcher = new TvEpisodeMatcher();
 
-        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScanRunCoordinator>.Instance;
-        var pipelineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScanPipeline>.Instance;
+        var logger = NullLogger<ScanRunCoordinator>.Instance;
+        var pipelineLogger = NullLogger<ScanPipeline>.Instance;
 
-        var coordinatorDb = new MediaHandler.Infrastructure.Persistence.MediaHandlerDbContext(DbContextOptions);
+        var coordinatorDb = new MediaHandlerDbContext(DbContextOptions);
         var pipeline = new ScanPipeline(coordinatorDb, nasEnumerator, exclusionEvaluator, stackDetector,
             parser, episodeMatcher, tmdbMatcher, pipelineLogger);
 
-        return new ScanRunCoordinator(logger, pipeline, coordinatorDb);
+        return CreateScanRunCoordinator(pipeline, coordinatorDb);
     }
 }
-

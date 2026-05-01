@@ -1,7 +1,7 @@
 namespace MediaHandler.Domain.Enums;
 
 /// <summary>
-/// Classifies the type of media content hosted under a <c>LibraryRoot</c>.
+///     Classifies the type of media content hosted under a <c>LibraryRoot</c>.
 /// </summary>
 public enum LibraryRootKind
 {
@@ -14,4 +14,3 @@ public enum LibraryRootKind
     /// <summary>Root contains a mixture of movies and TV shows.</summary>
     Mixed
 }
-

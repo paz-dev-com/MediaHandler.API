@@ -1,9 +1,9 @@
 namespace MediaHandler.Application.Common.Models.Scanner;
 
 /// <summary>
-/// Result of <c>INfoParser.ParseAsync</c>.
-/// When <see cref="ParsedSuccessfully"/> is <c>false</c>, all optional fields are null
-/// and <see cref="Warning"/> explains the failure.
+///     Result of <c>INfoParser.ParseAsync</c>.
+///     When <see cref="ParsedSuccessfully" /> is <c>false</c>, all optional fields are null
+///     and <see cref="Warning" /> explains the failure.
 /// </summary>
 public record NfoParseResult(
     bool ParsedSuccessfully,
@@ -16,7 +16,8 @@ public record NfoParseResult(
     string? Warning = null)
 {
     /// <summary>Convenience factory: a malformed / unreadable NFO.</summary>
-    public static NfoParseResult Malformed(string warning) =>
-        new(false, null, null, null, null, null, null, warning);
+    public static NfoParseResult Malformed(string warning)
+    {
+        return new NfoParseResult(false, null, null, null, null, null, null, warning);
+    }
 }
-

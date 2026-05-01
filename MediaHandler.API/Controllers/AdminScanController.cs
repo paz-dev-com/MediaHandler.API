@@ -1,5 +1,3 @@
-#nullable enable
-
 using MediaHandler.API.Contracts.Admin;
 using MediaHandler.API.Models;
 using MediaHandler.Application.Common.DTOs;
@@ -16,8 +14,8 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace MediaHandler.API.Controllers;
 
 /// <summary>
-/// Admin endpoints for managing NAS scan runs.
-/// All endpoints require the <c>AdminOnly</c> policy.
+///     Admin endpoints for managing NAS scan runs.
+///     All endpoints require the <c>AdminOnly</c> policy.
 /// </summary>
 [ApiController]
 [Route("api/v1/admin/scan")]
@@ -26,9 +24,9 @@ namespace MediaHandler.API.Controllers;
 public class AdminScanController(ISender sender) : ControllerBase
 {
     /// <summary>
-    /// Start a new scan run. Returns 202 Accepted with the run summary.
-    /// The scan executes in the background; poll <c>GET /scan/{id}</c> for progress.
-    /// Returns 409 Conflict when another scan is already running.
+    ///     Start a new scan run. Returns 202 Accepted with the run summary.
+    ///     The scan executes in the background; poll <c>GET /scan/{id}</c> for progress.
+    ///     Returns 409 Conflict when another scan is already running.
     /// </summary>
     [HttpPost("")]
     [ProducesResponseType<ApiResponse<ScanRunSummaryResponse>>(StatusCodes.Status202Accepted)]
@@ -52,7 +50,7 @@ public class AdminScanController(ISender sender) : ControllerBase
         }
 
         // Re-read the newly created scan run to build the response
-        var detailResult = await sender.Send(new GetScanRunQuery(result.Value.ScanRunId, IncludeReview: false), ct);
+        var detailResult = await sender.Send(new GetScanRunQuery(result.Value.ScanRunId, false), ct);
         if (!detailResult.IsSuccess)
             return StatusCode(StatusCodes.Status202Accepted,
                 ApiResponse<ScanRunSummaryResponse>.Success(new ScanRunSummaryResponse(
@@ -65,7 +63,8 @@ public class AdminScanController(ISender sender) : ControllerBase
                     new ScanCountsDto(0, 0, 0, 0, 0, 0, 0))));
 
         var d = detailResult.Value;
-        var summary = new ScanRunSummaryResponse(d.Id, d.Mode, d.Status, d.StartedAt, d.FinishedAt, d.LibraryRootIds, d.Counts);
+        var summary = new ScanRunSummaryResponse(d.Id, d.Mode, d.Status, d.StartedAt, d.FinishedAt, d.LibraryRootIds,
+            d.Counts);
 
         return StatusCode(
             StatusCodes.Status202Accepted,
@@ -73,8 +72,8 @@ public class AdminScanController(ISender sender) : ControllerBase
     }
 
     /// <summary>
-    /// Fetch a single scan run by id.
-    /// When <c>includeReview=true</c>, attaches up to 100 of the most recent open review items.
+    ///     Fetch a single scan run by id.
+    ///     When <c>includeReview=true</c>, attaches up to 100 of the most recent open review items.
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType<ApiResponse<ScanRunDetailResponse>>(StatusCodes.Status200OK)]
@@ -101,7 +100,7 @@ public class AdminScanController(ISender sender) : ControllerBase
     }
 
     /// <summary>
-    /// Returns the currently running scan, or a 200 response with <c>null</c> data when no scan is active.
+    ///     Returns the currently running scan, or a 200 response with <c>null</c> data when no scan is active.
     /// </summary>
     [HttpGet("active")]
     [ProducesResponseType<ApiResponse<ScanRunSummaryResponse>>(StatusCodes.Status200OK)]
@@ -115,13 +114,14 @@ public class AdminScanController(ISender sender) : ControllerBase
             return Ok(ApiResponse<ScanRunSummaryResponse>.Success(null!));
 
         var d = result.Value;
-        var summary = new ScanRunSummaryResponse(d.Id, d.Mode, d.Status, d.StartedAt, d.FinishedAt, d.LibraryRootIds, d.Counts);
+        var summary = new ScanRunSummaryResponse(d.Id, d.Mode, d.Status, d.StartedAt, d.FinishedAt, d.LibraryRootIds,
+            d.Counts);
         return Ok(ApiResponse<ScanRunSummaryResponse>.Success(summary));
     }
 
     /// <summary>
-    /// Request cancellation of a running scan. Idempotent — cancelling an already-finished
-    /// scan returns 200 with the current terminal state.
+    ///     Request cancellation of a running scan. Idempotent — cancelling an already-finished
+    ///     scan returns 200 with the current terminal state.
     /// </summary>
     [HttpPost("{id:guid}/cancel")]
     [ProducesResponseType<ApiResponse<ScanRunSummaryResponse>>(StatusCodes.Status200OK)]
@@ -143,4 +143,3 @@ public class AdminScanController(ISender sender) : ControllerBase
         return Ok(ApiResponse<ScanRunSummaryResponse>.Success(summary));
     }
 }
-

@@ -1,5 +1,6 @@
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
+using MediaHandler.Domain.Entities;
 using MediaHandler.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -7,9 +8,9 @@ using Microsoft.Extensions.Logging;
 namespace MediaHandler.Infrastructure.Services;
 
 /// <summary>
-/// Infrastructure implementation of <see cref="IMediaImportService"/>.
-/// Checks for an existing <c>Media</c> record by <c>TmdbId</c> before fetching
-/// metadata from the TMDB API and persisting a new entity with its genres.
+///     Infrastructure implementation of <see cref="IMediaImportService" />.
+///     Checks for an existing <c>Media</c> record by <c>TmdbId</c> before fetching
+///     metadata from the TMDB API and persisting a new entity with its genres.
 /// </summary>
 public sealed class MediaImportService(
     IApplicationDbContext context,
@@ -17,7 +18,7 @@ public sealed class MediaImportService(
     ILogger<MediaImportService> logger)
     : IMediaImportService
 {
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<Result<Guid>> ImportOrGetExistingAsync(
         int tmdbId,
         string mediaType,
@@ -55,7 +56,7 @@ public sealed class MediaImportService(
             ? MediaType.TvShow
             : MediaType.Film;
 
-        var media = new Domain.Entities.Media
+        var media = new Media
         {
             TmdbId = details.Id,
             Title = details.Title,
@@ -70,7 +71,7 @@ public sealed class MediaImportService(
             VoteCount = details.VoteCount,
             Language = details.Language,
             Genres = details.Genres?
-                .Select(name => new Domain.Entities.MediaGenre { Name = name })
+                .Select(name => new MediaGenre { Name = name })
                 .ToList() ?? []
         };
 
@@ -84,4 +85,3 @@ public sealed class MediaImportService(
         return Result.Success(media.Id);
     }
 }
-

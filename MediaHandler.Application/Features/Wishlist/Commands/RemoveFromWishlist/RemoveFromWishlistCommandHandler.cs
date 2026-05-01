@@ -1,7 +1,6 @@
 using MediaHandler.Application.Common.Extensions;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
-using MediaHandler.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 

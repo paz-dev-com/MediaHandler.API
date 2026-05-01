@@ -3,13 +3,13 @@ using MediaHandler.Domain.Common;
 namespace MediaHandler.Domain.Entities;
 
 /// <summary>
-/// Snapshot of a parsed NFO sidecar file attached to a <see cref="Media"/> row.
-/// Captured for diagnostics and to enable the NFO-override precedence chain
-/// (<c>NfoTmdbId → ExplicitTokenId → Title+Year → Title</c>).
+///     Snapshot of a parsed NFO sidecar file attached to a <see cref="Media" /> row.
+///     Captured for diagnostics and to enable the NFO-override precedence chain
+///     (<c>NfoTmdbId → ExplicitTokenId → Title+Year → Title</c>).
 /// </summary>
 /// <remarks>
-/// A unique index on <see cref="SourcePath"/> prevents duplicate rows for the
-/// same <c>.nfo</c> file across incremental scans.
+///     A unique index on <see cref="SourcePath" /> prevents duplicate rows for the
+///     same <c>.nfo</c> file across incremental scans.
 /// </remarks>
 public class NfoMetadata : BaseEntity
 {
@@ -17,8 +17,8 @@ public class NfoMetadata : BaseEntity
     public required string SourcePath { get; set; }
 
     /// <summary>
-    /// Raw XML content of the NFO, truncated to 32 KB for diagnostics.
-    /// Not used for query filtering.
+    ///     Raw XML content of the NFO, truncated to 32 KB for diagnostics.
+    ///     Not used for query filtering.
     /// </summary>
     public required string RawContent { get; set; }
 
@@ -43,7 +43,6 @@ public class NfoMetadata : BaseEntity
     /// <summary><c>true</c> when the NFO file could not be parsed as valid XML.</summary>
     public bool ParseFailed { get; set; }
 
-    /// <summary>Parse error message; set when <see cref="ParseFailed"/> is <c>true</c>.</summary>
+    /// <summary>Parse error message; set when <see cref="ParseFailed" /> is <c>true</c>.</summary>
     public string? ParseError { get; set; }
 }
-

@@ -1,8 +1,4 @@
-#nullable enable
-
-using System.Text.Json;
 using FluentValidation;
-using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
 using MediaHandler.Application.Common.Models.Scanner;
@@ -44,7 +40,8 @@ public sealed class StartScanCommandHandler(
             .FirstOrDefaultAsync(r => r.Status == ScanStatus.Running, cancellationToken);
 
         if (activeScan is not null)
-            return Result.Fail<ScanRunHandle>("SCAN_IN_PROGRESS: A scan is already running. Wait for it to complete or cancel it.");
+            return Result.Fail<ScanRunHandle>(
+                "SCAN_IN_PROGRESS: A scan is already running. Wait for it to complete or cancel it.");
 
         // ── Resolve library roots ─────────────────────────────────────────────
         Guid[] rootIds;
@@ -95,4 +92,3 @@ public sealed class StartScanCommandHandler(
         }
     }
 }
-

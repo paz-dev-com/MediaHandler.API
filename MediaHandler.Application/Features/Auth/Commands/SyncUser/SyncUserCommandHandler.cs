@@ -9,7 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MediaHandler.Application.Features.Auth.Commands.SyncUser;
 
-public record SyncUserCommand(string OktaId, string Email, string? DisplayName, bool IsAdmin) : IRequest<Result<UserDto>>;
+public record SyncUserCommand(string OktaId, string Email, string? DisplayName, bool IsAdmin)
+    : IRequest<Result<UserDto>>;
 
 public class SyncUserCommandHandler(IApplicationDbContext context, IMapper mapper)
     : IRequestHandler<SyncUserCommand, Result<UserDto>>

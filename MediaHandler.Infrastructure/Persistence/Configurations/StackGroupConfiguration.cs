@@ -28,4 +28,3 @@ public class StackGroupConfiguration : IEntityTypeConfiguration<StackGroup>
             .OnDelete(DeleteBehavior.ClientSetNull);
     }
 }
-

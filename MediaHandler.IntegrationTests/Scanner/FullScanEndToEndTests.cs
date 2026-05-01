@@ -1,30 +1,28 @@
-#nullable enable
 // FullScanEndToEndTests — SC-001: ≥ 98 % classification accuracy
 // Integration test: fake INasService + Testcontainers SQL Server
 
+using System.Diagnostics;
 using FluentAssertions;
-using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models.Scanner;
-using NasFileInfo = MediaHandler.Application.Common.DTOs.NasFileInfo;
-using MediaHandler.Application.Features.Scan.Commands.StartScan;
-using MediaHandler.Application.Features.Scan.Queries.GetScanRun;
 using MediaHandler.Domain.Entities;
 using MediaHandler.Domain.Enums;
+using MediaHandler.Infrastructure.Nas;
 using MediaHandler.Infrastructure.Nas.Scanner;
+using MediaHandler.Infrastructure.Persistence;
 using MediaHandler.Infrastructure.Services;
 using MediaHandler.IntegrationTests.Common;
 using MediaHandler.IntegrationTests.Scanner.Fixtures;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NasFileInfo = MediaHandler.Application.Common.DTOs.NasFileInfo;
 using TmdbIdLookupResult = MediaHandler.Application.Common.Interfaces.TmdbIdLookupResult;
 
 namespace MediaHandler.IntegrationTests.Scanner;
 
 /// <summary>
-/// SC-001: ≥ 98 % correct classification of the benchmark fixture.
+///     SC-001: ≥ 98 % correct classification of the benchmark fixture.
 /// </summary>
 public class FullScanEndToEndTests : ScannerIntegrationTestBase
 {
@@ -34,7 +32,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
     {
         await base.InitializeAsync();
         _fixture = FixtureBuilder.LoadFromManifest();
-        WithFakeNasService(_fixture.ToNasFileInfos(), configuredPaths: ["/nas"]);
+        WithFakeNasService(_fixture.ToNasFileInfos(), ["/nas"]);
     }
 
     [Fact]
@@ -66,7 +64,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
             TestContext.Current.CancellationToken);
 
         // Wait for scan to complete (poll DB)
-        await WaitForScanCompletion(handle.ScanRunId, timeoutSeconds: 120);
+        await WaitForScanCompletion(handle.ScanRunId, 120);
 
         // Assert SC-001 metric
         var scanRun = await DbContext.ScanRuns
@@ -82,13 +80,13 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
             : 1.0;
 
         classificationRate.Should().BeGreaterThanOrEqualTo(0.98,
-            because: $"SC-001 requires ≥ 98% classification accuracy. Got {totalAdded}/{totalExpected} = {classificationRate:P1}");
+            $"SC-001 requires ≥ 98% classification accuracy. Got {totalAdded}/{totalExpected} = {classificationRate:P1}");
     }
 
     /// <summary>
-    /// SC-002: ≤ 0.5 % silent misclassification rate.
-    /// Every divergence from the fixture's expected (tmdbId, kind) MUST produce a ReviewItem
-    /// for the same path; a divergence without a ReviewItem is counted as "silent".
+    ///     SC-002: ≤ 0.5 % silent misclassification rate.
+    ///     Every divergence from the fixture's expected (tmdbId, kind) MUST produce a ReviewItem
+    ///     for the same path; a divergence without a ReviewItem is counted as "silent".
     /// </summary>
     [Fact]
     public async Task Sc002_SilentMisclassRate_AtMost0p5Percent()
@@ -125,7 +123,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
         fakeTmdb.GetTvShowByIdAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((TmdbIdLookupResult?)null);
 
-        var realMatcher = new MediaHandler.Infrastructure.Nas.Scanner.TmdbMatcher(fakeTmdb);
+        var realMatcher = new TmdbMatcher(fakeTmdb);
 
         var coordinator = BuildCoordinatorWithMatcher(moviesRoot, tvRoot, realMatcher);
         var scanRunId = Guid.NewGuid();
@@ -133,7 +131,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
             new ScanStartParameters(scanRunId, [moviesRoot.Id, tvRoot.Id], ScanMode.Full),
             TestContext.Current.CancellationToken);
 
-        await WaitForScanCompletion(handle.ScanRunId, timeoutSeconds: 120);
+        await WaitForScanCompletion(handle.ScanRunId, 120);
         var decisions = await DbContext.ScanItemDecisions
             .AsNoTracking()
             .Where(d => d.ScanRunId == handle.ScanRunId)
@@ -141,10 +139,10 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
 
         // Review items created by the scan
         var reviewPaths = (await DbContext.ReviewItems
-            .AsNoTracking()
-            .Where(r => r.FirstSeenScanRunId == handle.ScanRunId)
-            .Select(r => r.FilePath)
-            .ToListAsync(TestContext.Current.CancellationToken))
+                .AsNoTracking()
+                .Where(r => r.FirstSeenScanRunId == handle.ScanRunId)
+                .Select(r => r.FilePath)
+                .ToListAsync(TestContext.Current.CancellationToken))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Count NeedsReview decisions that have NO matching ReviewItem → "silent misclassification"
@@ -163,8 +161,8 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
             : 0.0;
 
         silentRate.Should().BeLessThanOrEqualTo(0.005,
-            because: $"SC-002 requires ≤ 0.5% silent misclassification. " +
-                     $"Got {silentCount} silent out of {totalClassified} = {silentRate:P2}");
+            $"SC-002 requires ≤ 0.5% silent misclassification. " +
+            $"Got {silentCount} silent out of {totalClassified} = {silentRate:P2}");
     }
 
     private async Task WaitForScanCompletion(Guid scanRunId, int timeoutSeconds)
@@ -175,7 +173,11 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
             var run = await DbContext.ScanRuns.AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Id == scanRunId, TestContext.Current.CancellationToken);
 
-            if (run is null) { await Task.Delay(500); continue; }
+            if (run is null)
+            {
+                await Task.Delay(500);
+                continue;
+            }
 
             if (run.Status is ScanStatus.Completed or ScanStatus.Failed or ScanStatus.Cancelled)
                 return;
@@ -188,8 +190,8 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
 
     private ScanRunCoordinator BuildCoordinator()
     {
-        var nasEnumerator = new MediaHandler.Infrastructure.Nas.NasFileEnumerator(
-            FakeNas!, Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaHandler.Infrastructure.Nas.NasFileEnumerator>.Instance);
+        var nasEnumerator = new NasFileEnumerator(
+            FakeNas!, NullLogger<NasFileEnumerator>.Instance);
 
         var parser = new KodiNameParser();
         var exclusionEvaluator = new ExclusionEvaluator();
@@ -200,12 +202,12 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
         tmdbMatcher.ResolveAsync(Arg.Any<MatchQuery>(), Arg.Any<CancellationToken>())
             .Returns(new TmdbMatchResult(false, null, null, false, null, []));
 
-        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScanRunCoordinator>.Instance;
-        var pipelineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScanPipeline>.Instance;
+        var logger = NullLogger<ScanRunCoordinator>.Instance;
+        var pipelineLogger = NullLogger<ScanPipeline>.Instance;
 
         // Give the coordinator its OWN DbContext so its background scan task never
         // shares a context instance with the test's polling queries.
-        var coordinatorDb = new MediaHandler.Infrastructure.Persistence.MediaHandlerDbContext(DbContextOptions);
+        var coordinatorDb = new MediaHandlerDbContext(DbContextOptions);
 
         var pipeline = new ScanPipeline(
             coordinatorDb,
@@ -217,7 +219,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
             tmdbMatcher,
             pipelineLogger);
 
-        return new ScanRunCoordinator(logger, pipeline, coordinatorDb);
+        return CreateScanRunCoordinator(pipeline, coordinatorDb);
     }
 
     private ScanRunCoordinator BuildCoordinatorWithMatcher(
@@ -225,18 +227,18 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
         LibraryRoot tvRoot,
         ITmdbMatcher tmdbMatcher)
     {
-        var nasEnumerator = new MediaHandler.Infrastructure.Nas.NasFileEnumerator(
-            FakeNas!, Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaHandler.Infrastructure.Nas.NasFileEnumerator>.Instance);
+        var nasEnumerator = new NasFileEnumerator(
+            FakeNas!, NullLogger<NasFileEnumerator>.Instance);
 
         var parser = new KodiNameParser();
         var exclusionEvaluator = new ExclusionEvaluator();
         var stackDetector = new StackingDetector();
         var episodeMatcher = new TvEpisodeMatcher();
 
-        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScanRunCoordinator>.Instance;
-        var pipelineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScanPipeline>.Instance;
+        var logger = NullLogger<ScanRunCoordinator>.Instance;
+        var pipelineLogger = NullLogger<ScanPipeline>.Instance;
 
-        var coordinatorDb = new MediaHandler.Infrastructure.Persistence.MediaHandlerDbContext(DbContextOptions);
+        var coordinatorDb = new MediaHandlerDbContext(DbContextOptions);
 
         var pipeline = new ScanPipeline(
             coordinatorDb,
@@ -248,7 +250,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
             tmdbMatcher,
             pipelineLogger);
 
-        return new ScanRunCoordinator(logger, pipeline, coordinatorDb);
+        return CreateScanRunCoordinator(pipeline, coordinatorDb);
     }
 
     // =========================================================================
@@ -256,10 +258,10 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
     // =========================================================================
 
     /// <summary>
-    /// SC-006: For every file in the benchmark fixture, the outcome must be locatable
-    /// via an O(1) indexed lookup — either a <c>ScanItemDecision</c> row, a <c>MediaFile</c>
-    /// row, or a <c>ReviewItem</c> — all within 30 seconds elapsed wall-clock time.
-    /// This validates FR-023: every path the pipeline touches has an audit trail.
+    ///     SC-006: For every file in the benchmark fixture, the outcome must be locatable
+    ///     via an O(1) indexed lookup — either a <c>ScanItemDecision</c> row, a <c>MediaFile</c>
+    ///     row, or a <c>ReviewItem</c> — all within 30 seconds elapsed wall-clock time.
+    ///     This validates FR-023: every path the pipeline touches has an audit trail.
     /// </summary>
     [Fact]
     public async Task Sc006_AnyFileDiagnosable_Under30Seconds()
@@ -288,33 +290,33 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
             new ScanStartParameters(Guid.NewGuid(), [moviesRoot.Id, tvRoot.Id], ScanMode.Full),
             TestContext.Current.CancellationToken);
 
-        await WaitForScanCompletion(handle.ScanRunId, timeoutSeconds: 120);
+        await WaitForScanCompletion(handle.ScanRunId, 120);
 
         // Build O(1) lookup structures — this is the diagnostic query the admin would run.
         // The 30-second budget covers loading all three sets plus iterating every fixture path.
-        var diagnosticStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var diagnosticStopwatch = Stopwatch.StartNew();
 
         // All paths that received a pipeline decision for this scan run
         var decidedPaths = (await DbContext.ScanItemDecisions
-            .AsNoTracking()
-            .Where(d => d.ScanRunId == handle.ScanRunId)
-            .Select(d => d.FilePath)
-            .ToListAsync(TestContext.Current.CancellationToken))
+                .AsNoTracking()
+                .Where(d => d.ScanRunId == handle.ScanRunId)
+                .Select(d => d.FilePath)
+                .ToListAsync(TestContext.Current.CancellationToken))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // All MediaFile paths persisted (any scan — covers incrementals)
         var mediaFilePaths = (await DbContext.MediaFiles
-            .AsNoTracking()
-            .Select(mf => mf.FilePath)
-            .ToListAsync(TestContext.Current.CancellationToken))
+                .AsNoTracking()
+                .Select(mf => mf.FilePath)
+                .ToListAsync(TestContext.Current.CancellationToken))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // All ReviewItem paths created by this scan run
         var reviewItemPaths = (await DbContext.ReviewItems
-            .AsNoTracking()
-            .Where(r => r.FirstSeenScanRunId == handle.ScanRunId)
-            .Select(r => r.FilePath)
-            .ToListAsync(TestContext.Current.CancellationToken))
+                .AsNoTracking()
+                .Where(r => r.FirstSeenScanRunId == handle.ScanRunId)
+                .Select(r => r.FilePath)
+                .ToListAsync(TestContext.Current.CancellationToken))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Check every non-directory fixture file — each must appear in at least one set.
@@ -326,42 +328,38 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
 
         var uncoveredPaths = new List<string>();
         foreach (var path in allFixturePaths)
-        {
             if (!decidedPaths.Contains(path)
                 && !mediaFilePaths.Contains(path)
                 && !reviewItemPaths.Contains(path))
-            {
                 uncoveredPaths.Add(path);
-            }
-        }
 
         diagnosticStopwatch.Stop();
 
         uncoveredPaths.Should().BeEmpty(
-            because: $"Every file path in the fixture must have at least one audit record " +
-                     $"(ScanItemDecision, MediaFile, or ReviewItem). " +
-                     $"Paths without coverage: {string.Join(", ", uncoveredPaths.Take(10))}");
+            $"Every file path in the fixture must have at least one audit record " +
+            $"(ScanItemDecision, MediaFile, or ReviewItem). " +
+            $"Paths without coverage: {string.Join(", ", uncoveredPaths.Take(10))}");
 
         diagnosticStopwatch.Elapsed.TotalSeconds.Should().BeLessThan(30,
-            because: "SC-006 requires any file's scan outcome to be diagnosable in under 30 seconds");
+            "SC-006 requires any file's scan outcome to be diagnosable in under 30 seconds");
     }
 
     private ScanRunCoordinator BuildCoordinatorWithNfoParser(
         ITmdbMatcher tmdbMatcher,
         INfoParser nfoParser)
     {
-        var nasEnumerator = new MediaHandler.Infrastructure.Nas.NasFileEnumerator(
-            FakeNas!, Microsoft.Extensions.Logging.Abstractions.NullLogger<MediaHandler.Infrastructure.Nas.NasFileEnumerator>.Instance);
+        var nasEnumerator = new NasFileEnumerator(
+            FakeNas!, NullLogger<NasFileEnumerator>.Instance);
 
         var parser = new KodiNameParser();
         var exclusionEvaluator = new ExclusionEvaluator();
         var stackDetector = new StackingDetector();
         var episodeMatcher = new TvEpisodeMatcher();
 
-        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScanRunCoordinator>.Instance;
-        var pipelineLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScanPipeline>.Instance;
+        var logger = NullLogger<ScanRunCoordinator>.Instance;
+        var pipelineLogger = NullLogger<ScanPipeline>.Instance;
 
-        var coordinatorDb = new MediaHandler.Infrastructure.Persistence.MediaHandlerDbContext(DbContextOptions);
+        var coordinatorDb = new MediaHandlerDbContext(DbContextOptions);
 
         var pipeline = new ScanPipeline(
             coordinatorDb,
@@ -374,7 +372,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
             pipelineLogger,
             nfoParser);
 
-        return new ScanRunCoordinator(logger, pipeline, coordinatorDb);
+        return CreateScanRunCoordinator(pipeline, coordinatorDb);
     }
 
     // =========================================================================
@@ -382,14 +380,12 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
     // =========================================================================
 
     /// <summary>
-    /// Acceptance scenario 1: movie file in a folder with movie.nfo containing a tmdbid
-    /// is mapped using the NFO's TMDB id rather than the filename parser's guess.
-    ///
-    /// Acceptance scenario 2: TV show folder with tvshow.nfo containing a tmdbid
-    /// is mapped using the NFO's TMDB id.
-    ///
-    /// Acceptance scenario 3: malformed NFO file causes a Serilog warning and graceful
-    /// fallback to filename-based detection; the overall scan does not abort.
+    ///     Acceptance scenario 1: movie file in a folder with movie.nfo containing a tmdbid
+    ///     is mapped using the NFO's TMDB id rather than the filename parser's guess.
+    ///     Acceptance scenario 2: TV show folder with tvshow.nfo containing a tmdbid
+    ///     is mapped using the NFO's TMDB id.
+    ///     Acceptance scenario 3: malformed NFO file causes a Serilog warning and graceful
+    ///     fallback to filename-based detection; the overall scan does not abort.
     /// </summary>
     [Fact]
     public async Task Sc_Nfo_OverridesFilenameGuess()
@@ -412,21 +408,21 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
 
         var nasEntries = new List<NasFileInfo>
         {
-            new(movieFolder, System.IO.Path.GetFileName(movieFolder), 0, null, DateTime.UtcNow, DateTime.UtcNow, IsDirectory: true),
-            new(movieFile,   "Some Misnamed Movie (2010).mkv", 1_073_741_824, "mkv", DateTime.UtcNow, DateTime.UtcNow),
-            new(movieNfo,    "movie.nfo", 512, "nfo", DateTime.UtcNow, DateTime.UtcNow),
+            new(movieFolder, Path.GetFileName(movieFolder), 0, null, DateTime.UtcNow, DateTime.UtcNow, true),
+            new(movieFile, "Some Misnamed Movie (2010).mkv", 1_073_741_824, "mkv", DateTime.UtcNow, DateTime.UtcNow),
+            new(movieNfo, "movie.nfo", 512, "nfo", DateTime.UtcNow, DateTime.UtcNow),
 
-            new(tvFolder,    System.IO.Path.GetFileName(tvFolder), 0, null, DateTime.UtcNow, DateTime.UtcNow, IsDirectory: true),
-            new(tvNfo,       "tvshow.nfo", 512, "nfo", DateTime.UtcNow, DateTime.UtcNow),
-            new(tvFolder + "/Season 1", "Season 1", 0, null, DateTime.UtcNow, DateTime.UtcNow, IsDirectory: true),
-            new(tvEpisode,   "S01E01.mkv", 1_073_741_824, "mkv", DateTime.UtcNow, DateTime.UtcNow),
+            new(tvFolder, Path.GetFileName(tvFolder), 0, null, DateTime.UtcNow, DateTime.UtcNow, true),
+            new(tvNfo, "tvshow.nfo", 512, "nfo", DateTime.UtcNow, DateTime.UtcNow),
+            new(tvFolder + "/Season 1", "Season 1", 0, null, DateTime.UtcNow, DateTime.UtcNow, true),
+            new(tvEpisode, "S01E01.mkv", 1_073_741_824, "mkv", DateTime.UtcNow, DateTime.UtcNow),
 
-            new(badNfoFolder, System.IO.Path.GetFileName(badNfoFolder), 0, null, DateTime.UtcNow, DateTime.UtcNow, IsDirectory: true),
-            new(badNfoFile,   "Interstellar (2014).mkv", 1_073_741_824, "mkv", DateTime.UtcNow, DateTime.UtcNow),
-            new(badNfo,       "movie.nfo", 50, "nfo", DateTime.UtcNow, DateTime.UtcNow),
+            new(badNfoFolder, Path.GetFileName(badNfoFolder), 0, null, DateTime.UtcNow, DateTime.UtcNow, true),
+            new(badNfoFile, "Interstellar (2014).mkv", 1_073_741_824, "mkv", DateTime.UtcNow, DateTime.UtcNow),
+            new(badNfo, "movie.nfo", 50, "nfo", DateTime.UtcNow, DateTime.UtcNow)
         };
 
-        WithFakeNasService(nasEntries, configuredPaths: ["/nas"]);
+        WithFakeNasService(nasEntries, ["/nas"]);
 
         // ── Register library roots ────────────────────────────────────────────
         var moviesRoot = new LibraryRoot { Path = "/nas/Movies", Kind = LibraryRootKind.Movies, IsEnabled = true };
@@ -442,19 +438,19 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
         fakeTmdb.ResolveAsync(
                 Arg.Is<MatchQuery>(q => q.NfoTmdbId == 27205),
                 Arg.Any<CancellationToken>())
-            .Returns(new TmdbMatchResult(true, 27205, MediaHandler.Domain.Enums.MediaType.Film, false, null, []));
+            .Returns(new TmdbMatchResult(true, 27205, MediaType.Film, false, null, []));
 
         // When NfoTmdbId=1396 is passed, return a successful TV show match
         fakeTmdb.ResolveAsync(
                 Arg.Is<MatchQuery>(q => q.NfoTmdbId == 1396),
                 Arg.Any<CancellationToken>())
-            .Returns(new TmdbMatchResult(true, 1396, MediaHandler.Domain.Enums.MediaType.TvShow, false, null, []));
+            .Returns(new TmdbMatchResult(true, 1396, MediaType.TvShow, false, null, []));
 
         // Default: resolve Interstellar by title (filename fallback) — return matched too
         fakeTmdb.ResolveAsync(
                 Arg.Is<MatchQuery>(q => q.NfoTmdbId == null),
                 Arg.Any<CancellationToken>())
-            .Returns(new TmdbMatchResult(true, 99999, MediaHandler.Domain.Enums.MediaType.Film, false, null, []));
+            .Returns(new TmdbMatchResult(true, 99999, MediaType.Film, false, null, []));
 
         // ── Build fake INfoParser ─────────────────────────────────────────────
         // Returns predefined results by path (no actual files on disk needed).
@@ -462,29 +458,29 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
 
         // movie.nfo for the Inception folder → well-formed, tmdbid=27205
         fakeNfoParser.ParseAsync(movieNfo, Arg.Any<CancellationToken>())
-            .Returns(new MediaHandler.Application.Common.Models.Scanner.NfoParseResult(
-                ParsedSuccessfully: true,
-                Title: "Inception",
-                Year: 2010,
-                TmdbId: 27205,
-                ImdbId: null,
-                Season: null,
-                Episode: null));
+            .Returns(new NfoParseResult(
+                true,
+                "Inception",
+                2010,
+                27205,
+                null,
+                null,
+                null));
 
         // tvshow.nfo → well-formed, tmdbid=1396
         fakeNfoParser.ParseAsync(tvNfo, Arg.Any<CancellationToken>())
-            .Returns(new MediaHandler.Application.Common.Models.Scanner.NfoParseResult(
-                ParsedSuccessfully: true,
-                Title: "Breaking Bad",
-                Year: 2008,
-                TmdbId: 1396,
-                ImdbId: null,
-                Season: null,
-                Episode: null));
+            .Returns(new NfoParseResult(
+                true,
+                "Breaking Bad",
+                2008,
+                1396,
+                null,
+                null,
+                null));
 
         // badNfo → malformed XML
         fakeNfoParser.ParseAsync(badNfo, Arg.Any<CancellationToken>())
-            .Returns(MediaHandler.Application.Common.Models.Scanner.NfoParseResult.Malformed("Invalid XML"));
+            .Returns(NfoParseResult.Malformed("Invalid XML"));
 
         // ── Execute the scan ──────────────────────────────────────────────────
         var coordinator = BuildCoordinatorWithNfoParser(fakeTmdb, fakeNfoParser);
@@ -492,7 +488,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
             new ScanStartParameters(Guid.NewGuid(), [moviesRoot.Id, tvRoot.Id], ScanMode.Full),
             TestContext.Current.CancellationToken);
 
-        await WaitForScanCompletion(handle.ScanRunId, timeoutSeconds: 120);
+        await WaitForScanCompletion(handle.ScanRunId, 120);
 
         // ── Acceptance scenario 1: NFO TMDB id was used for movie match ───────
         await fakeNfoParser.Received().ParseAsync(movieNfo, Arg.Any<CancellationToken>());

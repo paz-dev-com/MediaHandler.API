@@ -1,4 +1,3 @@
-#nullable enable
 // ScanPipeline — orchestrates the full scanner pipeline:
 // enumerate → exclude → group(stacks) → parse → NFO-lookup → classify → TMDB-match → fingerprint → persist.
 // Files that cannot be unambiguously matched to TMDB become ReviewItems rather than silent mis-mappings.
@@ -19,8 +18,8 @@ using Microsoft.Extensions.Logging;
 namespace MediaHandler.Infrastructure.Nas.Scanner;
 
 /// <summary>
-/// Executes the full scanner pipeline for a single <see cref="ScanRun"/>.
-/// Pipeline stages: enumerate → exclude → group(stacks) → parse → NFO lookup → classify → fingerprint → persist.
+///     Executes the full scanner pipeline for a single <see cref="ScanRun" />.
+///     Pipeline stages: enumerate → exclude → group(stacks) → parse → NFO lookup → classify → fingerprint → persist.
 /// </summary>
 public sealed class ScanPipeline(
     IApplicationDbContext db,
@@ -99,10 +98,10 @@ public sealed class ScanPipeline(
     // =========================================================================
 
     /// <summary>
-    /// Processes one library root through the full pipeline.
-    /// Returns <c>true</c> when the root was enumerated successfully, <c>false</c> when
-    /// the NAS was unreachable (partial failure — a "NAS unreachable" decision is written
-    /// but removed-file detection for this root is suppressed by the caller).
+    ///     Processes one library root through the full pipeline.
+    ///     Returns <c>true</c> when the root was enumerated successfully, <c>false</c> when
+    ///     the NAS was unreachable (partial failure — a "NAS unreachable" decision is written
+    ///     but removed-file detection for this root is suppressed by the caller).
     /// </summary>
     private async Task<bool> ProcessRootAsync(
         ScanRun scanRun,
@@ -123,7 +122,9 @@ public sealed class ScanPipeline(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "NAS enumeration failed for root {RootId} ({Path}). Skipping removed-file detection for this root.", root.Id, root.Path);
+            logger.LogError(ex,
+                "NAS enumeration failed for root {RootId} ({Path}). Skipping removed-file detection for this root.",
+                root.Id, root.Path);
             // NAS unreachable: write a single diagnostic decision so the admin can see the failure.
             // Returning false signals to the caller that removed-file detection must be skipped
             // for this root to avoid falsely marking its files as removed.
@@ -142,7 +143,7 @@ public sealed class ScanPipeline(
         // Build .nomedia folder set
         var nomediaFolders = allEntries
             .Where(e => string.Equals(e.FileName, ".nomedia", StringComparison.OrdinalIgnoreCase))
-            .Select(e => System.IO.Path.GetDirectoryName(e.AbsolutePath) ?? string.Empty)
+            .Select(e => Path.GetDirectoryName(e.AbsolutePath) ?? string.Empty)
             .Where(d => !string.IsNullOrEmpty(d))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -157,7 +158,7 @@ public sealed class ScanPipeline(
         var nfoEntriesByPath = nfoParser is not null
             ? allEntries
                 .Where(e => !e.IsDirectory
-                    && string.Equals(e.Extension, "nfo", StringComparison.OrdinalIgnoreCase))
+                            && string.Equals(e.Extension, "nfo", StringComparison.OrdinalIgnoreCase))
                 .ToDictionary(e => e.AbsolutePath, StringComparer.OrdinalIgnoreCase)
             : [];
 
@@ -187,8 +188,10 @@ public sealed class ScanPipeline(
                         "Scan decision: {ScanRunId} | {FilePath} | Kind={Kind} | Reason={Reason} | RuleId={RuleId}",
                         scanRun.Id, entry.AbsolutePath, ScanDecisionKind.Excluded, verdict.Reason, verdict.RuleId);
                 }
+
                 continue;
             }
+
             videoFiles.Add(entry);
         }
 
@@ -204,10 +207,10 @@ public sealed class ScanPipeline(
 
         // Pre-load existing open ReviewItems to avoid per-file duplicate checks
         var existingOpenReviewPaths = (await db.ReviewItems
-            .Where(r => r.Status == ReviewStatus.Open
-                        && videoPathsList.Contains(r.FilePath))
-            .Select(r => r.FilePath)
-            .ToListAsync(ct))
+                .Where(r => r.Status == ReviewStatus.Open
+                            && videoPathsList.Contains(r.FilePath))
+                .Select(r => r.FilePath)
+                .ToListAsync(ct))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Pre-load existing MediaFiles for this root by LibraryRootId (indexed) — much faster than IN clause
@@ -218,7 +221,7 @@ public sealed class ScanPipeline(
         // ── Group by folder for stacking detection ──────────────────────────
         logger.LogDebug("Stage transition: stacking detection for root {RootId}", root.Id);
         var byFolder = videoFiles
-            .GroupBy(f => System.IO.Path.GetDirectoryName(f.AbsolutePath) ?? string.Empty);
+            .GroupBy(f => Path.GetDirectoryName(f.AbsolutePath) ?? string.Empty);
 
         var stackedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var allStacks = new List<StackGroupCandidate>();
@@ -254,7 +257,8 @@ public sealed class ScanPipeline(
 
             var stack = allStacks.FirstOrDefault(s => s.Parts.Any(p => p.AbsolutePath == file.AbsolutePath));
             var isStackedPart = stackedPaths.Contains(file.AbsolutePath);
-            var partIndex = stack is null ? 0
+            var partIndex = stack is null
+                ? 0
                 : stack.Parts.TakeWhile(p => p.AbsolutePath != file.AbsolutePath).Count();
             var role = isStackedPart && partIndex > 0
                 ? MediaFileRole.StackedPart
@@ -272,7 +276,8 @@ public sealed class ScanPipeline(
         await db.SaveChangesAsync(ct);
         logger.LogInformation(
             "Root processing complete: {ScanRunId} | Root={RootId} | Added={Added} | Updated={Updated} | Unchanged={Unchanged} | Excluded={Excluded} | NeedsReview={NeedsReview}",
-            scanRun.Id, root.Id, counters.Added, counters.Updated, counters.Unchanged, counters.Excluded, counters.NeedsReview);
+            scanRun.Id, root.Id, counters.Added, counters.Updated, counters.Unchanged, counters.Excluded,
+            counters.NeedsReview);
 
         return true;
     }
@@ -301,6 +306,7 @@ public sealed class ScanPipeline(
             logger.LogDebug("Skipping duplicate path in batch: {FilePath}", file.AbsolutePath);
             return;
         }
+
         var fingerprint = ComputeFingerprint(file.AbsolutePath, file.SizeBytes, file.MtimeUtc);
 
         // Check for existing MediaFile by path (incremental idempotency) — use pre-loaded batch
@@ -368,18 +374,18 @@ public sealed class ScanPipeline(
 
         if (nfoParser is not null)
         {
-            var folder = System.IO.Path.GetDirectoryName(file.AbsolutePath) ?? string.Empty;
-            var baseName = System.IO.Path.GetFileNameWithoutExtension(file.FileName);
+            var folder = Path.GetDirectoryName(file.AbsolutePath) ?? string.Empty;
+            var baseName = Path.GetFileNameWithoutExtension(file.FileName);
 
             // Per-file NFO has highest priority
-            var perFileNfoPath = System.IO.Path.Combine(folder, baseName + ".nfo");
+            var perFileNfoPath = Path.Combine(folder, baseName + ".nfo");
             if (nfoEntriesByPath.ContainsKey(perFileNfoPath))
                 nfoPath = perFileNfoPath;
 
             // Per-folder fallbacks: movie.nfo in the same folder
             if (nfoPath is null)
             {
-                var movieNfoPath = System.IO.Path.Combine(folder, "movie.nfo");
+                var movieNfoPath = Path.Combine(folder, "movie.nfo");
                 if (nfoEntriesByPath.ContainsKey(movieNfoPath))
                     nfoPath = movieNfoPath;
             }
@@ -388,7 +394,7 @@ public sealed class ScanPipeline(
             // SOURCE: Kodi wiki — tvshow.nfo lives at the show root, not inside each season folder.
             if (nfoPath is null)
             {
-                var tvShowNfoPath = System.IO.Path.Combine(folder, "tvshow.nfo");
+                var tvShowNfoPath = Path.Combine(folder, "tvshow.nfo");
                 if (nfoEntriesByPath.ContainsKey(tvShowNfoPath))
                 {
                     nfoPath = tvShowNfoPath;
@@ -397,10 +403,10 @@ public sealed class ScanPipeline(
                 {
                     // Walk up one level to find tvshow.nfo at the show root
                     // (episode files typically live in Season X subdirectories)
-                    var parentFolder = System.IO.Path.GetDirectoryName(folder);
+                    var parentFolder = Path.GetDirectoryName(folder);
                     if (parentFolder is not null)
                     {
-                        var parentTvShowNfoPath = System.IO.Path.Combine(parentFolder, "tvshow.nfo");
+                        var parentTvShowNfoPath = Path.Combine(parentFolder, "tvshow.nfo");
                         if (nfoEntriesByPath.ContainsKey(parentTvShowNfoPath))
                             nfoPath = parentTvShowNfoPath;
                     }
@@ -409,7 +415,6 @@ public sealed class ScanPipeline(
 
             // Parse the NFO if one was found
             if (nfoPath is not null)
-            {
                 try
                 {
                     nfoResult = await nfoParser.ParseAsync(nfoPath, ct);
@@ -430,13 +435,15 @@ public sealed class ScanPipeline(
                             nfoPath, file.AbsolutePath, nfoResult.Warning);
                     }
                 }
-                catch (OperationCanceledException) { throw; }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     logger.LogWarning(ex, "Unexpected error parsing NFO sidecar at '{NfoPath}'", nfoPath);
                     nfoResult = NfoParseResult.Malformed(ex.Message);
                 }
-            }
         }
 
         // ── TMDB resolution stage ─────────────────────────────────────────────
@@ -466,9 +473,9 @@ public sealed class ScanPipeline(
             // Determine the effective review reason:
             // If the NFO was malformed AND the TMDB lookup also failed, surface NfoMalformed reason.
             // Otherwise use the standard TMDB review reason.
-            var effectiveReason = (nfoResult is { ParsedSuccessfully: false })
+            var effectiveReason = nfoResult is { ParsedSuccessfully: false }
                 ? ReviewReason.NfoMalformed
-                : (tmdbResult.ReviewReason ?? ReviewReason.NoTmdbResult);
+                : tmdbResult.ReviewReason ?? ReviewReason.NoTmdbResult;
 
             await CreateReviewItemAsync(
                 scanRun, file, tmdbResult, matchQuery, episodeNumbers, counters,
@@ -480,7 +487,6 @@ public sealed class ScanPipeline(
         // If the NFO was malformed but the filename fallback matched, emit a warning decision row
         // (NfoMalformed reason) alongside the standard Added decision so the report is transparent.
         if (nfoResult is { ParsedSuccessfully: false })
-        {
             await db.ScanItemDecisions.AddAsync(new ScanItemDecision
             {
                 ScanRunId = scanRun.Id,
@@ -488,7 +494,6 @@ public sealed class ScanPipeline(
                 Kind = ScanDecisionKind.Added,
                 Reason = ReviewReason.NfoMalformed.ToString()
             }, ct);
-        }
 
         inFlightPaths.Add(file.AbsolutePath);
         await PersistNewMediaFileAsync(scanRun, root, file, role, fingerprint, counters, ct);
@@ -665,7 +670,7 @@ public sealed class ScanPipeline(
         // NFO TmdbId feeds the highest-precedence slot in the resolution chain:
         //   NfoTmdbId → ExplicitTokenId → Title+Year → Title
         // Only use TmdbId from well-formed NFO results.
-        int? nfoTmdbId = (nfoResult?.ParsedSuccessfully == true) ? nfoResult.TmdbId : null;
+        var nfoTmdbId = nfoResult?.ParsedSuccessfully == true ? nfoResult.TmdbId : null;
 
         // Parse the title and year from the filename using the Kodi name parser
         var kindHint = role == MediaFileRole.Episode || root.Kind == LibraryRootKind.TvShows
@@ -679,18 +684,18 @@ public sealed class ScanPipeline(
             // NFO fields override filename-parsed fields when the NFO is well-formed
             var title = nfoResult?.ParsedSuccessfully == true && nfoResult.Title is not null
                 ? nfoResult.Title
-                : (movieResult.Title ?? System.IO.Path.GetFileNameWithoutExtension(file.FileName));
+                : movieResult.Title ?? Path.GetFileNameWithoutExtension(file.FileName);
 
             var year = nfoResult?.ParsedSuccessfully == true && nfoResult.Year is not null
                 ? nfoResult.Year
                 : movieResult.Year;
 
             return new MatchQuery(
-                Title: title,
-                Year: year,
-                KindHint: MediaType.Film,
-                NfoTmdbId: nfoTmdbId,
-                ExplicitTokenId: explicitTokenId);
+                title,
+                year,
+                MediaType.Film,
+                nfoTmdbId,
+                explicitTokenId);
         }
         else
         {
@@ -698,14 +703,14 @@ public sealed class ScanPipeline(
 
             var title = nfoResult?.ParsedSuccessfully == true && nfoResult.Title is not null
                 ? nfoResult.Title
-                : (episodeResult.Title ?? System.IO.Path.GetFileNameWithoutExtension(file.FileName));
+                : episodeResult.Title ?? Path.GetFileNameWithoutExtension(file.FileName);
 
             return new MatchQuery(
-                Title: title,
-                Year: null,
-                KindHint: MediaType.TvShow,
-                NfoTmdbId: nfoTmdbId,
-                ExplicitTokenId: explicitTokenId);
+                title,
+                null,
+                MediaType.TvShow,
+                nfoTmdbId,
+                explicitTokenId);
         }
     }
 
@@ -777,12 +782,13 @@ public sealed class ScanPipeline(
             {
                 var seasonStr = m.Groups[1].Value.Length > 0 ? m.Groups[1].Value : m.Groups[2].Value;
                 if (int.TryParse(seasonStr, out var seasonNum))
-                    return new EpisodeNumberingHint(SeasonFromFolder: seasonNum);
+                    return new EpisodeNumberingHint(seasonNum);
             }
 
             if (KodiRegexCatalog.SpecialsFolderName.IsMatch(segment))
-                return new EpisodeNumberingHint(SeasonFromFolder: 0);
+                return new EpisodeNumberingHint(0);
         }
+
         return new EpisodeNumberingHint();
     }
 
@@ -795,7 +801,10 @@ public sealed class ScanPipeline(
             await writer.WriteAsync(
                 new ScanProgressDto(scanRunId, phase, processed, total, lastPath, null), ct);
         }
-        catch (ChannelClosedException) { /* subscriber gone */ }
+        catch (ChannelClosedException)
+        {
+            /* subscriber gone */
+        }
     }
 
     // =========================================================================
@@ -804,13 +813,12 @@ public sealed class ScanPipeline(
 
     private sealed class ScanCounters
     {
-        public int TotalDiscovered;
         public int Added;
-        public int Updated;
-        public int Unchanged;
-        public int Removed;
         public int Excluded;
         public int NeedsReview;
+        public int Removed;
+        public int TotalDiscovered;
+        public int Unchanged;
+        public int Updated;
     }
 }
-

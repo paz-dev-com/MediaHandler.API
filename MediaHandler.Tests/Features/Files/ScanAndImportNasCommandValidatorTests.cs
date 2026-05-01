@@ -10,7 +10,7 @@ public class ScanAndImportNasCommandValidatorTests
     [Fact]
     public void Validate_ValidCommand_Passes()
     {
-        var command = new ScanAndImportNasCommand(BasePath: "/Movies", Language: "en");
+        var command = new ScanAndImportNasCommand("/Movies", "en");
 
         var result = _validator.Validate(command);
 
@@ -51,7 +51,7 @@ public class ScanAndImportNasCommandValidatorTests
     [Fact]
     public void Validate_BasePathTooLong_Fails()
     {
-        var command = new ScanAndImportNasCommand(BasePath: new string('x', 1001));
+        var command = new ScanAndImportNasCommand(new string('x', 1001));
 
         var result = _validator.Validate(command);
 
@@ -62,11 +62,10 @@ public class ScanAndImportNasCommandValidatorTests
     [Fact]
     public void Validate_BasePathAtMaxLength_Passes()
     {
-        var command = new ScanAndImportNasCommand(BasePath: new string('x', 1000));
+        var command = new ScanAndImportNasCommand(new string('x', 1000));
 
         var result = _validator.Validate(command);
 
         result.IsValid.Should().BeTrue();
     }
 }
-

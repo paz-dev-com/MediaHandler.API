@@ -1,20 +1,16 @@
-#nullable enable
-
 using MediaHandler.Application.Common.DTOs;
 
 namespace MediaHandler.IntegrationTests.Scanner.Fixtures;
 
 /// <summary>
-/// Builds the benchmark NAS fixture used by SC-001..SC-007 integration tests.
-///
-/// The fixture data is generated programmatically to ensure consistent classification
-/// accuracy. Naming follows Kodi file naming conventions documented at
-/// https://kodi.wiki/view/Naming_video_files so the scanner's regex pipeline can
-/// achieve the required ≥ 98 % correct classification rate (SC-001).
-///
-/// The companion <c>benchmark.yaml</c> in the same folder describes the schema and serves
-/// as declarative documentation; this class acts as the authoritative in-memory source
-/// during test execution.
+///     Builds the benchmark NAS fixture used by SC-001..SC-007 integration tests.
+///     The fixture data is generated programmatically to ensure consistent classification
+///     accuracy. Naming follows Kodi file naming conventions documented at
+///     https://kodi.wiki/view/Naming_video_files so the scanner's regex pipeline can
+///     achieve the required ≥ 98 % correct classification rate (SC-001).
+///     The companion <c>benchmark.yaml</c> in the same folder describes the schema and serves
+///     as declarative documentation; this class acts as the authoritative in-memory source
+///     during test execution.
 /// </summary>
 public sealed class FixtureBuilder
 {
@@ -25,21 +21,22 @@ public sealed class FixtureBuilder
     private readonly List<NasFileInfo> _entries = [];
 
     // Ground-truth expected counts used by SC-001 accuracy assertion
-    private int _expectedMediaItems;
 
-    public int TotalExpectedMediaItems => _expectedMediaItems;
+    private FixtureBuilder()
+    {
+    }
 
-    private FixtureBuilder() { }
+    public int TotalExpectedMediaItems { get; private set; }
 
     // =========================================================================
     // Static factory
     // =========================================================================
 
     /// <summary>
-    /// Build the full benchmark fixture programmatically.
-    /// Meets all minimums required by <c>benchmark.schema.md</c>:
-    /// ≥ 200 movies (≥ 160 per-folder, ≥ 20 flat, ≥ 5 stacked),
-    /// ≥ 50 TV shows, exclusion baits, review baits.
+    ///     Build the full benchmark fixture programmatically.
+    ///     Meets all minimums required by <c>benchmark.schema.md</c>:
+    ///     ≥ 200 movies (≥ 160 per-folder, ≥ 20 flat, ≥ 5 stacked),
+    ///     ≥ 50 TV shows, exclusion baits, review baits.
     /// </summary>
     public static FixtureBuilder LoadFromManifest()
     {
@@ -55,8 +52,11 @@ public sealed class FixtureBuilder
     // Public API consumed by integration tests
     // =========================================================================
 
-    /// <summary>Returns all <see cref="NasFileInfo"/> entries for the fake INasService.</summary>
-    public IEnumerable<NasFileInfo> ToNasFileInfos() => _entries.AsReadOnly();
+    /// <summary>Returns all <see cref="NasFileInfo" /> entries for the fake INasService.</summary>
+    public IEnumerable<NasFileInfo> ToNasFileInfos()
+    {
+        return _entries.AsReadOnly();
+    }
 
     // =========================================================================
     // Movie fixture generation
@@ -133,13 +133,10 @@ public sealed class FixtureBuilder
             ("Tangled", 2010), ("Wreck-It Ralph", 2012), ("Ralph Breaks the Internet", 2018),
             ("Big Hero 6", 2014), ("Bolt", 2008), ("Encanto", 2021),
             ("The Princess and the Frog", 2009), ("Winnie the Pooh", 2011),
-            ("A Goofy Movie", 1995), ("Doug's 1st Movie", 1999),
+            ("A Goofy Movie", 1995), ("Doug's 1st Movie", 1999)
         };
 
-        foreach (var (title, year) in perFolderMovies)
-        {
-            AddPerFolderMovie(title, year);
-        }
+        foreach (var (title, year) in perFolderMovies) AddPerFolderMovie(title, year);
 
         // ── NFO sidecars (5 movies with NFO files) ──────────────────────────
         // SOURCE: Kodi wiki — NFO files override filename/folder-based detection
@@ -173,13 +170,10 @@ public sealed class FixtureBuilder
             ("Zootopia.2016.BluRay.mkv", "Zootopia", 2016),
             ("Frozen.2013.BluRay.mkv", "Frozen", 2013),
             ("Tangled.2010.BluRay.mkv", "Tangled", 2010),
-            ("Big.Hero.6.2014.BluRay.mkv", "Big Hero 6", 2014),
+            ("Big.Hero.6.2014.BluRay.mkv", "Big Hero 6", 2014)
         };
 
-        foreach (var (filename, _, _) in flatMovies)
-        {
-            AddFlatMovie(filename);
-        }
+        foreach (var (filename, _, _) in flatMovies) AddFlatMovie(filename);
 
         // ── Stacked movies (5 pairs) ─────────────────────────────────────────
         // SOURCE: Kodi wiki — stacking suffixes cd1/cd2/disc1/disc2/part1/part2
@@ -196,9 +190,10 @@ public sealed class FixtureBuilder
         var folder = $"/nas/Movies/{title} ({year})";
         var safeName = title.Replace("'", "").Replace(":", "");
         var filename = $"{safeName} ({year}).mkv";
-        _entries.Add(new NasFileInfo($"{folder}/{filename}", filename, DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
-        _entries.Add(new NasFileInfo(folder, title, 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
-        _expectedMediaItems++;
+        _entries.Add(new NasFileInfo($"{folder}/{filename}", filename, DefaultSizeBytes, "MKV", DefaultMtime,
+            DefaultMtime));
+        _entries.Add(new NasFileInfo(folder, title, 0, null, DefaultMtime, DefaultMtime, true));
+        TotalExpectedMediaItems++;
     }
 
     private void AddPerFolderMovieWithNfo(string title, int year, int tmdbId)
@@ -206,32 +201,36 @@ public sealed class FixtureBuilder
         var folder = $"/nas/Movies/{title} ({year})";
         var safeName = title.Replace("'", "").Replace(":", "");
         var filename = $"{safeName} ({year}).mkv";
-        _entries.Add(new NasFileInfo(folder, title, 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
-        _entries.Add(new NasFileInfo($"{folder}/{filename}", filename, DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
+        _entries.Add(new NasFileInfo(folder, title, 0, null, DefaultMtime, DefaultMtime, true));
+        _entries.Add(new NasFileInfo($"{folder}/{filename}", filename, DefaultSizeBytes, "MKV", DefaultMtime,
+            DefaultMtime));
         // NFO sidecar
         var nfoName = "movie.nfo";
-        var nfoContent = $"<?xml version=\"1.0\"?><movie><tmdbid>{tmdbId}</tmdbid><title>{title}</title><year>{year}</year></movie>";
-        _entries.Add(new NasFileInfo($"{folder}/{nfoName}", nfoName, nfoContent.Length, "NFO", DefaultMtime, DefaultMtime));
-        _expectedMediaItems++;
+        var nfoContent =
+            $"<?xml version=\"1.0\"?><movie><tmdbid>{tmdbId}</tmdbid><title>{title}</title><year>{year}</year></movie>";
+        _entries.Add(new NasFileInfo($"{folder}/{nfoName}", nfoName, nfoContent.Length, "NFO", DefaultMtime,
+            DefaultMtime));
+        TotalExpectedMediaItems++;
     }
 
     private void AddFlatMovie(string filename)
     {
-        _entries.Add(new NasFileInfo($"/nas/Movies/{filename}", filename, DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
-        _expectedMediaItems++;
+        _entries.Add(new NasFileInfo($"/nas/Movies/{filename}", filename, DefaultSizeBytes, "MKV", DefaultMtime,
+            DefaultMtime));
+        TotalExpectedMediaItems++;
     }
 
     private void AddStackedMovie(string baseTitle, int year, string suffix)
     {
         var folder = $"/nas/Movies/{baseTitle} ({year})";
-        _entries.Add(new NasFileInfo(folder, baseTitle, 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+        _entries.Add(new NasFileInfo(folder, baseTitle, 0, null, DefaultMtime, DefaultMtime, true));
         var safe = baseTitle.Replace("'", "").Replace(":", "").Replace(" ", ".");
         var f1 = $"{safe}.{year}.{suffix}1.mkv";
         var f2 = $"{safe}.{year}.{suffix}2.mkv";
         _entries.Add(new NasFileInfo($"{folder}/{f1}", f1, DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
         _entries.Add(new NasFileInfo($"{folder}/{f2}", f2, DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
         // Stacked movie counts as one media item
-        _expectedMediaItems++;
+        TotalExpectedMediaItems++;
     }
 
     // =========================================================================
@@ -260,21 +259,18 @@ public sealed class FixtureBuilder
             ("Severance", 2, 5), ("The Bear", 3, 5), ("Abbott Elementary", 3, 5),
             ("Only Murders in the Building", 3, 5), ("Poker Face", 1, 5),
             ("Midnight Mass", 1, 6), ("The Haunting of Hill House", 1, 8),
-            ("Peaky Blinders", 6, 5), ("Mindhunter", 2, 5), ("Narcos", 3, 6),
+            ("Peaky Blinders", 6, 5), ("Mindhunter", 2, 5), ("Narcos", 3, 6)
         };
 
-        foreach (var (show, seasons, episodes) in standardShows)
-        {
-            AddStandardShow(show, seasons, episodes);
-        }
+        foreach (var (show, seasons, episodes) in standardShows) AddStandardShow(show, seasons, episodes);
 
         // Shows with Specials folder (5 shows)
         // SOURCE: Kodi wiki — Season 00 or "Specials" folder for special episodes
-        AddShowWithSpecials("Doctor Who", seasons: 2, episodesPerSeason: 4);
-        AddShowWithSpecials("Sherlock", seasons: 4, episodesPerSeason: 3);
-        AddShowWithSpecials("Black Mirror", seasons: 3, episodesPerSeason: 4);
-        AddShowWithSpecials("Fargo", seasons: 4, episodesPerSeason: 5);
-        AddShowWithSpecials("True Detective", seasons: 4, episodesPerSeason: 4);
+        AddShowWithSpecials("Doctor Who", 2, 4);
+        AddShowWithSpecials("Sherlock", 4, 3);
+        AddShowWithSpecials("Black Mirror", 3, 4);
+        AddShowWithSpecials("Fargo", 4, 5);
+        AddShowWithSpecials("True Detective", 4, 4);
 
         // Shows with multi-episode files (5 shows)
         // SOURCE: Kodi wiki — SxxExx-Eyy or SxxExxEyy for multi-episode files
@@ -297,19 +293,20 @@ public sealed class FixtureBuilder
     private void AddStandardShow(string show, int seasons, int episodesPerSeason)
     {
         var showFolder = $"/nas/TV Shows/{show}";
-        _entries.Add(new NasFileInfo(showFolder, show, 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+        _entries.Add(new NasFileInfo(showFolder, show, 0, null, DefaultMtime, DefaultMtime, true));
 
         for (var s = 1; s <= seasons; s++)
         {
             var seasonFolder = $"{showFolder}/Season {s:D2}";
-            _entries.Add(new NasFileInfo(seasonFolder, $"Season {s:D2}", 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+            _entries.Add(new NasFileInfo(seasonFolder, $"Season {s:D2}", 0, null, DefaultMtime, DefaultMtime, true));
 
             for (var e = 1; e <= episodesPerSeason; e++)
             {
                 var safe = show.Replace("'", "").Replace(":", "").Replace(" ", ".");
                 var filename = $"{safe}.S{s:D2}E{e:D2}.mkv";
-                _entries.Add(new NasFileInfo($"{seasonFolder}/{filename}", filename, DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
-                _expectedMediaItems++;
+                _entries.Add(new NasFileInfo($"{seasonFolder}/{filename}", filename, DefaultSizeBytes, "MKV",
+                    DefaultMtime, DefaultMtime));
+                TotalExpectedMediaItems++;
             }
         }
     }
@@ -317,27 +314,29 @@ public sealed class FixtureBuilder
     private void AddShowWithSpecials(string show, int seasons, int episodesPerSeason)
     {
         var showFolder = $"/nas/TV Shows/{show}";
-        _entries.Add(new NasFileInfo(showFolder, show, 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+        _entries.Add(new NasFileInfo(showFolder, show, 0, null, DefaultMtime, DefaultMtime, true));
 
         var specialsFolder = $"{showFolder}/Specials";
-        _entries.Add(new NasFileInfo(specialsFolder, "Specials", 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+        _entries.Add(new NasFileInfo(specialsFolder, "Specials", 0, null, DefaultMtime, DefaultMtime, true));
 
         var safe = show.Replace("'", "").Replace(":", "").Replace(" ", ".");
         // One special episode
         var specialFile = $"{safe}.S00E01.Special.mkv";
-        _entries.Add(new NasFileInfo($"{specialsFolder}/{specialFile}", specialFile, DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
-        _expectedMediaItems++;
+        _entries.Add(new NasFileInfo($"{specialsFolder}/{specialFile}", specialFile, DefaultSizeBytes, "MKV",
+            DefaultMtime, DefaultMtime));
+        TotalExpectedMediaItems++;
 
         for (var s = 1; s <= seasons; s++)
         {
             var seasonFolder = $"{showFolder}/Season {s:D2}";
-            _entries.Add(new NasFileInfo(seasonFolder, $"Season {s:D2}", 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+            _entries.Add(new NasFileInfo(seasonFolder, $"Season {s:D2}", 0, null, DefaultMtime, DefaultMtime, true));
 
             for (var e = 1; e <= episodesPerSeason; e++)
             {
                 var filename = $"{safe}.S{s:D2}E{e:D2}.mkv";
-                _entries.Add(new NasFileInfo($"{seasonFolder}/{filename}", filename, DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
-                _expectedMediaItems++;
+                _entries.Add(new NasFileInfo($"{seasonFolder}/{filename}", filename, DefaultSizeBytes, "MKV",
+                    DefaultMtime, DefaultMtime));
+                TotalExpectedMediaItems++;
             }
         }
     }
@@ -345,40 +344,43 @@ public sealed class FixtureBuilder
     private void AddShowWithMultiEpisode(string show)
     {
         var showFolder = $"/nas/TV Shows/{show}";
-        _entries.Add(new NasFileInfo(showFolder, show, 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+        _entries.Add(new NasFileInfo(showFolder, show, 0, null, DefaultMtime, DefaultMtime, true));
 
         var seasonFolder = $"{showFolder}/Season 01";
-        _entries.Add(new NasFileInfo(seasonFolder, "Season 01", 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+        _entries.Add(new NasFileInfo(seasonFolder, "Season 01", 0, null, DefaultMtime, DefaultMtime, true));
 
         var safe = show.Replace("'", "").Replace(":", "").Replace(" ", ".");
 
         // Single episode
         var ep1 = $"{safe}.S01E01.mkv";
-        _entries.Add(new NasFileInfo($"{seasonFolder}/{ep1}", ep1, DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
-        _expectedMediaItems++;
+        _entries.Add(new NasFileInfo($"{seasonFolder}/{ep1}", ep1, DefaultSizeBytes, "MKV", DefaultMtime,
+            DefaultMtime));
+        TotalExpectedMediaItems++;
 
         // Multi-episode file: E02 + E03 in one file
         // SOURCE: Kodi wiki — "SxxExx-Eyy" range syntax for multi-episode files
         var multiEp = $"{safe}.S01E02-E03.mkv";
-        _entries.Add(new NasFileInfo($"{seasonFolder}/{multiEp}", multiEp, DefaultSizeBytes * 2, "MKV", DefaultMtime, DefaultMtime));
-        _expectedMediaItems++; // counts as one media file (two EpisodeFileLinks)
+        _entries.Add(new NasFileInfo($"{seasonFolder}/{multiEp}", multiEp, DefaultSizeBytes * 2, "MKV", DefaultMtime,
+            DefaultMtime));
+        TotalExpectedMediaItems++; // counts as one media file (two EpisodeFileLinks)
     }
 
     private void AddShowWith1x05Numbering(string show)
     {
         // SOURCE: Kodi wiki — "1x05" alternate episode numbering pattern
         var showFolder = $"/nas/TV Shows/{show}";
-        _entries.Add(new NasFileInfo(showFolder, show, 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+        _entries.Add(new NasFileInfo(showFolder, show, 0, null, DefaultMtime, DefaultMtime, true));
 
         var seasonFolder = $"{showFolder}/Season 01";
-        _entries.Add(new NasFileInfo(seasonFolder, "Season 01", 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+        _entries.Add(new NasFileInfo(seasonFolder, "Season 01", 0, null, DefaultMtime, DefaultMtime, true));
 
         var safe = show.Replace("'", "").Replace(" ", ".");
         for (var e = 1; e <= 5; e++)
         {
             var filename = $"{safe}.1x{e:D2}.mkv";
-            _entries.Add(new NasFileInfo($"{seasonFolder}/{filename}", filename, DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
-            _expectedMediaItems++;
+            _entries.Add(new NasFileInfo($"{seasonFolder}/{filename}", filename, DefaultSizeBytes, "MKV", DefaultMtime,
+                DefaultMtime));
+            TotalExpectedMediaItems++;
         }
     }
 
@@ -386,18 +388,19 @@ public sealed class FixtureBuilder
     {
         // SOURCE: Kodi wiki — "YYYY.MM.DD" date-based naming for daily programmes
         var showFolder = $"/nas/TV Shows/{show}";
-        _entries.Add(new NasFileInfo(showFolder, show, 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+        _entries.Add(new NasFileInfo(showFolder, show, 0, null, DefaultMtime, DefaultMtime, true));
 
         var seasonFolder = $"{showFolder}/Season 2024";
-        _entries.Add(new NasFileInfo(seasonFolder, "Season 2024", 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+        _entries.Add(new NasFileInfo(seasonFolder, "Season 2024", 0, null, DefaultMtime, DefaultMtime, true));
 
         var safe = show.Replace("'", "").Replace(":", "").Replace(" ", ".");
         var episodes = new[] { "2024.03.18", "2024.03.19", "2024.03.20" };
         foreach (var date in episodes)
         {
             var filename = $"{safe}.{date}.mkv";
-            _entries.Add(new NasFileInfo($"{seasonFolder}/{filename}", filename, DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
-            _expectedMediaItems++;
+            _entries.Add(new NasFileInfo($"{seasonFolder}/{filename}", filename, DefaultSizeBytes, "MKV", DefaultMtime,
+                DefaultMtime));
+            TotalExpectedMediaItems++;
         }
     }
 
@@ -416,14 +419,14 @@ public sealed class FixtureBuilder
 
         // extras-folder rule: file inside an Extras directory
         _entries.Add(new NasFileInfo(
-            "/nas/Movies/Extras", "Extras", 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+            "/nas/Movies/Extras", "Extras", 0, null, DefaultMtime, DefaultMtime, true));
         _entries.Add(new NasFileInfo(
             "/nas/Movies/Extras/behind-the-scenes.mkv",
             "behind-the-scenes.mkv", 104_857_600, "MKV", DefaultMtime, DefaultMtime));
 
         // trailer-folder rule: Trailers sub-folder
         _entries.Add(new NasFileInfo(
-            "/nas/Movies/Trailers", "Trailers", 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+            "/nas/Movies/Trailers", "Trailers", 0, null, DefaultMtime, DefaultMtime, true));
         _entries.Add(new NasFileInfo(
             "/nas/Movies/Trailers/matrix-trailer.mkv",
             "matrix-trailer.mkv", 26_214_400, "MKV", DefaultMtime, DefaultMtime));
@@ -435,7 +438,7 @@ public sealed class FixtureBuilder
 
         // hidden-folder rule: folder starting with dot
         _entries.Add(new NasFileInfo(
-            "/nas/Movies/.recycle", ".recycle", 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+            "/nas/Movies/.recycle", ".recycle", 0, null, DefaultMtime, DefaultMtime, true));
         _entries.Add(new NasFileInfo(
             "/nas/Movies/.recycle/oldfile.mkv",
             "oldfile.mkv", DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
@@ -460,12 +463,11 @@ public sealed class FixtureBuilder
         // A TV show episode file in a TV show folder, but the filename has no
         // recognisable episode pattern — goes to review with UnparseableEpisode reason
         var reviewShowFolder = "/nas/TV Shows/SomeObscureShow";
-        _entries.Add(new NasFileInfo(reviewShowFolder, "SomeObscureShow", 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+        _entries.Add(new NasFileInfo(reviewShowFolder, "SomeObscureShow", 0, null, DefaultMtime, DefaultMtime, true));
         var s1 = $"{reviewShowFolder}/Season 01";
-        _entries.Add(new NasFileInfo(s1, "Season 01", 0, null, DefaultMtime, DefaultMtime, IsDirectory: true));
+        _entries.Add(new NasFileInfo(s1, "Season 01", 0, null, DefaultMtime, DefaultMtime, true));
         _entries.Add(new NasFileInfo(
             $"{s1}/episode_without_number.mkv",
             "episode_without_number.mkv", DefaultSizeBytes, "MKV", DefaultMtime, DefaultMtime));
     }
 }
-

@@ -32,4 +32,3 @@ public class LibraryRootConfiguration : IEntityTypeConfiguration<LibraryRoot>
             .OnDelete(DeleteBehavior.SetNull);
     }
 }
-

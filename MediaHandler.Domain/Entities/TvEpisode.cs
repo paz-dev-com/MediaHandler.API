@@ -15,14 +15,14 @@ public class TvEpisode : BaseEntity
     // ── Scanner additions ────────────────────────────────────────────────────
 
     /// <summary>
-    /// All physical files that carry this episode (many-to-many via <see cref="EpisodeFileLink"/>).
-    /// Replaces the previous direct <c>MediaFileId</c> FK to support multi-episode files.
+    ///     All physical files that carry this episode (many-to-many via <see cref="EpisodeFileLink" />).
+    ///     Replaces the previous direct <c>MediaFileId</c> FK to support multi-episode files.
     /// </summary>
     public ICollection<EpisodeFileLink> EpisodeFileLinks { get; set; } = [];
 
     /// <summary>
-    /// Convenience resolver that returns the primary (first, <c>OrderInFile = 1</c>) file
-    /// for this episode, or <c>null</c> if no file has been linked yet.
+    ///     Convenience resolver that returns the primary (first, <c>OrderInFile = 1</c>) file
+    ///     for this episode, or <c>null</c> if no file has been linked yet.
     /// </summary>
     public MediaFile? PrimaryFile =>
         EpisodeFileLinks

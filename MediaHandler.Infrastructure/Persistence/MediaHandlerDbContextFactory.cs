@@ -10,8 +10,8 @@ public class MediaHandlerDbContextFactory : IDesignTimeDbContextFactory<MediaHan
     {
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Path.Combine(Directory.GetCurrentDirectory(), "..", "MediaHandler.API"))
-            .AddJsonFile("appsettings.json", optional: true)
-            .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddJsonFile("appsettings.json", true)
+            .AddJsonFile("appsettings.Development.json", true)
             .Build();
 
         var optionsBuilder = new DbContextOptionsBuilder<MediaHandlerDbContext>();

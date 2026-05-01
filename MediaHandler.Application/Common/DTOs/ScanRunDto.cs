@@ -3,7 +3,7 @@ using MediaHandler.Domain.Enums;
 namespace MediaHandler.Application.Common.DTOs;
 
 /// <summary>
-/// Denormalised scan counts snapshot attached to both summary and detail DTOs.
+///     Denormalised scan counts snapshot attached to both summary and detail DTOs.
 /// </summary>
 public record ScanCountsDto(
     int TotalDiscovered,
@@ -15,7 +15,7 @@ public record ScanCountsDto(
     int NeedsReview);
 
 /// <summary>
-/// Summary of a scan run returned from list / create endpoints (202 response).
+///     Summary of a scan run returned from list / create endpoints (202 response).
 /// </summary>
 public record ScanRunDto(
     Guid Id,
@@ -28,8 +28,8 @@ public record ScanRunDto(
     ScanCountsDto Counts);
 
 /// <summary>
-/// Detail view of a scan run including optional open review items.
-/// Returned by <c>GetScanRunQuery</c> when <c>IncludeReview</c> is true.
+///     Detail view of a scan run including optional open review items.
+///     Returned by <c>GetScanRunQuery</c> when <c>IncludeReview</c> is true.
 /// </summary>
 public record ScanRunDetailDto(
     Guid Id,

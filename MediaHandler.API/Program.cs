@@ -1,7 +1,6 @@
 using MediaHandler.API.Extensions;
 using MediaHandler.API.Middleware;
 using MediaHandler.Application;
-using MediaHandler.Infrastructure;
 using Serilog;
 using static MediaHandler.Infrastructure.DependencyInjection;
 
@@ -71,6 +70,7 @@ try
 catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
+    throw;
 }
 finally
 {
@@ -78,4 +78,6 @@ finally
 }
 
 // Expose the auto-generated Program class for WebApplicationFactory in integration tests
-public partial class Program { }
+public partial class Program
+{
+}

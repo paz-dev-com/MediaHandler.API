@@ -3,7 +3,7 @@ using FluentValidation;
 namespace MediaHandler.Application.Features.Files.Commands.ScanAndImportNas;
 
 /// <summary>
-/// Validates a <see cref="ScanAndImportNasCommand"/> before it is dispatched to the handler.
+///     Validates a <see cref="ScanAndImportNasCommand" /> before it is dispatched to the handler.
 /// </summary>
 public class ScanAndImportNasCommandValidator : AbstractValidator<ScanAndImportNasCommand>
 {
@@ -20,4 +20,3 @@ public class ScanAndImportNasCommandValidator : AbstractValidator<ScanAndImportN
             .WithMessage("BasePath must not exceed 1000 characters.");
     }
 }
-

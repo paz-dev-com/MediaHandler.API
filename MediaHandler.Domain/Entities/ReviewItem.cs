@@ -4,19 +4,19 @@ using MediaHandler.Domain.Enums;
 namespace MediaHandler.Domain.Entities;
 
 /// <summary>
-/// Represents a file that the scanner could not fully resolve automatically and
-/// requires administrator intervention.
+///     Represents a file that the scanner could not fully resolve automatically and
+///     requires administrator intervention.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Review-item state (<see cref="ReviewStatus"/>) lives here rather than on
-/// <see cref="Media"/> because an unmatched file does not yet have a <c>Media</c>
-/// row — it only has a filesystem path.
-/// </para>
-/// <para>
-/// A unique partial index on <c>(FilePath, Status = 'Open')</c> prevents duplicate
-/// open items for the same path.
-/// </para>
+///     <para>
+///         Review-item state (<see cref="ReviewStatus" />) lives here rather than on
+///         <see cref="Media" /> because an unmatched file does not yet have a <c>Media</c>
+///         row — it only has a filesystem path.
+///     </para>
+///     <para>
+///         A unique partial index on <c>(FilePath, Status = 'Open')</c> prevents duplicate
+///         open items for the same path.
+///     </para>
 /// </remarks>
 public class ReviewItem : BaseEntity
 {
@@ -46,14 +46,14 @@ public class ReviewItem : BaseEntity
     // ── TMDB candidates ─────────────────────────────────────────────────────
 
     /// <summary>
-    /// JSON-serialised array of TMDB candidates:
-    /// <c>[{"tmdbId":int,"kind":"Film|TvShow","title":string,"year":int,"score":float}]</c>.
+    ///     JSON-serialised array of TMDB candidates:
+    ///     <c>[{"tmdbId":int,"kind":"Film|TvShow","title":string,"year":int,"score":float}]</c>.
     /// </summary>
     public string CandidatesJson { get; set; } = "[]";
 
     // ── Resolution fields ────────────────────────────────────────────────────
 
-    /// <summary>TMDB id chosen by the administrator when <see cref="ReviewResolutionAction.Assign"/>.</summary>
+    /// <summary>TMDB id chosen by the administrator when <see cref="ReviewResolutionAction.Assign" />.</summary>
     public int? ResolvedTmdbId { get; set; }
 
     /// <summary>Media kind decided by the administrator at resolution time.</summary>
@@ -66,9 +66,8 @@ public class ReviewItem : BaseEntity
     public string? ResolvedBy { get; set; }
 
     /// <summary>
-    /// The first <see cref="ScanRun"/> that surfaced this item.
-    /// Allows grouping review items by scan run in diagnostic reports.
+    ///     The first <see cref="ScanRun" /> that surfaced this item.
+    ///     Allows grouping review items by scan run in diagnostic reports.
     /// </summary>
     public Guid? FirstSeenScanRunId { get; set; }
 }
-

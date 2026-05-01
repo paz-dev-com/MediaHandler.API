@@ -21,10 +21,12 @@ public class WishlistController(ISender sender) : ControllerBase
     [HttpGet]
     [ProducesResponseType<ApiResponse<IEnumerable<WishlistItemDto>>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
     {
         var result = await sender.Send(new GetWishlistQuery(page, pageSize), ct);
-        var meta = new ApiResponseMeta(result.Value.Page, result.Value.PageSize, result.Value.TotalCount, result.Value.TotalPages);
+        var meta = new ApiResponseMeta(result.Value.Page, result.Value.PageSize, result.Value.TotalCount,
+            result.Value.TotalPages);
         return Ok(ApiResponse<object>.Success(result.Value.Items, meta));
     }
 
@@ -44,7 +46,8 @@ public class WishlistController(ISender sender) : ControllerBase
     [ProducesResponseType<ApiResponse<WishlistItemDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> MarkAcquired(Guid id, [FromBody] MarkWishlistAcquiredRequest request, CancellationToken ct)
+    public async Task<IActionResult> MarkAcquired(Guid id, [FromBody] MarkWishlistAcquiredRequest request,
+        CancellationToken ct)
     {
         var result = await sender.Send(new MarkWishlistAcquiredCommand(id, request.IsAcquired), ct);
         return result.IsSuccess

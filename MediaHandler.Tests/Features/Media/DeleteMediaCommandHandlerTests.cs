@@ -1,7 +1,7 @@
 using FluentAssertions;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Features.Media.Commands.DeleteMedia;
-using MediaHandler.Domain.Entities;
+using MediaHandler.Domain.Enums;
 using MediaHandler.Tests.Common;
 
 namespace MediaHandler.Tests.Features.Media;
@@ -20,7 +20,7 @@ public class DeleteMediaCommandHandlerTests
     [Fact]
     public async Task Handle_ExistingMedia_DeletesAndReturnsSuccess()
     {
-        var media = new Domain.Entities.Media { TmdbId = 1, Title = "Test Movie", Type = Domain.Enums.MediaType.Film };
+        var media = new Domain.Entities.Media { TmdbId = 1, Title = "Test Movie", Type = MediaType.Film };
         _context.Medias.Add(media);
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 

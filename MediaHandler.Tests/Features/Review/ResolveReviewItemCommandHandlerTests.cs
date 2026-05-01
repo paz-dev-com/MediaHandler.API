@@ -1,4 +1,3 @@
-#nullable enable
 // ResolveReviewItemCommandHandlerTests — unit tests for the admin review-item resolution workflow.
 // These tests must FAIL before the command handler is implemented.
 
@@ -13,17 +12,19 @@ using NSubstitute;
 namespace MediaHandler.Tests.Features.Review;
 
 /// <summary>
-/// Unit tests for <c>ResolveReviewItemCommandHandler</c>.
-/// Covers: Assign, Dismiss, Delete actions and error conditions.
+///     Unit tests for <c>ResolveReviewItemCommandHandler</c>.
+///     Covers: Assign, Dismiss, Delete actions and error conditions.
 /// </summary>
 public class ResolveReviewItemCommandHandlerTests
 {
+    private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
     private readonly IApplicationDbContext _db = TestDbContext.Create();
     private readonly ITmdbService _tmdbService = Substitute.For<ITmdbService>();
-    private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
 
-    private ResolveReviewItemCommandHandler CreateHandler() =>
-        new(_db, _tmdbService, _currentUser);
+    private ResolveReviewItemCommandHandler CreateHandler()
+    {
+        return new ResolveReviewItemCommandHandler(_db, _tmdbService, _currentUser);
+    }
 
     private async Task<ReviewItem> AddOpenReviewItem(string? filePath = null)
     {
@@ -58,8 +59,8 @@ public class ResolveReviewItemCommandHandlerTests
         var command = new ResolveReviewItemCommand(
             item.Id,
             ReviewResolutionAction.Assign,
-            TmdbId: 27205,
-            Kind: MediaType.Film);
+            27205,
+            MediaType.Film);
 
         var handler = CreateHandler();
         var result = await handler.Handle(command, TestContext.Current.CancellationToken);
@@ -95,8 +96,8 @@ public class ResolveReviewItemCommandHandlerTests
         var command = new ResolveReviewItemCommand(
             item.Id,
             ReviewResolutionAction.Assign,
-            TmdbId: 99999999,
-            Kind: MediaType.Film);
+            99999999,
+            MediaType.Film);
 
         var handler = CreateHandler();
         var result = await handler.Handle(command, TestContext.Current.CancellationToken);
@@ -119,8 +120,8 @@ public class ResolveReviewItemCommandHandlerTests
         var command = new ResolveReviewItemCommand(
             item.Id,
             ReviewResolutionAction.Dismiss,
-            TmdbId: null,
-            Kind: null);
+            null,
+            null);
 
         var handler = CreateHandler();
         var result = await handler.Handle(command, TestContext.Current.CancellationToken);
@@ -157,8 +158,8 @@ public class ResolveReviewItemCommandHandlerTests
         var command = new ResolveReviewItemCommand(
             item.Id,
             ReviewResolutionAction.Delete,
-            TmdbId: null,
-            Kind: null);
+            null,
+            null);
 
         var handler = CreateHandler();
         var result = await handler.Handle(command, TestContext.Current.CancellationToken);
@@ -198,8 +199,8 @@ public class ResolveReviewItemCommandHandlerTests
         var command = new ResolveReviewItemCommand(
             item.Id,
             ReviewResolutionAction.Dismiss,
-            TmdbId: null,
-            Kind: null);
+            null,
+            null);
 
         var handler = CreateHandler();
         var result = await handler.Handle(command, TestContext.Current.CancellationToken);
@@ -220,8 +221,8 @@ public class ResolveReviewItemCommandHandlerTests
         var command = new ResolveReviewItemCommand(
             Guid.NewGuid(), // non-existent
             ReviewResolutionAction.Dismiss,
-            TmdbId: null,
-            Kind: null);
+            null,
+            null);
 
         var handler = CreateHandler();
         var result = await handler.Handle(command, TestContext.Current.CancellationToken);
@@ -240,8 +241,8 @@ public class ResolveReviewItemCommandHandlerTests
         var command = new ResolveReviewItemCommand(
             Guid.NewGuid(),
             ReviewResolutionAction.Assign,
-            TmdbId: null,    // missing — required for Assign
-            Kind: MediaType.Film);
+            null, // missing — required for Assign
+            MediaType.Film);
 
         var result = validator.Validate(command);
 
@@ -260,8 +261,8 @@ public class ResolveReviewItemCommandHandlerTests
         var command = new ResolveReviewItemCommand(
             Guid.NewGuid(),
             ReviewResolutionAction.Assign,
-            TmdbId: 27205,
-            Kind: null);  // missing — required for Assign
+            27205,
+            null); // missing — required for Assign
 
         var result = validator.Validate(command);
 
@@ -280,12 +281,11 @@ public class ResolveReviewItemCommandHandlerTests
         var command = new ResolveReviewItemCommand(
             Guid.NewGuid(),
             ReviewResolutionAction.Dismiss,
-            TmdbId: null,
-            Kind: null);
+            null,
+            null);
 
         var result = validator.Validate(command);
 
         result.IsValid.Should().BeTrue();
     }
 }
-

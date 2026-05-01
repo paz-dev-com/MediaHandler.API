@@ -9,12 +9,11 @@ namespace MediaHandler.Tests.Features.Wishlist;
 
 public class AddToWishlistCommandHandlerTests
 {
+    private static readonly string TestOktaId = "okta|test123";
+    private static readonly Guid TestUserId = Guid.NewGuid();
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUser;
     private readonly AddToWishlistCommandHandler _handler;
-
-    private static readonly string TestOktaId = "okta|test123";
-    private static readonly Guid TestUserId = Guid.NewGuid();
 
     public AddToWishlistCommandHandlerTests()
     {

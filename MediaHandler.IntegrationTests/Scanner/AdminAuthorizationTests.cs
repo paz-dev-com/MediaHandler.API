@@ -1,4 +1,3 @@
-#nullable enable
 // SC-008: Zero unauthorized scan starts — every admin endpoint enforces AdminOnly policy.
 // Tests: Anonymous → 401, User role → 403, Admin → 2xx.
 // Also verifies that an anonymous POST /api/v1/admin/scan does NOT create a ScanRun row.
@@ -6,78 +5,132 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using MediaHandler.Domain.Enums;
+using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Testcontainers.MsSql;
 
 namespace MediaHandler.IntegrationTests.Scanner;
 
+// ─── Shared factory fixture ───────────────────────────────────────────────────
+
 /// <summary>
-/// SC-008: authorization coverage for every scanner-related admin endpoint.
-/// Uses <see cref="WebApplicationFactory{TEntryPoint}"/> with the DevAuthenticationHandler
-/// and Testcontainers SQL Server for a realistic integration test.
+///     Class-level fixture for <see cref="AdminAuthorizationTests" />.
+///     Created ONCE per test class so all 28 theory cases share the same
+///     <see cref="WebApplicationFactory{T}" /> — avoiding the 128-inotify-instance limit.
 /// </summary>
-public sealed class AdminAuthorizationTests : IAsyncLifetime
+public sealed class AdminAuthorizationFixture : IAsyncLifetime
 {
-    private MsSqlContainer _dbContainer = null!;
-    private WebApplicationFactory<Program> _factory = null!;
+    /// <summary>The shared factory, backed by an EF Core InMemory database.</summary>
+    public WebApplicationFactory<Program> Factory { get; private set; } = null!;
 
-    public async ValueTask InitializeAsync()
+    public ValueTask InitializeAsync()
     {
-        _dbContainer = new MsSqlBuilder()
-            .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
-            .Build();
-        await _dbContainer.StartAsync();
-
-        _factory = new WebApplicationFactory<Program>()
+        Factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Development");
-                builder.UseSetting("ConnectionStrings:DefaultConnection", _dbContainer.GetConnectionString());
-                // Disable HTTPS redirection in tests
                 builder.UseSetting("ASPNETCORE_URLS", "http://+:80");
+
+                // Satisfy ValidateOnStart() for all required options so the factory
+                // can start in both local and CI environments without real credentials.
+                builder.UseSetting("Okta:Domain", "https://fake-auth0-domain.us.auth0.com");
+                builder.UseSetting("Okta:ClientId", "fake-client-id");
+                builder.UseSetting("Okta:ClientSecret", "fake-client-secret");
+                builder.UseSetting("Okta:Audience", "https://fake-api-audience");
+                builder.UseSetting("Tmdb:ReadAccessToken", "fake-tmdb-token");
+                builder.UseSetting("Nas:AppToken", "fake-nas-token");
+
+                builder.ConfigureServices(services =>
+                {
+                    // ── Replace SQL Server DbContext with EF Core InMemory ─────────────
+                    // Authorization middleware fires before any controller/DB code, so
+                    // InMemory is sufficient for 401/403 checks AND for the ScanRun-row
+                    // assertion test.
+                    //
+                    // Remove ALL EF Core service descriptors that embed the SQL Server
+                    // factory (including IDbContextOptionsConfiguration<T> which carries
+                    // the factory lambda that resolves the interceptors).
+                    var toRemove = services
+                        .Where(d =>
+                            d.ServiceType == typeof(DbContextOptions<MediaHandlerDbContext>) ||
+                            d.ServiceType == typeof(MediaHandlerDbContext) ||
+                            d.ServiceType.FullName?.Contains("AuditableEntitySaveChangesInterceptor") == true ||
+                            d.ServiceType.FullName?.Contains("DomainEventDispatchInterceptor") == true ||
+                            d.ServiceType.FullName?.Contains("IDomainEventDispatcher") == true ||
+                            // EF Core 8+ stores the factory lambda in IDbContextOptionsConfiguration<T>
+                            (d.ServiceType.IsGenericType &&
+                             d.ServiceType.GetGenericTypeDefinition().FullName
+                                 ?.Contains("IDbContextOptionsConfiguration") == true))
+                        .ToList();
+                    foreach (var d in toRemove)
+                        services.Remove(d);
+
+                    // Register a fresh DbContext using InMemory via a direct factory so
+                    // no interceptors are required.
+                    var inMemoryOptions = new DbContextOptionsBuilder<MediaHandlerDbContext>()
+                        .UseInMemoryDatabase("AdminAuthTest")
+                        .Options;
+
+                    services.AddScoped<MediaHandlerDbContext>(_ => new MediaHandlerDbContext(inMemoryOptions));
+                    services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<MediaHandlerDbContext>());
+                });
             });
 
-        // Run migrations against the test container
-        using var scope = _factory.Services.CreateScope();
+        // Ensure the EF Core model is created in the InMemory store.
+        using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MediaHandlerDbContext>();
-        await db.Database.MigrateAsync();
+        db.Database.EnsureCreated();
+
+        return ValueTask.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()
     {
-        await _factory.DisposeAsync();
-        await _dbContainer.DisposeAsync();
+        await Factory.DisposeAsync();
+    }
+}
+
+// ─── Test class ───────────────────────────────────────────────────────────────
+
+/// <summary>
+///     SC-008: authorization coverage for every scanner-related admin endpoint.
+///     Uses <see cref="WebApplicationFactory{TEntryPoint}" /> with the DevAuthenticationHandler
+///     and an EF Core InMemory database — no SQL Server container required because
+///     authorization middleware runs before any database code.
+/// </summary>
+public sealed class AdminAuthorizationTests : IClassFixture<AdminAuthorizationFixture>
+{
+    private readonly WebApplicationFactory<Program> _factory;
+
+    public AdminAuthorizationTests(AdminAuthorizationFixture fixture)
+    {
+        _factory = fixture.Factory;
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // All endpoints to test, from contracts/scan.md, library-roots.md, review-items.md
+    // All endpoints to test
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// (Method, Path, ExpectedAdminStatus) — for each endpoint defined in the contracts.
-    /// The Admin status code may vary (200, 201, 202, 204, 400, 404) depending on
-    /// whether the request body/path params are valid, BUT it must not be 401 or 403.
-    /// </summary>
     public static IEnumerable<TheoryDataRow<string, string>> AllEndpoints()
     {
         // scan.md
-        yield return new("POST", "/api/v1/admin/scan");
-        yield return new("GET", "/api/v1/admin/scan/" + Guid.NewGuid());
-        yield return new("GET", "/api/v1/admin/scan/active");
-        yield return new("POST", "/api/v1/admin/scan/" + Guid.NewGuid() + "/cancel");
+        yield return new TheoryDataRow<string, string>("POST", "/api/v1/admin/scan");
+        yield return new TheoryDataRow<string, string>("GET", "/api/v1/admin/scan/" + Guid.NewGuid());
+        yield return new TheoryDataRow<string, string>("GET", "/api/v1/admin/scan/active");
+        yield return new TheoryDataRow<string, string>("POST", "/api/v1/admin/scan/" + Guid.NewGuid() + "/cancel");
 
         // library-roots.md
-        yield return new("GET", "/api/v1/admin/library-roots");
-        yield return new("POST", "/api/v1/admin/library-roots");
-        yield return new("DELETE", "/api/v1/admin/library-roots/" + Guid.NewGuid());
+        yield return new TheoryDataRow<string, string>("GET", "/api/v1/admin/library-roots");
+        yield return new TheoryDataRow<string, string>("POST", "/api/v1/admin/library-roots");
+        yield return new TheoryDataRow<string, string>("DELETE", "/api/v1/admin/library-roots/" + Guid.NewGuid());
 
         // review-items.md
-        yield return new("GET", "/api/v1/admin/review-items");
-        yield return new("POST", "/api/v1/admin/review-items/" + Guid.NewGuid() + "/resolve");
+        yield return new TheoryDataRow<string, string>("GET", "/api/v1/admin/review-items");
+        yield return new TheoryDataRow<string, string>("POST",
+            "/api/v1/admin/review-items/" + Guid.NewGuid() + "/resolve");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -88,19 +141,14 @@ public sealed class AdminAuthorizationTests : IAsyncLifetime
     [MemberData(nameof(AllEndpoints))]
     public async Task Anonymous_ReturnsUnauthorized(string method, string path)
     {
-        // DevAuthenticationHandler requires an explicit opt-out for anonymous simulation.
-        // When NO Authorization header AND NO X-Dev-* headers are sent, the dev handler
-        // defaults to Admin. To simulate anonymous, we need to remove the default.
-        // Instead, we'll create a separate factory that uses a real JWT scheme.
         var client = CreateAnonymousClient();
-
         var request = new HttpRequestMessage(new HttpMethod(method), path);
         AddMinimalBody(request, method, path);
 
         var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
-            because: $"Anonymous {method} {path} must return 401");
+            $"Anonymous {method} {path} must return 401");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -117,7 +165,6 @@ public sealed class AdminAuthorizationTests : IAsyncLifetime
         });
 
         var request = new HttpRequestMessage(new HttpMethod(method), path);
-        // DevAuthenticationHandler: X-Dev-IsAdmin=false → User role only (no Admin)
         request.Headers.Add("X-Dev-IsAdmin", "false");
         request.Headers.Add("X-Dev-OktaId", "auth0|testuser1");
         request.Headers.Add("X-Dev-Email", "user@test.com");
@@ -126,7 +173,7 @@ public sealed class AdminAuthorizationTests : IAsyncLifetime
         var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            because: $"User-role {method} {path} must return 403");
+            $"User-role {method} {path} must return 403");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -143,17 +190,15 @@ public sealed class AdminAuthorizationTests : IAsyncLifetime
         });
 
         var request = new HttpRequestMessage(new HttpMethod(method), path);
-        // DevAuthenticationHandler defaults to Admin — no special headers needed
+        // DevAuthenticationHandler defaults to Admin when no headers are present
         AddMinimalBody(request, method, path);
 
         var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        // Admin must never get 401 or 403. Other errors (400, 404, 409, 422) are acceptable
-        // since the request body or path params may be invalid for this generic test.
         response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized,
-            because: $"Admin {method} {path} must not return 401");
+            $"Admin {method} {path} must not return 401");
         response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden,
-            because: $"Admin {method} {path} must not return 403");
+            $"Admin {method} {path} must not return 403");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -164,21 +209,19 @@ public sealed class AdminAuthorizationTests : IAsyncLifetime
     public async Task Anonymous_PostScan_DoesNotCreateScanRunRow()
     {
         var client = CreateAnonymousClient();
-
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/scan");
         request.Content = JsonContent.Create(new { libraryRootIds = Array.Empty<Guid>(), mode = "Full" });
 
         var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        // Should be 401
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
-        // Verify no ScanRun was created
+        // Verify no ScanRun was created in the InMemory database
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MediaHandlerDbContext>();
         var scanRunCount = await db.ScanRuns.CountAsync(TestContext.Current.CancellationToken);
         scanRunCount.Should().Be(0,
-            because: "An anonymous POST to /api/v1/admin/scan must not create any ScanRun row");
+            "An anonymous POST to /api/v1/admin/scan must not create any ScanRun row");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -186,21 +229,22 @@ public sealed class AdminAuthorizationTests : IAsyncLifetime
     // ═══════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Creates a client that simulates an anonymous (unauthenticated) caller.
-    /// The DevAuthenticationHandler defaults to Admin when no headers are present,
-    /// so we use a custom factory with production-like JWT auth that properly rejects
-    /// requests without a valid token.
+    ///     Creates a client that simulates an anonymous caller by switching to "Production"
+    ///     so that the real JWT bearer handler is used (which rejects unauthenticated requests).
     /// </summary>
     private HttpClient CreateAnonymousClient()
     {
-        // Create a factory with production-like auth that rejects anonymous requests.
-        // Override the environment to "Production" so DevAuthenticationHandler is NOT used.
         var anonFactory = _factory.WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("ASPNETCORE_ENVIRONMENT", "Production");
-            builder.UseSetting("ConnectionStrings:DefaultConnection", _dbContainer.GetConnectionString());
+            builder.UseEnvironment("Production");
+            // Okta (required for JWT bearer auth in Production)
             builder.UseSetting("Okta:Domain", "https://fake-auth0-domain.us.auth0.com");
+            builder.UseSetting("Okta:ClientId", "fake-client-id");
+            builder.UseSetting("Okta:ClientSecret", "fake-client-secret");
             builder.UseSetting("Okta:Audience", "https://fake-api-audience");
+            // Satisfy ValidateOnStart() for other required options
+            builder.UseSetting("Tmdb:ReadAccessToken", "fake-tmdb-token");
+            builder.UseSetting("Nas:AppToken", "fake-nas-token");
         });
 
         return anonFactory.CreateClient(new WebApplicationFactoryClientOptions
@@ -209,30 +253,19 @@ public sealed class AdminAuthorizationTests : IAsyncLifetime
         });
     }
 
-    /// <summary>
-    /// Adds a minimal JSON body for POST/PUT requests to prevent 415 Unsupported Media Type.
-    /// </summary>
     private static void AddMinimalBody(HttpRequestMessage request, string method, string path)
     {
         if (method is "POST" or "PUT")
         {
             if (path.Contains("/scan") && !path.Contains("/cancel") && !path.Contains("/resolve"))
-            {
                 request.Content = JsonContent.Create(new { libraryRootIds = Array.Empty<Guid>(), mode = "Full" });
-            }
             else if (path.Contains("/library-roots"))
-            {
                 request.Content = JsonContent.Create(new { path = "/nas/test", kind = "Movies", label = "Test" });
-            }
             else if (path.Contains("/resolve"))
-            {
-                request.Content = JsonContent.Create(new { action = "Dismiss", tmdbId = (int?)null, kind = (string?)null });
-            }
+                request.Content = JsonContent.Create(new
+                { action = "Dismiss", tmdbId = (int?)null, kind = (string?)null });
             else
-            {
                 request.Content = JsonContent.Create(new { });
-            }
         }
     }
 }
-

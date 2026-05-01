@@ -1,4 +1,3 @@
-#nullable enable
 // AddLibraryRootCommandHandlerTests — Library root registration validation
 
 using FluentAssertions;
@@ -16,14 +15,16 @@ public class AddLibraryRootCommandHandlerTests
     private readonly IApplicationDbContext _context = TestDbContext.Create();
     private readonly INasService _nasService = Substitute.For<INasService>();
 
-    private AddLibraryRootCommandHandler CreateHandler() =>
-        new(_context, _nasService);
-
     public AddLibraryRootCommandHandlerTests()
     {
         // Default: /nas is configured
         _nasService.GetConfiguredPathsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<string>>(["/nas", "/nas2"]));
+    }
+
+    private AddLibraryRootCommandHandler CreateHandler()
+    {
+        return new AddLibraryRootCommandHandler(_context, _nasService);
     }
 
     [Fact]
@@ -109,4 +110,3 @@ public class AddLibraryRootCommandHandlerTests
         result.Value.Kind.Should().Be(LibraryRootKind.TvShows);
     }
 }
-

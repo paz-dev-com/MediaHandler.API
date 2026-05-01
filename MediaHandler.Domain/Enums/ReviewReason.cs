@@ -1,7 +1,7 @@
 namespace MediaHandler.Domain.Enums;
 
 /// <summary>
-/// Describes why a file ended up in the review queue during a <c>ScanRun</c>.
+///     Describes why a file ended up in the review queue during a <c>ScanRun</c>.
 /// </summary>
 public enum ReviewReason
 {
@@ -12,8 +12,8 @@ public enum ReviewReason
     MultipleCandidates,
 
     /// <summary>
-    /// A single TMDB result was found but its release year differs from the parsed year
-    /// by more than ±1 year.
+    ///     A single TMDB result was found but its release year differs from the parsed year
+    ///     by more than ±1 year.
     /// </summary>
     YearMismatch,
 
@@ -24,15 +24,14 @@ public enum ReviewReason
     NfoMalformed,
 
     /// <summary>
-    /// The file extension is not in the video allowlist and no exclusion rule matched,
-    /// leaving the file in an indeterminate state.
+    ///     The file extension is not in the video allowlist and no exclusion rule matched,
+    ///     leaving the file in an indeterminate state.
     /// </summary>
     UnknownFormat,
 
     /// <summary>
-    /// A previously matched <c>MediaFile</c> was flagged missing, and the corresponding
-    /// <c>ReviewItem</c> was kept open past the grace period.
+    ///     A previously matched <c>MediaFile</c> was flagged missing, and the corresponding
+    ///     <c>ReviewItem</c> was kept open past the grace period.
     /// </summary>
     OrphanedAfterMissing
 }
-

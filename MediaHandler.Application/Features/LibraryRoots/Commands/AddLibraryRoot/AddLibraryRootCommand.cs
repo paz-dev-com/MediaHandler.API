@@ -1,5 +1,3 @@
-#nullable enable
-
 using FluentValidation;
 using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
@@ -86,4 +84,3 @@ public sealed class AddLibraryRootCommandHandler(
             root.UpdatedAt));
     }
 }
-

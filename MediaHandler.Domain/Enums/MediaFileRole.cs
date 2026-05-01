@@ -1,7 +1,7 @@
 namespace MediaHandler.Domain.Enums;
 
 /// <summary>
-/// Describes the functional role a physical file plays within a logical media item.
+///     Describes the functional role a physical file plays within a logical media item.
 /// </summary>
 public enum MediaFileRole
 {
@@ -14,4 +14,3 @@ public enum MediaFileRole
     /// <summary>A TV-episode file linked via <c>EpisodeFileLink</c>.</summary>
     Episode
 }
-

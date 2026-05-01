@@ -1,8 +1,8 @@
 namespace MediaHandler.Domain.Enums;
 
 /// <summary>
-/// Lifecycle state of a <c>ScanRun</c>.
-/// Valid transitions: <c>Pending → Running → Completed | Failed | Cancelled</c>.
+///     Lifecycle state of a <c>ScanRun</c>.
+///     Valid transitions: <c>Pending → Running → Completed | Failed | Cancelled</c>.
 /// </summary>
 public enum ScanStatus
 {
@@ -10,8 +10,8 @@ public enum ScanStatus
     Pending,
 
     /// <summary>
-    /// Currently executing. Enforced as a singleton by a filtered unique index
-    /// (<c>WHERE Status = 'Running'</c>) on the <c>ScanRuns</c> table.
+    ///     Currently executing. Enforced as a singleton by a filtered unique index
+    ///     (<c>WHERE Status = 'Running'</c>) on the <c>ScanRuns</c> table.
     /// </summary>
     Running,
 
@@ -24,4 +24,3 @@ public enum ScanStatus
     /// <summary>Stopped by an explicit <c>CancelScan</c> request from an administrator.</summary>
     Cancelled
 }
-

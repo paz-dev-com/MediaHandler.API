@@ -1,5 +1,3 @@
-using MediaHandler.Domain.Enums;
-
 namespace MediaHandler.Application.Features.Wishlist.DTOs;
 
 public record WishlistItemDto(

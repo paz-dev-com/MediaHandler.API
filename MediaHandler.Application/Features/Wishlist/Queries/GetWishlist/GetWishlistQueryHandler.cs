@@ -24,7 +24,8 @@ public class GetWishlistQueryValidator : AbstractValidator<GetWishlistQuery>
 public class GetWishlistQueryHandler(IApplicationDbContext context, ICurrentUserService currentUser, IMapper mapper)
     : IRequestHandler<GetWishlistQuery, Result<PagedResult<WishlistItemDto>>>
 {
-    public async Task<Result<PagedResult<WishlistItemDto>>> Handle(GetWishlistQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PagedResult<WishlistItemDto>>> Handle(GetWishlistQuery request,
+        CancellationToken cancellationToken)
     {
         var userId = await currentUser.ResolveUserIdAsync(context, cancellationToken);
 

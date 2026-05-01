@@ -1,4 +1,3 @@
-#nullable enable
 // All rules derived clean-room from documented Kodi behaviour (R-001).
 // SOURCE: https://kodi.wiki/view/Advancedsettings.xml (exclusion settings)
 // SOURCE: https://kodi.wiki/view/Naming_video_files (sample, extras conventions)
@@ -13,7 +12,7 @@ using MediaHandler.Infrastructure.Nas.Scanner;
 namespace MediaHandler.Tests.Scanner;
 
 /// <summary>
-/// Tests for <see cref="ExclusionEvaluator"/> covering every built-in exclusion rule.
+///     Tests for <see cref="ExclusionEvaluator" /> covering every built-in exclusion rule.
 /// </summary>
 public class ExclusionEvaluatorTests
 {
@@ -25,8 +24,11 @@ public class ExclusionEvaluatorTests
     };
 
     private readonly IExclusionEvaluator _sut = new ExclusionEvaluator();
-    private static ExclusionContext DefaultCtx(LibraryRoot? root = null) =>
-        new(root ?? _moviesRoot, KodiRegexCatalog.DefaultExclusionRules);
+
+    private static ExclusionContext DefaultCtx(LibraryRoot? root = null)
+    {
+        return new ExclusionContext(root ?? _moviesRoot, KodiRegexCatalog.DefaultExclusionRules);
+    }
 
     // =========================================================================
     // Video extension allow-list
@@ -55,11 +57,11 @@ public class ExclusionEvaluatorTests
     {
         var entry = MakeFile($"/nas/Movies/{filename}");
         var verdict = _sut.Evaluate(entry, DefaultCtx());
-        verdict.IsExcluded.Should().BeFalse(because: $"{filename} is a valid video extension");
+        verdict.IsExcluded.Should().BeFalse($"{filename} is a valid video extension");
     }
 
     [Theory]
-    [InlineData("poster.jpg")]    // SOURCE: Kodi wiki — image files not scanned
+    [InlineData("poster.jpg")] // SOURCE: Kodi wiki — image files not scanned
     [InlineData("cover.png")]
     [InlineData("nfo.xml")]
     [InlineData("movie.nfo")]
@@ -73,7 +75,7 @@ public class ExclusionEvaluatorTests
     {
         var entry = MakeFile($"/nas/Movies/{filename}");
         var verdict = _sut.Evaluate(entry, DefaultCtx());
-        verdict.IsExcluded.Should().BeTrue(because: $"{filename} is not a video");
+        verdict.IsExcluded.Should().BeTrue($"{filename} is not a video");
         verdict.RuleId.Should().NotBeNullOrEmpty();
     }
 
@@ -93,7 +95,7 @@ public class ExclusionEvaluatorTests
     {
         var entry = MakeFile(path);
         var verdict = _sut.Evaluate(entry, DefaultCtx());
-        verdict.IsExcluded.Should().BeTrue(because: $"'{path}' matches a sample/trailer pattern");
+        verdict.IsExcluded.Should().BeTrue($"'{path}' matches a sample/trailer pattern");
         verdict.RuleId.Should().Be(expectedRuleId);
     }
 
@@ -116,7 +118,7 @@ public class ExclusionEvaluatorTests
     {
         var entry = MakeFile(path);
         var verdict = _sut.Evaluate(entry, DefaultCtx());
-        verdict.IsExcluded.Should().BeTrue(because: $"'{path}' is in an excluded subfolder");
+        verdict.IsExcluded.Should().BeTrue($"'{path}' is in an excluded subfolder");
         verdict.RuleId.Should().Be(expectedRuleId);
     }
 
@@ -134,7 +136,7 @@ public class ExclusionEvaluatorTests
     {
         var entry = MakeFile(path);
         var verdict = _sut.Evaluate(entry, DefaultCtx());
-        verdict.IsExcluded.Should().BeTrue(because: $"hidden folder in '{path}' should trigger exclusion");
+        verdict.IsExcluded.Should().BeTrue($"hidden folder in '{path}' should trigger exclusion");
         verdict.RuleId.Should().Be(expectedRuleId);
     }
 
@@ -150,7 +152,7 @@ public class ExclusionEvaluatorTests
         // must return an exclusion so the pipeline can mark the whole folder tree.
         var entry = MakeFile("/nas/Movies/Movie (2020)/.nomedia");
         var verdict = _sut.Evaluate(entry, DefaultCtx());
-        verdict.IsExcluded.Should().BeTrue(because: ".nomedia is a marker file that suppresses scanning");
+        verdict.IsExcluded.Should().BeTrue(".nomedia is a marker file that suppresses scanning");
         verdict.RuleId.Should().Be("nomedia-marker");
     }
 
@@ -163,11 +165,11 @@ public class ExclusionEvaluatorTests
         var nomediaCtx = new ExclusionContext(
             _moviesRoot,
             rules,
-            NomediaFolders: ["/nas/Movies/Protected Folder"]);
+            ["/nas/Movies/Protected Folder"]);
 
         var entry = MakeFile("/nas/Movies/Protected Folder/movie.mkv");
         var verdict = _sut.Evaluate(entry, nomediaCtx);
-        verdict.IsExcluded.Should().BeTrue(because: "file is inside a .nomedia-protected folder");
+        verdict.IsExcluded.Should().BeTrue("file is inside a .nomedia-protected folder");
         verdict.RuleId.Should().Be("nomedia-subtree");
     }
 
@@ -178,9 +180,10 @@ public class ExclusionEvaluatorTests
     [Fact]
     public void Evaluate_Directory_IsExcludedFromMediaProcessing()
     {
-        var dir = new NasFileEntry("/nas/Movies/The Matrix (1999)", "The Matrix (1999)", 0, DateTime.UtcNow, IsDirectory: true, Extension: null);
+        var dir = new NasFileEntry("/nas/Movies/The Matrix (1999)", "The Matrix (1999)", 0, DateTime.UtcNow, true,
+            null);
         var verdict = _sut.Evaluate(dir, DefaultCtx());
-        verdict.IsExcluded.Should().BeTrue(because: "directories are not media files");
+        verdict.IsExcluded.Should().BeTrue("directories are not media files");
         verdict.RuleId.Should().Be("not-a-file");
     }
 
@@ -196,7 +199,7 @@ public class ExclusionEvaluatorTests
     {
         var entry = MakeFile(path);
         var verdict = _sut.Evaluate(entry, DefaultCtx());
-        verdict.IsExcluded.Should().BeFalse(because: $"'{path}' is a valid movie file");
+        verdict.IsExcluded.Should().BeFalse($"'{path}' is a valid movie file");
     }
 
     // =========================================================================
@@ -205,9 +208,8 @@ public class ExclusionEvaluatorTests
 
     private static NasFileEntry MakeFile(string path)
     {
-        var name = System.IO.Path.GetFileName(path);
-        var ext = System.IO.Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
+        var name = Path.GetFileName(path);
+        var ext = Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
         return new NasFileEntry(path, name, 1_073_741_824L, DateTime.UtcNow, false, ext.Length == 0 ? null : ext);
     }
 }
-

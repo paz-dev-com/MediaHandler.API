@@ -9,7 +9,10 @@ namespace MediaHandler.Application.Features.Auth.Commands.UpdatePreferences;
 
 public record UpdatePreferencesCommand(string PreferredLanguage) : IRequest<Result<UserDto>>;
 
-public class UpdatePreferencesCommandHandler(IApplicationDbContext context, ICurrentUserService currentUser, IMapper mapper)
+public class UpdatePreferencesCommandHandler(
+    IApplicationDbContext context,
+    ICurrentUserService currentUser,
+    IMapper mapper)
     : IRequestHandler<UpdatePreferencesCommand, Result<UserDto>>
 {
     public async Task<Result<UserDto>> Handle(UpdatePreferencesCommand request, CancellationToken cancellationToken)

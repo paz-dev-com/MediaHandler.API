@@ -10,12 +10,12 @@ using Microsoft.Extensions.Logging;
 namespace MediaHandler.Application.Features.Files.Commands.ScanAndImportNas;
 
 /// <summary>
-/// Orchestrates a full scan-and-import pipeline:
-/// (1) scans the NAS for new files, (2) persists newly discovered <c>MediaFile</c> records,
-/// (3) delegates all unlinked files to <see cref="IMediaAutoMatchService"/> for TMDB matching,
-/// and (4) returns aggregated scan + match statistics.
-/// The operation is idempotent: re-running it will not create duplicate <c>MediaFile</c>
-/// or <c>Media</c> records.
+///     Orchestrates a full scan-and-import pipeline:
+///     (1) scans the NAS for new files, (2) persists newly discovered <c>MediaFile</c> records,
+///     (3) delegates all unlinked files to <see cref="IMediaAutoMatchService" /> for TMDB matching,
+///     and (4) returns aggregated scan + match statistics.
+///     The operation is idempotent: re-running it will not create duplicate <c>MediaFile</c>
+///     or <c>Media</c> records.
 /// </summary>
 public class ScanAndImportNasCommandHandler(
     IApplicationDbContext context,
@@ -99,14 +99,13 @@ public class ScanAndImportNasCommandHandler(
 
         // 6. Aggregate and return
         return Result.Success(new ScanAndImportNasResult(
-            NewFiles: newFiles,
-            ExistingFiles: existingPaths.Count,
-            TotalScanned: files.Count,
-            FoldersFound: foldersFound,
-            Matched: matchResult.Matched,
-            Skipped: matchResult.Skipped,
-            Failed: matchResult.Failed,
-            Errors: matchResult.Errors));
+            newFiles,
+            existingPaths.Count,
+            files.Count,
+            foldersFound,
+            matchResult.Matched,
+            matchResult.Skipped,
+            matchResult.Failed,
+            matchResult.Errors));
     }
 }
-

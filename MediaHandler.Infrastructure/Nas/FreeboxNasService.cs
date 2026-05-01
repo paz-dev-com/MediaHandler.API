@@ -20,7 +20,8 @@ public sealed class FreeboxNasService(
     private readonly SemaphoreSlim _sessionLock = new(1, 1);
     private string? _sessionToken;
 
-    public async Task<IEnumerable<NasFileInfo>> ScanDirectoryAsync(string? basePath, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<NasFileInfo>> ScanDirectoryAsync(string? basePath,
+        CancellationToken cancellationToken = default)
     {
         // When no path is given, scan every configured base path and aggregate
         if (string.IsNullOrWhiteSpace(basePath))
@@ -41,7 +42,8 @@ public sealed class FreeboxNasService(
         if (_options.BasePaths.Count > 0 &&
             !_options.BasePaths.Any(bp => basePath.StartsWith(bp, StringComparison.OrdinalIgnoreCase)))
         {
-            logger.LogWarning("Rejected scan request for path '{Path}': not within any configured base path.", basePath);
+            logger.LogWarning("Rejected scan request for path '{Path}': not within any configured base path.",
+                basePath);
             throw new UnauthorizedAccessException("The requested path is not within the allowed base paths.");
         }
 
@@ -49,10 +51,14 @@ public sealed class FreeboxNasService(
     }
 
     public Task<IReadOnlyList<string>> GetConfiguredPathsAsync(CancellationToken cancellationToken = default)
-        => Task.FromResult<IReadOnlyList<string>>(_options.BasePaths.AsReadOnly());
+    {
+        return Task.FromResult<IReadOnlyList<string>>(_options.BasePaths.AsReadOnly());
+    }
 
-    public async Task<bool> FileExistsAsync(string filePath, CancellationToken cancellationToken = default) =>
-        await GetFileInfoAsync(filePath, cancellationToken) is not null;
+    public async Task<bool> FileExistsAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        return await GetFileInfoAsync(filePath, cancellationToken) is not null;
+    }
 
     public async Task<NasFileInfo?> GetFileInfoAsync(string filePath, CancellationToken cancellationToken = default)
     {
@@ -78,11 +84,11 @@ public sealed class FreeboxNasService(
         {
             logger.LogInformation("Freebox session expired, re-authenticating.");
             InvalidateSession();
-            return await GetFreeboxAsync<T>(path, cancellationToken, isRetry: true);
+            return await GetFreeboxAsync<T>(path, cancellationToken, true);
         }
 
         httpResponse.EnsureSuccessStatusCode();
-        return await httpResponse.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
+        return await httpResponse.Content.ReadFromJsonAsync<T>(cancellationToken);
     }
 
     private async Task<string> EnsureSessionTokenAsync(CancellationToken cancellationToken)
@@ -114,7 +120,7 @@ public sealed class FreeboxNasService(
                 cancellationToken);
 
             var session = await sessionResponse.Content
-                .ReadFromJsonAsync<FreeboxResponse<FreeboxSessionResult>>(cancellationToken: cancellationToken);
+                .ReadFromJsonAsync<FreeboxResponse<FreeboxSessionResult>>(cancellationToken);
 
             if (session?.Success != true || session.Result?.SessionToken is null)
                 throw new InvalidOperationException("Failed to open Freebox session.");
@@ -129,10 +135,15 @@ public sealed class FreeboxNasService(
         }
     }
 
-    private void InvalidateSession() => _sessionToken = null;
+    private void InvalidateSession()
+    {
+        _sessionToken = null;
+    }
 
-    private static string EncodePath(string path) =>
-        WebUtility.UrlEncode(Convert.ToBase64String(Encoding.UTF8.GetBytes(path)));
+    private static string EncodePath(string path)
+    {
+        return WebUtility.UrlEncode(Convert.ToBase64String(Encoding.UTF8.GetBytes(path)));
+    }
 
     private static NasFileInfo MapToNasFileInfo(FreeboxFileEntry entry)
     {
@@ -146,18 +157,18 @@ public sealed class FreeboxNasService(
         var plainPath = DecodeFreeboxPath(entry.Path);
 
         return new NasFileInfo(
-            FilePath: plainPath,
-            FileName: entry.Name,
-            SizeBytes: entry.Size ?? 0,
-            Format: isDirectory || string.IsNullOrEmpty(extension) ? null : extension,
-            CreatedAt: modified,
-            ModifiedAt: modified,
-            IsDirectory: isDirectory);
+            plainPath,
+            entry.Name,
+            entry.Size ?? 0,
+            isDirectory || string.IsNullOrEmpty(extension) ? null : extension,
+            modified,
+            modified,
+            isDirectory);
     }
 
     /// <summary>
-    /// Decodes a Freebox path from its Base64 representation to a plain-text UTF-8 string.
-    /// Falls back to returning the input unchanged if it is not valid Base64.
+    ///     Decodes a Freebox path from its Base64 representation to a plain-text UTF-8 string.
+    ///     Falls back to returning the input unchanged if it is not valid Base64.
     /// </summary>
     private static string DecodeFreeboxPath(string encodedPath)
     {
@@ -210,27 +221,35 @@ public sealed class FreeboxNasService(
     }
 
     private record FreeboxResponse<T>(
-        [property: JsonPropertyName("success")] bool Success,
+        [property: JsonPropertyName("success")]
+        bool Success,
         [property: JsonPropertyName("msg")] string? Msg,
-        [property: JsonPropertyName("error_code")] string? ErrorCode,
+        [property: JsonPropertyName("error_code")]
+        string? ErrorCode,
         [property: JsonPropertyName("result")] T? Result);
 
     private record FreeboxChallenge(
-        [property: JsonPropertyName("challenge")] string Challenge,
-        [property: JsonPropertyName("logged_in")] bool LoggedIn);
+        [property: JsonPropertyName("challenge")]
+        string Challenge,
+        [property: JsonPropertyName("logged_in")]
+        bool LoggedIn);
 
     private record FreeboxSessionRequest(
         [property: JsonPropertyName("app_id")] string AppId,
-        [property: JsonPropertyName("password")] string Password);
+        [property: JsonPropertyName("password")]
+        string Password);
 
     private record FreeboxSessionResult(
-        [property: JsonPropertyName("session_token")] string? SessionToken);
+        [property: JsonPropertyName("session_token")]
+        string? SessionToken);
 
     private record FreeboxFileEntry(
         [property: JsonPropertyName("type")] string Type,
         [property: JsonPropertyName("name")] string Name,
         [property: JsonPropertyName("path")] string Path,
         [property: JsonPropertyName("size")] long? Size,
-        [property: JsonPropertyName("mimetype")] string? Mimetype,
-        [property: JsonPropertyName("modification")] long Modification);
+        [property: JsonPropertyName("mimetype")]
+        string? Mimetype,
+        [property: JsonPropertyName("modification")]
+        long Modification);
 }
