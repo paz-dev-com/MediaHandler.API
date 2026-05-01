@@ -3,7 +3,7 @@ using MediaHandler.Domain.Enums;
 namespace MediaHandler.Application.Common.DTOs;
 
 /// <summary>
-/// A single TMDB candidate attached to a <see cref="ReviewItemDto"/>.
+///     A single TMDB candidate attached to a <see cref="ReviewItemDto" />.
 /// </summary>
 public record TmdbCandidateDto(
     int TmdbId,
@@ -14,7 +14,7 @@ public record TmdbCandidateDto(
     string? PosterPath);
 
 /// <summary>
-/// Data-transfer object for a <c>ReviewItem</c> row, returned by the review-items API.
+///     Data-transfer object for a <c>ReviewItem</c> row, returned by the review-items API.
 /// </summary>
 public record ReviewItemDto(
     Guid Id,
@@ -30,4 +30,3 @@ public record ReviewItemDto(
     MediaType? ResolvedKind,
     DateTime? ResolvedAt,
     DateTime CreatedAt);
-

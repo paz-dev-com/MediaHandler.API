@@ -2,6 +2,7 @@ using FluentAssertions;
 using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Features.Files.Commands.ScanAndImportNas;
+using MediaHandler.Domain.Entities;
 using MediaHandler.Tests.Common;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -10,10 +11,10 @@ namespace MediaHandler.Tests.Features.Files;
 
 public class ScanAndImportNasCommandHandlerTests
 {
-    private readonly IApplicationDbContext _context;
-    private readonly INasService _nasService;
     private readonly IMediaAutoMatchService _autoMatchService;
+    private readonly IApplicationDbContext _context;
     private readonly ScanAndImportNasCommandHandler _handler;
+    private readonly INasService _nasService;
 
     public ScanAndImportNasCommandHandlerTests()
     {
@@ -45,14 +46,14 @@ public class ScanAndImportNasCommandHandlerTests
 
         _autoMatchService
             .MatchAndLinkUnlinkedFilesAsync(
-                Arg.Any<IReadOnlyList<Domain.Entities.MediaFile>>(),
+                Arg.Any<IReadOnlyList<MediaFile>>(),
                 Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new AutoMatchResult(Matched: 2, Skipped: 0, Failed: 0, Errors: []));
+            .Returns(new AutoMatchResult(2, 0, 0, []));
 
         // Act
         var result = await _handler.Handle(
-            new ScanAndImportNasCommand(BasePath: null, Language: "en"),
+            new ScanAndImportNasCommand(null, "en"),
             TestContext.Current.CancellationToken);
 
         // Assert
@@ -67,7 +68,7 @@ public class ScanAndImportNasCommandHandlerTests
 
         // Verify matching service was called with the 2 unlinked files
         await _autoMatchService.Received(1).MatchAndLinkUnlinkedFilesAsync(
-            Arg.Is<IReadOnlyList<Domain.Entities.MediaFile>>(list => list.Count == 2),
+            Arg.Is<IReadOnlyList<MediaFile>>(list => list.Count == 2),
             "en",
             Arg.Any<CancellationToken>());
     }
@@ -80,7 +81,7 @@ public class ScanAndImportNasCommandHandlerTests
         {
             new("/Movies/The.Matrix.1999.mkv", "The.Matrix.1999.mkv",
                 1_000_000_000L, "mkv", DateTime.UtcNow, DateTime.UtcNow),
-            new("/Movies/", "Movies", 0, null, DateTime.UtcNow, DateTime.UtcNow, IsDirectory: true)
+            new("/Movies/", "Movies", 0, null, DateTime.UtcNow, DateTime.UtcNow, true)
         };
 
         _nasService
@@ -88,7 +89,8 @@ public class ScanAndImportNasCommandHandlerTests
             .Returns(nasEntries);
 
         _autoMatchService
-            .MatchAndLinkUnlinkedFilesAsync(Arg.Any<IReadOnlyList<Domain.Entities.MediaFile>>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .MatchAndLinkUnlinkedFilesAsync(Arg.Any<IReadOnlyList<MediaFile>>(), Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
             .Returns(new AutoMatchResult(1, 0, 0, []));
 
         // Act
@@ -109,7 +111,8 @@ public class ScanAndImportNasCommandHandlerTests
             .Returns(Enumerable.Empty<NasFileInfo>());
 
         _autoMatchService
-            .MatchAndLinkUnlinkedFilesAsync(Arg.Any<IReadOnlyList<Domain.Entities.MediaFile>>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .MatchAndLinkUnlinkedFilesAsync(Arg.Any<IReadOnlyList<MediaFile>>(), Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
             .Returns(new AutoMatchResult(0, 0, 0, []));
 
         // Act
@@ -128,7 +131,7 @@ public class ScanAndImportNasCommandHandlerTests
     public async Task Handle_FileAlreadyInDatabase_IsNotAddedAgain()
     {
         // Arrange — file already exists in DB
-        _context.MediaFiles.Add(new Domain.Entities.MediaFile
+        _context.MediaFiles.Add(new MediaFile
         {
             FilePath = "/Movies/The.Matrix.1999.mkv"
         });
@@ -145,7 +148,8 @@ public class ScanAndImportNasCommandHandlerTests
             .Returns(nasFiles);
 
         _autoMatchService
-            .MatchAndLinkUnlinkedFilesAsync(Arg.Any<IReadOnlyList<Domain.Entities.MediaFile>>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .MatchAndLinkUnlinkedFilesAsync(Arg.Any<IReadOnlyList<MediaFile>>(), Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
             .Returns(new AutoMatchResult(0, 1, 0, []));
 
         // Act
@@ -157,4 +161,3 @@ public class ScanAndImportNasCommandHandlerTests
         _context.MediaFiles.Count().Should().Be(1, "no duplicate MediaFile should be created");
     }
 }
-

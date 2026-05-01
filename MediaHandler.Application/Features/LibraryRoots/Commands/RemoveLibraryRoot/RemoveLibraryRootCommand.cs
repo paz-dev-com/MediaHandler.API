@@ -1,5 +1,3 @@
-#nullable enable
-
 using FluentValidation;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
@@ -36,15 +34,11 @@ public sealed class RemoveLibraryRootCommandHandler(IApplicationDbContext db)
             .FirstOrDefaultAsync(r => r.Status == ScanStatus.Running, cancellationToken);
 
         if (activeScan is not null)
-        {
             // Check if this root is referenced in the active scan
             // The LibraryRootIdsJson is an array; check for the id string
             if (activeScan.LibraryRootIdsJson.Contains(request.Id.ToString(), StringComparison.OrdinalIgnoreCase)
                 || activeScan.LibraryRootIdsJson == "[]") // empty means ALL roots → conflict
-            {
                 return Result.Fail("SCAN_IN_PROGRESS: Cannot remove a library root while a scan is running.");
-            }
-        }
 
         // Soft-delete cascade: null out LibraryRootId on all MediaFiles, set MissingSince
         var affectedFiles = await db.MediaFiles
@@ -63,4 +57,3 @@ public sealed class RemoveLibraryRootCommandHandler(IApplicationDbContext db)
         return Result.Success();
     }
 }
-

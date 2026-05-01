@@ -1,8 +1,8 @@
-#nullable enable
-
+using System.Text.Json;
 using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
+using MediaHandler.Domain.Entities;
 using MediaHandler.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -41,9 +41,9 @@ public sealed class CancelScanCommandHandler(
         return Result.Success(MapToDto(updated));
     }
 
-    private static ScanRunDto MapToDto(Domain.Entities.ScanRun run)
+    private static ScanRunDto MapToDto(ScanRun run)
     {
-        var rootIds = System.Text.Json.JsonSerializer.Deserialize<Guid[]>(run.LibraryRootIdsJson) ?? [];
+        var rootIds = JsonSerializer.Deserialize<Guid[]>(run.LibraryRootIdsJson) ?? [];
         return new ScanRunDto(
             run.Id, run.Mode, run.Status,
             run.StartedAt, run.FinishedAt, run.FailureReason,
@@ -52,4 +52,3 @@ public sealed class CancelScanCommandHandler(
                 run.Unchanged, run.Removed, run.Excluded, run.NeedsReview));
     }
 }
-

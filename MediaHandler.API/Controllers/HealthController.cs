@@ -19,6 +19,8 @@ public class HealthController(HealthCheckService healthCheckService) : Controlle
         var status = report.Status == HealthStatus.Healthy ? "Healthy" : "Unhealthy";
         var response = ApiResponse<HealthResponse>.Success(new HealthResponse(status, DateTime.UtcNow, "1.0.0"));
 
-        return report.Status == HealthStatus.Healthy ? Ok(response) : StatusCode(StatusCodes.Status503ServiceUnavailable, response);
+        return report.Status == HealthStatus.Healthy
+            ? Ok(response)
+            : StatusCode(StatusCodes.Status503ServiceUnavailable, response);
     }
 }

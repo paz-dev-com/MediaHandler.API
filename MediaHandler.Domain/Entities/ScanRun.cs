@@ -4,13 +4,13 @@ using MediaHandler.Domain.Enums;
 namespace MediaHandler.Domain.Entities;
 
 /// <summary>
-/// Records a single execution of the scanner pipeline.
-/// Provides per-run summary counters and a full per-file audit trail via
-/// the <see cref="Decisions"/> collection.
+///     Records a single execution of the scanner pipeline.
+///     Provides per-run summary counters and a full per-file audit trail via
+///     the <see cref="Decisions" /> collection.
 /// </summary>
 /// <remarks>
-/// A filtered unique index on <c>Status = 'Running'</c> prevents concurrent scans
-/// (single-active-scan invariant enforced at the database level).
+///     A filtered unique index on <c>Status = 'Running'</c> prevents concurrent scans
+///     (single-active-scan invariant enforced at the database level).
 /// </remarks>
 public class ScanRun : BaseEntity
 {
@@ -27,15 +27,15 @@ public class ScanRun : BaseEntity
     public DateTime? FinishedAt { get; set; }
 
     /// <summary>
-    /// Human-readable description of why the run failed.
-    /// Populated when <see cref="Status"/> transitions to <see cref="ScanStatus.Failed"/>.
+    ///     Human-readable description of why the run failed.
+    ///     Populated when <see cref="Status" /> transitions to <see cref="ScanStatus.Failed" />.
     /// </summary>
     public string? FailureReason { get; set; }
 
     /// <summary>
-    /// JSON-serialised array of <c>LibraryRoot</c> <see cref="Guid"/> values that were
-    /// included in this run.  Denormalised so the record is self-contained after roots
-    /// are deleted.
+    ///     JSON-serialised array of <c>LibraryRoot</c> <see cref="Guid" /> values that were
+    ///     included in this run.  Denormalised so the record is self-contained after roots
+    ///     are deleted.
     /// </summary>
     public string LibraryRootIdsJson { get; set; } = "[]";
 
@@ -67,4 +67,3 @@ public class ScanRun : BaseEntity
     /// <summary>Per-file decision rows written by the pipeline (one per processed path).</summary>
     public ICollection<ScanItemDecision> Decisions { get; set; } = [];
 }
-

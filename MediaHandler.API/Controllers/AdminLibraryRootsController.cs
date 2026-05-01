@@ -1,5 +1,3 @@
-#nullable enable
-
 using MediaHandler.API.Contracts.Admin;
 using MediaHandler.API.Models;
 using MediaHandler.Application.Features.LibraryRoots.Commands.AddLibraryRoot;
@@ -14,8 +12,8 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace MediaHandler.API.Controllers;
 
 /// <summary>
-/// Admin CRUD endpoints for NAS library root configuration.
-/// All endpoints require the <c>AdminOnly</c> policy.
+///     Admin CRUD endpoints for NAS library root configuration.
+///     All endpoints require the <c>AdminOnly</c> policy.
 /// </summary>
 [ApiController]
 [Route("api/v1/admin/library-roots")]
@@ -24,7 +22,7 @@ namespace MediaHandler.API.Controllers;
 public class AdminLibraryRootsController(ISender sender) : ControllerBase
 {
     /// <summary>
-    /// List configured library roots, with optional filtering by kind and enabled status.
+    ///     List configured library roots, with optional filtering by kind and enabled status.
     /// </summary>
     [HttpGet("")]
     [ProducesResponseType<ApiResponse<object>>(StatusCodes.Status200OK)]
@@ -52,8 +50,8 @@ public class AdminLibraryRootsController(ISender sender) : ControllerBase
     }
 
     /// <summary>
-    /// Register a new library root. Returns 201 Created with the persisted root.
-    /// Returns 409 Conflict when the path is already registered.
+    ///     Register a new library root. Returns 201 Created with the persisted root.
+    ///     Returns 409 Conflict when the path is already registered.
     /// </summary>
     [HttpPost("")]
     [ProducesResponseType<ApiResponse<object>>(StatusCodes.Status201Created)]
@@ -83,8 +81,8 @@ public class AdminLibraryRootsController(ISender sender) : ControllerBase
     }
 
     /// <summary>
-    /// Remove a library root by id. Existing MediaFile rows are soft-deleted (MissingSince set).
-    /// Returns 409 Conflict when a scan referencing this root is currently running.
+    ///     Remove a library root by id. Existing MediaFile rows are soft-deleted (MissingSince set).
+    ///     Returns 409 Conflict when a scan referencing this root is currently running.
     /// </summary>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -114,4 +112,3 @@ public class AdminLibraryRootsController(ISender sender) : ControllerBase
         return NoContent();
     }
 }
-

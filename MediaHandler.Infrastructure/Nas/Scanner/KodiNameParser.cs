@@ -1,4 +1,3 @@
-#nullable enable
 // KodiNameParser — clean-room implementation of Kodi movie + episode name parsing.
 //
 // R-001 CLEAN-ROOM DECLARATION
@@ -10,20 +9,31 @@
 
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models.Scanner;
-using MediaHandler.Domain.Enums;
 
 namespace MediaHandler.Infrastructure.Nas.Scanner;
 
 /// <summary>
-/// Clean-room re-implementation of Kodi's movie + episode filename parsing heuristics.
-/// <para>
-/// <b>Movie parsing rule</b> (SOURCE: Kodi wiki "File naming / Movies"):
-/// When a movie file is inside a dedicated folder, the folder name is used as the
-/// authoritative title source. The filename is parsed only as a fallback.
-/// </para>
+///     Clean-room re-implementation of Kodi's movie + episode filename parsing heuristics.
+///     <para>
+///         <b>Movie parsing rule</b> (SOURCE: Kodi wiki "File naming / Movies"):
+///         When a movie file is inside a dedicated folder, the folder name is used as the
+///         authoritative title source. The filename is parsed only as a fallback.
+///     </para>
 /// </summary>
 public sealed class KodiNameParser : IKodiNameParser
 {
+    // SOURCE: Kodi wiki — these generic folder names do not constitute a movie title.
+    private static readonly HashSet<string> GenericFolderNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "movies", "films", "video", "videos", "media", "content",
+        "nas", "downloads", "torrents", "archive"
+    };
+
+    // =========================================================================
+    // Private helpers
+    // =========================================================================
+
+    private readonly TvEpisodeMatcher _episodeMatcher = new();
     // =========================================================================
     // IKodiNameParser.ParseMovie
     // SOURCE: https://kodi.wiki/view/Naming_video_files/Movies
@@ -37,12 +47,12 @@ public sealed class KodiNameParser : IKodiNameParser
         fullPath = NormaliseSeparators(fullPath);
         var segments = fullPath.Split('/');
         if (segments.Length < 2)
-            return ParseFromFilename(System.IO.Path.GetFileNameWithoutExtension(fullPath));
+            return ParseFromFilename(Path.GetFileNameWithoutExtension(fullPath));
 
         // SOURCE: Kodi wiki — the folder containing the movie file is tried first.
         // The folder is the parent directory of the file.
         var filename = segments[^1]; // last segment
-        var folder = segments[^2];   // parent folder
+        var folder = segments[^2]; // parent folder
 
         // If the parent folder looks like it contains a year (i.e., it's a movie-specific
         // folder like "Inception (2010)" rather than a generic folder like "Movies"),
@@ -56,7 +66,7 @@ public sealed class KodiNameParser : IKodiNameParser
         }
 
         // Fallback to filename without extension
-        return ParseFromFilename(System.IO.Path.GetFileNameWithoutExtension(filename));
+        return ParseFromFilename(Path.GetFileNameWithoutExtension(filename));
     }
 
     // =========================================================================
@@ -71,7 +81,7 @@ public sealed class KodiNameParser : IKodiNameParser
 
         // Pass the full filename (with extension) to the matcher so it can strip internally.
         // Do NOT strip here — the matcher already calls GetFileNameWithoutExtension.
-        var filename = System.IO.Path.GetFileName(fullPath);
+        var filename = Path.GetFileName(fullPath);
         var episodes = _episodeMatcher.Match(filename, hint);
 
         if (episodes.Count == 0)
@@ -90,29 +100,20 @@ public sealed class KodiNameParser : IKodiNameParser
             return new EpisodeNameParseResult(false, ExtractShowTitle(fullPath), [], "No episode pattern found");
         }
 
-        var filenameNoExt = System.IO.Path.GetFileNameWithoutExtension(filename);
+        var filenameNoExt = Path.GetFileNameWithoutExtension(filename);
         var title = ExtractEpisodeTitle(filenameNoExt, episodes[0]);
         return new EpisodeNameParseResult(true, title, episodes);
     }
 
-    // =========================================================================
-    // Private helpers
-    // =========================================================================
-
-    private readonly TvEpisodeMatcher _episodeMatcher = new();
-
-    private static string NormaliseSeparators(string path) =>
-        path.Replace('\\', '/');
-
-    // SOURCE: Kodi wiki — these generic folder names do not constitute a movie title.
-    private static readonly HashSet<string> GenericFolderNames = new(StringComparer.OrdinalIgnoreCase)
+    private static string NormaliseSeparators(string path)
     {
-        "movies", "films", "video", "videos", "media", "content",
-        "nas", "downloads", "torrents", "archive"
-    };
+        return path.Replace('\\', '/');
+    }
 
-    private static bool IsGenericFolder(string folder) =>
-        GenericFolderNames.Contains(folder);
+    private static bool IsGenericFolder(string folder)
+    {
+        return GenericFolderNames.Contains(folder);
+    }
 
     private static MovieNameParseResult ParseFromFolderName(string folder)
     {
@@ -171,16 +172,15 @@ public sealed class KodiNameParser : IKodiNameParser
         // Scan right-to-left so the actual release year (typically after the title)
         // is preferred over year-like numbers that are part of the title itself
         // (e.g., "Blade.Runner.2049.2017" → year=2017, not 2049).
-        var parts = name.Split(['.', ' ', '_']);
+        var parts = name.Split('.', ' ', '_');
         for (var i = parts.Length - 1; i >= 1; i--)
-        {
             if (parts[i].Length == 4 && int.TryParse(parts[i], out var year)
-                && year is >= 1888 and <= 2099)
+                                     && year is >= 1888 and <= 2099)
             {
                 var beforeYear = string.Join('.', parts[..i]);
                 return (beforeYear, year);
             }
-        }
+
         return null;
     }
 
@@ -215,7 +215,7 @@ public sealed class KodiNameParser : IKodiNameParser
             var afterEp = filenameNoExt[(sxxMatch.Index + sxxMatch.Length)..].Trim('.', ' ', '_', '-');
             return string.IsNullOrWhiteSpace(afterEp) ? null : afterEp.Replace('.', ' ').Replace('_', ' ');
         }
+
         return null;
     }
 }
-

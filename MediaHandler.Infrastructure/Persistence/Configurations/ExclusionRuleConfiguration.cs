@@ -31,4 +31,3 @@ public class ExclusionRuleConfiguration : IEntityTypeConfiguration<ExclusionRule
             .IsUnique();
     }
 }
-

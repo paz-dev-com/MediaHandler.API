@@ -29,7 +29,8 @@ public class EpisodesController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ApiResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> SetEpisodeWatched(Guid episodeId, [FromBody] SetEpisodeWatchedRequest request, CancellationToken ct, Guid mediaId, Guid seasonId)
+    public async Task<IActionResult> SetEpisodeWatched(Guid episodeId, [FromBody] SetEpisodeWatchedRequest request,
+        CancellationToken ct, Guid mediaId, Guid seasonId)
     {
         var result = await sender.Send(new SetEpisodeWatchedCommand(episodeId, request.IsWatched), ct);
         return result.IsSuccess

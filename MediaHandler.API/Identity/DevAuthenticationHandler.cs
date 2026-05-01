@@ -8,23 +8,19 @@ using Microsoft.Extensions.Options;
 namespace MediaHandler.API.Identity;
 
 /// <summary>
-/// Development-only authentication handler.
-///
-/// Priority order:
-///   1. Real Bearer JWT — if a valid JWT is present in the Authorization header, its
-///      claims (sub, email, name, roles) are extracted WITHOUT signature validation.
-///      This allows real Auth0 users to authenticate in development.
-///
-///   2. X-Dev-* headers — useful for Swagger, integration tests, or manual overrides
-///      when no real JWT is available.
-///
-///   3. Hardcoded defaults — "auth0|devuser1" / "dev@local.com" / Admin role.
-///      These are intentionally kept for unit tests that don't provide a token.
-///
-/// Headers (all optional, only used when no Bearer JWT is present):
-///   X-Dev-OktaId    — sub claim    (default: "auth0|devuser1")
-///   X-Dev-Email     — email claim  (default: "dev@local.com")
-///   X-Dev-IsAdmin   — Pass "false" to remove the Admin role (default: admin = true)
+///     Development-only authentication handler.
+///     Priority order:
+///     1. Real Bearer JWT — if a valid JWT is present in the Authorization header, its
+///     claims (sub, email, name, roles) are extracted WITHOUT signature validation.
+///     This allows real Auth0 users to authenticate in development.
+///     2. X-Dev-* headers — useful for Swagger, integration tests, or manual overrides
+///     when no real JWT is available.
+///     3. Hardcoded defaults — "auth0|devuser1" / "dev@local.com" / Admin role.
+///     These are intentionally kept for unit tests that don't provide a token.
+///     Headers (all optional, only used when no Bearer JWT is present):
+///     X-Dev-OktaId    — sub claim    (default: "auth0|devuser1")
+///     X-Dev-Email     — email claim  (default: "dev@local.com")
+///     X-Dev-IsAdmin   — Pass "false" to remove the Admin role (default: admin = true)
 /// </summary>
 public class DevAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -34,7 +30,7 @@ public class DevAuthenticationHandler(
     public const string SchemeName = "DevAuth";
 
     /// <summary>
-    /// Namespaced roles claim — must match the API's RoleClaimType and the Auth0 Action.
+    ///     Namespaced roles claim — must match the API's RoleClaimType and the Auth0 Action.
     /// </summary>
     private const string RolesClaimName = "https://mediahandler.com/roles";
 
@@ -55,15 +51,17 @@ public class DevAuthenticationHandler(
             if (jwtClaims is not null)
             {
                 var jwtSub = jwtClaims.FirstOrDefault(c => c.Type == "sub")?.Value;
-                var jwtEmail = jwtClaims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Email)?.Value;
-                Logger.LogInformation("[DevAuth] Real JWT detected → sub={Sub}, email={Email}", jwtSub, jwtEmail ?? "<absent>");
+                var jwtEmail = jwtClaims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+                Logger.LogInformation("[DevAuth] Real JWT detected → sub={Sub}, email={Email}", jwtSub,
+                    jwtEmail ?? "<absent>");
 
                 var jwtIdentity = new ClaimsIdentity(jwtClaims, SchemeName);
                 var jwtTicket = new AuthenticationTicket(new ClaimsPrincipal(jwtIdentity), SchemeName);
                 return Task.FromResult(AuthenticateResult.Success(jwtTicket));
             }
 
-            Logger.LogWarning("[DevAuth] Token present but not a decodable JWT (likely opaque — check Auth0 API audience). Falling back to dev defaults.");
+            Logger.LogWarning(
+                "[DevAuth] Token present but not a decodable JWT (likely opaque — check Auth0 API audience). Falling back to dev defaults.");
         }
         else
         {
@@ -81,11 +79,11 @@ public class DevAuthenticationHandler(
         var claims = new List<Claim>
         {
             new("sub", oktaId),
-            new(ClaimTypes.Email, email),
+            new(ClaimTypes.Email, email)
         };
 
         if (isAdmin)
-            claims.Add(new(ClaimTypes.Role, "Admin"));
+            claims.Add(new Claim(ClaimTypes.Role, "Admin"));
 
         var identity = new ClaimsIdentity(claims, SchemeName);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName);
@@ -93,8 +91,8 @@ public class DevAuthenticationHandler(
     }
 
     /// <summary>
-    /// Decodes the JWT payload without validating the signature (dev-only).
-    /// Returns null if the token is not a well-formed JWT or has no subject claim.
+    ///     Decodes the JWT payload without validating the signature (dev-only).
+    ///     Returns null if the token is not a well-formed JWT or has no subject claim.
     /// </summary>
     private static List<Claim>? TryExtractJwtClaims(string token)
     {
@@ -111,7 +109,7 @@ public class DevAuthenticationHandler(
             {
                 2 => "==",
                 3 => "=",
-                _ => string.Empty,
+                _ => string.Empty
             };
 
             var bytes = Convert.FromBase64String(payload);
@@ -125,29 +123,25 @@ public class DevAuthenticationHandler(
 
             var claims = new List<Claim>
             {
-                new("sub", subProp.GetString()!),
+                new("sub", subProp.GetString()!)
             };
 
             // email
             if (root.TryGetProperty("email", out var emailProp) &&
                 emailProp.GetString() is { Length: > 0 } email)
-                claims.Add(new(ClaimTypes.Email, email));
+                claims.Add(new Claim(ClaimTypes.Email, email));
 
             // name / display name
             if (root.TryGetProperty("name", out var nameProp) &&
                 nameProp.GetString() is { Length: > 0 } name)
-                claims.Add(new("name", name));
+                claims.Add(new Claim("name", name));
 
             // Roles from the namespaced custom claim (set by Auth0 Action)
             if (root.TryGetProperty(RolesClaimName, out var rolesProp) &&
                 rolesProp.ValueKind == JsonValueKind.Array)
-            {
                 foreach (var role in rolesProp.EnumerateArray())
-                {
                     if (role.GetString() is { Length: > 0 } roleName)
-                        claims.Add(new(ClaimTypes.Role, roleName));
-                }
-            }
+                        claims.Add(new Claim(ClaimTypes.Role, roleName));
 
             return claims;
         }

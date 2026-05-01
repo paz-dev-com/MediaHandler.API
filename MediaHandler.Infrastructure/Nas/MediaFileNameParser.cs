@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using MediaHandler.Application.Common;
 using MediaHandler.Application.Common.DTOs;
@@ -6,27 +7,28 @@ using MediaHandler.Application.Common.Interfaces;
 namespace MediaHandler.Infrastructure.Nas;
 
 /// <summary>
-/// Parses NAS file paths to extract a media title, optional release year,
-/// and optional TMDB media-type hint (<c>"movie"</c> or <c>"tv"</c>).
+///     Parses NAS file paths to extract a media title, optional release year,
+///     and optional TMDB media-type hint (<c>"movie"</c> or <c>"tv"</c>).
 /// </summary>
 /// <remarks>
-/// <para>
-/// <b>DEPRECATED</b>: This parser is superseded by the Kodi-style scanner pipeline
-/// (<see cref="Scanner.KodiNameParser"/>, <see cref="Scanner.ScanPipeline"/>).
-/// It remains only because the legacy <c>ScanAndImportNas</c> and <c>AutoImportMediaFiles</c>
-/// handlers in <c>FilesController</c> still depend on <c>IMediaFileNameParser</c> via
-/// <c>MediaAutoMatchService</c>. Once those legacy endpoints are removed, this file
-/// and its interface should be deleted along with the DI registration.
-/// </para>
-/// <para>Supported filename patterns:</para>
-/// <list type="bullet">
-///   <item>Dot-separated: <c>The.Matrix.1999.1080p.BluRay.mkv</c></item>
-///   <item>Year in folder: <c>The Matrix (1999)/The.Matrix.mkv</c></item>
-///   <item>TV show patterns: <c>breaking.bad.s01e01.720p.mkv</c></item>
-///   <item>Plain title: <c>Inception.mkv</c></item>
-/// </list>
+///     <para>
+///         <b>DEPRECATED</b>: This parser is superseded by the Kodi-style scanner pipeline
+///         (<see cref="Scanner.KodiNameParser" />, <see cref="Scanner.ScanPipeline" />).
+///         It remains only because the legacy <c>ScanAndImportNas</c> and <c>AutoImportMediaFiles</c>
+///         handlers in <c>FilesController</c> still depend on <c>IMediaFileNameParser</c> via
+///         <c>MediaAutoMatchService</c>. Once those legacy endpoints are removed, this file
+///         and its interface should be deleted along with the DI registration.
+///     </para>
+///     <para>Supported filename patterns:</para>
+///     <list type="bullet">
+///         <item>Dot-separated: <c>The.Matrix.1999.1080p.BluRay.mkv</c></item>
+///         <item>Year in folder: <c>The Matrix (1999)/The.Matrix.mkv</c></item>
+///         <item>TV show patterns: <c>breaking.bad.s01e01.720p.mkv</c></item>
+///         <item>Plain title: <c>Inception.mkv</c></item>
+///     </list>
 /// </remarks>
-[Obsolete("Use KodiNameParser from the Kodi-style scanner pipeline instead. This parser is retained only for legacy FilesController compatibility.")]
+[Obsolete(
+    "Use KodiNameParser from the Kodi-style scanner pipeline instead. This parser is retained only for legacy FilesController compatibility.")]
 public sealed class MediaFileNameParser : IMediaFileNameParser
 {
     // Video file extensions we recognize as media — single source of truth in MediaFileConstants
@@ -189,10 +191,9 @@ public sealed class MediaFileNameParser : IMediaFileNameParser
             return (null, year);
 
         // Title-case the result
-        var title = System.Globalization.CultureInfo.InvariantCulture.TextInfo
+        var title = CultureInfo.InvariantCulture.TextInfo
             .ToTitleCase(spaced.ToLowerInvariant());
 
         return (title, year);
     }
 }
-

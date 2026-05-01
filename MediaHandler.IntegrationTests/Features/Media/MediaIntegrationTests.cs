@@ -1,13 +1,11 @@
 using FluentAssertions;
-using MediaHandler.Application.Common.Mappings;
+using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Features.Media.Commands.CreateMedia;
 using MediaHandler.Application.Features.Media.Queries.GetMediaById;
 using MediaHandler.Application.Features.Media.Queries.GetMediaList;
 using MediaHandler.Domain.Enums;
 using MediaHandler.IntegrationTests.Common;
 using NSubstitute;
-using MediaHandler.Application.Common.Interfaces;
-using AutoMapper;
 
 namespace MediaHandler.IntegrationTests.Features.Media;
 
@@ -25,25 +23,25 @@ public class MediaIntegrationTests : IntegrationTestBase
     {
         var handler = new CreateMediaCommandHandler(DbContext);
         var command = new CreateMediaCommand(
-            TmdbId: 550,
-            Title: "Fight Club",
-            OriginalTitle: null,
-            Overview: "An insomniac office worker...",
-            Type: MediaType.Film,
-            ReleaseDate: new DateTime(1999, 10, 15),
-            Runtime: 139,
-            PosterPath: null,
-            BackdropPath: null,
-            VoteAverage: 8.4m,
-            VoteCount: 26000,
-            Genres: ["Drama", "Thriller"],
-            Language: "en");
+            550,
+            "Fight Club",
+            null,
+            "An insomniac office worker...",
+            MediaType.Film,
+            new DateTime(1999, 10, 15),
+            139,
+            null,
+            null,
+            8.4m,
+            26000,
+            ["Drama", "Thriller"],
+            "en");
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         var genres = DbContext.MediaGenres.Where(g => g.MediaId == result.Value).Select(g => g.Name).ToList();
-        genres.Should().BeEquivalentTo(["Drama", "Thriller"]);
+        genres.Should().BeEquivalentTo("Drama", "Thriller");
     }
 
     [Fact]
@@ -59,15 +57,19 @@ public class MediaIntegrationTests : IntegrationTestBase
         var result = await queryHandler.Handle(new GetMediaByIdQuery(createResult.Value), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Genres.Should().BeEquivalentTo(["Crime", "Mystery"]);
+        result.Value.Genres.Should().BeEquivalentTo("Crime", "Mystery");
     }
 
     [Fact]
     public async Task GetMediaList_FilterByGenre_ReturnsMatchingItems()
     {
         var handler = new CreateMediaCommandHandler(DbContext);
-        await handler.Handle(new CreateMediaCommand(101, "Action Movie", null, null, MediaType.Film, null, null, null, null, null, null, ["Action"], "en"), CancellationToken.None);
-        await handler.Handle(new CreateMediaCommand(102, "Drama Movie", null, null, MediaType.Film, null, null, null, null, null, null, ["Drama"], "en"), CancellationToken.None);
+        await handler.Handle(
+            new CreateMediaCommand(101, "Action Movie", null, null, MediaType.Film, null, null, null, null, null, null,
+                ["Action"], "en"), CancellationToken.None);
+        await handler.Handle(
+            new CreateMediaCommand(102, "Drama Movie", null, null, MediaType.Film, null, null, null, null, null, null,
+                ["Drama"], "en"), CancellationToken.None);
 
         var queryHandler = new GetMediaListQueryHandler(DbContext, CurrentUser());
         var result = await queryHandler.Handle(new GetMediaListQuery(Genre: "Action"), CancellationToken.None);

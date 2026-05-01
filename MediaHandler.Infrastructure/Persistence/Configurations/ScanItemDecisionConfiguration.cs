@@ -41,4 +41,3 @@ public class ScanItemDecisionConfiguration : IEntityTypeConfiguration<ScanItemDe
             .OnDelete(DeleteBehavior.SetNull);
     }
 }
-

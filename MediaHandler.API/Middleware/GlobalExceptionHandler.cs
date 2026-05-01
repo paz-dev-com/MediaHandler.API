@@ -1,7 +1,6 @@
 using MediaHandler.API.Models;
 using MediaHandler.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
 
 namespace MediaHandler.API.Middleware;
 
@@ -21,7 +20,7 @@ public class GlobalExceptionHandler : IExceptionHandler
             NotFoundException nfe => (StatusCodes.Status404NotFound,
                 ApiResponse.Fail(new ApiError("NOT_FOUND", nfe.Message))),
 
-            Domain.Exceptions.ValidationException ve => (StatusCodes.Status400BadRequest,
+            ValidationException ve => (StatusCodes.Status400BadRequest,
                 ApiResponse.Fail(ve.Errors
                     .SelectMany(e => e.Value.Select(msg => new ApiError("VALIDATION_ERROR", msg, e.Key)))
                     .ToArray())),

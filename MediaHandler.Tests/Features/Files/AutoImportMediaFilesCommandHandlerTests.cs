@@ -11,8 +11,8 @@ namespace MediaHandler.Tests.Features.Files;
 
 public class AutoImportMediaFilesCommandHandlerTests
 {
-    private readonly IApplicationDbContext _context;
     private readonly IMediaAutoMatchService _autoMatchService;
+    private readonly IApplicationDbContext _context;
     private readonly AutoImportMediaFilesCommandHandler _handler;
 
     public AutoImportMediaFilesCommandHandlerTests()
@@ -41,11 +41,11 @@ public class AutoImportMediaFilesCommandHandlerTests
                 Arg.Any<IReadOnlyList<MediaFile>>(),
                 Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new AutoMatchResult(Matched: 2, Skipped: 0, Failed: 0, Errors: []));
+            .Returns(new AutoMatchResult(2, 0, 0, []));
 
         // Act
         var result = await _handler.Handle(
-            new AutoImportMediaFilesCommand(Language: "en"),
+            new AutoImportMediaFilesCommand("en"),
             TestContext.Current.CancellationToken);
 
         // Assert
@@ -129,7 +129,7 @@ public class AutoImportMediaFilesCommandHandlerTests
 
         // Act
         var result = await _handler.Handle(
-            new AutoImportMediaFilesCommand(Language: "fr"),
+            new AutoImportMediaFilesCommand("fr"),
             CancellationToken.None);
 
         // Assert
@@ -140,4 +140,3 @@ public class AutoImportMediaFilesCommandHandlerTests
         result.Value.Errors.Should().HaveCount(1);
     }
 }
-

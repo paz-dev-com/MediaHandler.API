@@ -28,29 +28,31 @@ public class GetMediaListQueryValidator : AbstractValidator<GetMediaListQuery>
 public class GetMediaListQueryHandler(IApplicationDbContext context, ICurrentUserService currentUser)
     : IRequestHandler<GetMediaListQuery, Result<PagedResult<MediaListItemDto>>>
 {
-    public async Task<Result<PagedResult<MediaListItemDto>>> Handle(GetMediaListQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PagedResult<MediaListItemDto>>> Handle(GetMediaListQuery request,
+        CancellationToken cancellationToken)
     {
         var oktaId = currentUser.OktaId;
         Guid? userId = null;
         if (oktaId is not null)
-        {
             userId = await context.Users
                 .AsNoTracking()
                 .Where(u => u.OktaId == oktaId)
                 .Select(u => (Guid?)u.Id)
                 .FirstOrDefaultAsync(cancellationToken);
-        }
 
         var query = context.Medias.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(request.Search))
-            query = query.Where(m => m.Title.Contains(request.Search) || (m.OriginalTitle != null && m.OriginalTitle.Contains(request.Search)));
+            query = query.Where(m =>
+                m.Title.Contains(request.Search) ||
+                (m.OriginalTitle != null && m.OriginalTitle.Contains(request.Search)));
 
         if (request.Type.HasValue)
             query = query.Where(m => m.Type == request.Type.Value);
 
         if (request.IsWatched.HasValue && userId.HasValue)
-            query = query.Where(m => m.UserMedias.Any(um => um.UserId == userId.Value && um.IsWatched == request.IsWatched.Value));
+            query = query.Where(m =>
+                m.UserMedias.Any(um => um.UserId == userId.Value && um.IsWatched == request.IsWatched.Value));
 
         if (!string.IsNullOrWhiteSpace(request.Genre))
             query = query.Where(m => m.Genres.Any(g => g.Name == request.Genre));
@@ -70,7 +72,10 @@ public class GetMediaListQueryHandler(IApplicationDbContext context, ICurrentUse
                 m.PosterPath,
                 m.VoteAverage,
                 m.MediaFiles.Count,
-                userId.HasValue ? m.UserMedias.Where(um => um.UserId == userId.Value).Select(um => (bool?)um.IsWatched).FirstOrDefault() : null))
+                userId.HasValue
+                    ? m.UserMedias.Where(um => um.UserId == userId.Value).Select(um => (bool?)um.IsWatched)
+                        .FirstOrDefault()
+                    : null))
             .ToListAsync(cancellationToken);
 
         return Result.Success(new PagedResult<MediaListItemDto>(items, total, request.Page, request.PageSize));

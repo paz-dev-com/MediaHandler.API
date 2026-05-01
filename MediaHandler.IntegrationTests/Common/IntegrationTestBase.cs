@@ -9,16 +9,18 @@ namespace MediaHandler.IntegrationTests.Common;
 
 public abstract class IntegrationTestBase : IAsyncLifetime
 {
-    private readonly MsSqlContainer _db = new MsSqlBuilder().WithImage("mcr.microsoft.com/mssql/server:2022-latest").Build();
+    private readonly MsSqlContainer _db = new MsSqlBuilder().WithImage("mcr.microsoft.com/mssql/server:2022-latest")
+        .Build();
+
     private ServiceProvider? _serviceProvider;
 
     protected MediaHandlerDbContext DbContext { get; private set; } = null!;
     protected IMapper Mapper { get; private set; } = null!;
 
     /// <summary>
-    /// EF Core options for the test SQL Server container.
-    /// Expose so scanner tests can create additional independent DbContext instances
-    /// for background workers without sharing the polling context.
+    ///     EF Core options for the test SQL Server container.
+    ///     Expose so scanner tests can create additional independent DbContext instances
+    ///     for background workers without sharing the polling context.
     /// </summary>
     protected DbContextOptions<MediaHandlerDbContext> DbContextOptions { get; private set; } = null!;
 

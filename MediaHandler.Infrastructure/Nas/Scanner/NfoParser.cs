@@ -1,4 +1,3 @@
-#nullable enable
 // NfoParser — XDocument-based Kodi NFO sidecar file parser.
 // Reads and parses .nfo XML files that accompany media files in Kodi-organised libraries.
 // Designed to be fault-tolerant: malformed or unreadable files return NfoParseResult.Malformed
@@ -17,13 +16,12 @@ using MediaHandler.Application.Common.Models.Scanner;
 namespace MediaHandler.Infrastructure.Nas.Scanner;
 
 /// <summary>
-/// Production implementation of <see cref="INfoParser"/>.
-/// Uses <see cref="XDocument"/> to parse Kodi-style NFO sidecar files and extract
-/// structured metadata (title, year, TMDB id, IMDB id, season, episode).
-///
-/// Tolerant of unknown XML elements — only well-known fields are extracted; all others
-/// are silently ignored. Malformed XML or unreadable files return
-/// <see cref="NfoParseResult"/>.<see cref="NfoParseResult.Malformed"/> rather than throwing.
+///     Production implementation of <see cref="INfoParser" />.
+///     Uses <see cref="XDocument" /> to parse Kodi-style NFO sidecar files and extract
+///     structured metadata (title, year, TMDB id, IMDB id, season, episode).
+///     Tolerant of unknown XML elements — only well-known fields are extracted; all others
+///     are silently ignored. Malformed XML or unreadable files return
+///     <see cref="NfoParseResult" />.<see cref="NfoParseResult.Malformed" /> rather than throwing.
 /// </summary>
 public sealed class NfoParser : INfoParser
 {
@@ -52,9 +50,9 @@ public sealed class NfoParser : INfoParser
     // =========================================================================
 
     /// <summary>
-    /// Parses raw NFO XML content into a <see cref="NfoParseResult"/>.
-    /// Called by <see cref="ParseAsync"/> after the file has been read.
-    /// Exposed internally for direct testing without file I/O.
+    ///     Parses raw NFO XML content into a <see cref="NfoParseResult" />.
+    ///     Called by <see cref="ParseAsync" /> after the file has been read.
+    ///     Exposed internally for direct testing without file I/O.
     /// </summary>
     internal static NfoParseResult ParseContent(string xmlContent)
     {
@@ -87,27 +85,30 @@ public sealed class NfoParser : INfoParser
         var episode = TryParseInt(root.Element("episode")?.Value);
 
         return new NfoParseResult(
-            ParsedSuccessfully: true,
-            Title: title,
-            Year: year,
-            TmdbId: tmdbId,
-            ImdbId: imdbId,
-            Season: season,
-            Episode: episode);
+            true,
+            title,
+            year,
+            tmdbId,
+            imdbId,
+            season,
+            episode);
     }
 
     // =========================================================================
     // Helpers
     // =========================================================================
 
-    private static int? TryParseInt(string? value) =>
-        int.TryParse(value?.Trim(), out var n) ? n : null;
+    private static int? TryParseInt(string? value)
+    {
+        return int.TryParse(value?.Trim(), out var n) ? n : null;
+    }
 }
 
 file static class StringExtensions
 {
     /// <summary>Returns null when the string is null or consists only of whitespace.</summary>
-    internal static string? NullIfEmpty(this string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value;
+    internal static string? NullIfEmpty(this string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
 }
-

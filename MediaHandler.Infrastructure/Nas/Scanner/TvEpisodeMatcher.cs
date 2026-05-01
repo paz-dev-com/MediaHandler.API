@@ -1,4 +1,3 @@
-#nullable enable
 // TvEpisodeMatcher — clean-room implementation of Kodi-equivalent TV episode number extraction.
 //
 // R-001 CLEAN-ROOM DECLARATION
@@ -15,8 +14,8 @@ using MediaHandler.Application.Common.Models.Scanner;
 namespace MediaHandler.Infrastructure.Nas.Scanner;
 
 /// <summary>
-/// Extracts season+episode numbers from TV episode filenames using
-/// Kodi-compatible pattern matching.
+///     Extracts season+episode numbers from TV episode filenames using
+///     Kodi-compatible pattern matching.
 /// </summary>
 public sealed class TvEpisodeMatcher : ITvEpisodeMatcher
 {
@@ -25,15 +24,12 @@ public sealed class TvEpisodeMatcher : ITvEpisodeMatcher
         if (string.IsNullOrWhiteSpace(filename))
             return [];
 
-        var nameNoExt = System.IO.Path.GetFileNameWithoutExtension(filename);
+        var nameNoExt = Path.GetFileNameWithoutExtension(filename);
 
         // SOURCE: Kodi wiki — "SxxExx is the canonical TV episode naming format"
         // Check for SxxExxEyy or SxxExx-Eyy multi-episode patterns first
         var multiMatch = KodiRegexCatalog.SxxExxToEyy.Match(nameNoExt);
-        if (multiMatch.Success)
-        {
-            return ExtractMultiEpisode(nameNoExt, multiMatch);
-        }
+        if (multiMatch.Success) return ExtractMultiEpisode(nameNoExt, multiMatch);
 
         var sxxMatch = KodiRegexCatalog.SxxExx.Match(nameNoExt);
         if (sxxMatch.Success)
@@ -83,9 +79,7 @@ public sealed class TvEpisodeMatcher : ITvEpisodeMatcher
         // SOURCE: Observed Kodi behaviour — zero-padded 3-digit number
         var absNumMatch = KodiRegexCatalog.AbsoluteNumber.Match(nameNoExt);
         if (absNumMatch.Success && int.TryParse(absNumMatch.Groups[1].Value, out var absNum))
-        {
             return [new EpisodeNumber(0, absNum)];
-        }
 
         // ── 6. No pattern found ───────────────────────────────────────────────
         return [];
@@ -136,4 +130,3 @@ public sealed class TvEpisodeMatcher : ITvEpisodeMatcher
         }
     }
 }
-

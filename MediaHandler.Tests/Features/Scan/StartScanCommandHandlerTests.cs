@@ -1,8 +1,8 @@
-#nullable enable
 // StartScanCommandHandlerTests — Scan initiation and concurrency guard
 
 using FluentAssertions;
 using MediaHandler.Application.Common.Interfaces;
+using MediaHandler.Application.Common.Models.Scanner;
 using MediaHandler.Application.Features.Scan.Commands.StartScan;
 using MediaHandler.Domain.Entities;
 using MediaHandler.Domain.Enums;
@@ -16,8 +16,10 @@ public class StartScanCommandHandlerTests
     private readonly IApplicationDbContext _context = TestDbContext.Create();
     private readonly IScanRunCoordinator _coordinator = Substitute.For<IScanRunCoordinator>();
 
-    private StartScanCommandHandler CreateHandler() =>
-        new(_context, _coordinator);
+    private StartScanCommandHandler CreateHandler()
+    {
+        return new StartScanCommandHandler(_context, _coordinator);
+    }
 
     private async Task<LibraryRoot> AddEnabledRoot()
     {
@@ -37,11 +39,11 @@ public class StartScanCommandHandlerTests
     {
         var root = await AddEnabledRoot();
 
-        _coordinator.StartAsync(Arg.Any<Application.Common.Models.Scanner.ScanStartParameters>(), Arg.Any<CancellationToken>())
+        _coordinator.StartAsync(Arg.Any<ScanStartParameters>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
-                var p = ci.Arg<Application.Common.Models.Scanner.ScanStartParameters>();
-                return Task.FromResult(new Application.Common.Models.Scanner.ScanRunHandle(p.ScanRunId));
+                var p = ci.Arg<ScanStartParameters>();
+                return Task.FromResult(new ScanRunHandle(p.ScanRunId));
             });
 
         var command = new StartScanCommand([root.Id], ScanMode.Full);
@@ -57,11 +59,11 @@ public class StartScanCommandHandlerTests
     {
         await AddEnabledRoot();
 
-        _coordinator.StartAsync(Arg.Any<Application.Common.Models.Scanner.ScanStartParameters>(), Arg.Any<CancellationToken>())
+        _coordinator.StartAsync(Arg.Any<ScanStartParameters>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
-                var p = ci.Arg<Application.Common.Models.Scanner.ScanStartParameters>();
-                return Task.FromResult(new Application.Common.Models.Scanner.ScanRunHandle(p.ScanRunId));
+                var p = ci.Arg<ScanStartParameters>();
+                return Task.FromResult(new ScanRunHandle(p.ScanRunId));
             });
 
         var command = new StartScanCommand([], ScanMode.Full); // empty = all roots
@@ -122,4 +124,3 @@ public class StartScanCommandHandlerTests
         result.IsSuccess.Should().BeFalse();
     }
 }
-

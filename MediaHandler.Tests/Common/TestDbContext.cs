@@ -6,10 +6,12 @@ namespace MediaHandler.Tests.Common;
 
 public class TestDbContext : DbContext, IApplicationDbContext
 {
-    public TestDbContext(DbContextOptions<TestDbContext> options) : base(options) { }
+    public TestDbContext(DbContextOptions<TestDbContext> options) : base(options)
+    {
+    }
 
     public DbSet<User> Users => Set<User>();
-    public DbSet<Domain.Entities.Media> Medias => Set<Domain.Entities.Media>();
+    public DbSet<Media> Medias => Set<Media>();
     public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
     public DbSet<MediaGenre> MediaGenres => Set<MediaGenre>();
     public DbSet<UserMedia> UserMedias => Set<UserMedia>();

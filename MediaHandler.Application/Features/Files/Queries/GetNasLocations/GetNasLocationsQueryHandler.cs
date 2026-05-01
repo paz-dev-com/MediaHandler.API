@@ -17,4 +17,3 @@ public class GetNasLocationsQueryHandler(INasService nas)
         return Result.Success(paths);
     }
 }
-

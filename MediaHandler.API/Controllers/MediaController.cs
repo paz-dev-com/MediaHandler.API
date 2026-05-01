@@ -43,7 +43,8 @@ public class MediaController(ISender sender) : ControllerBase
         CancellationToken ct = default)
     {
         var result = await sender.Send(new GetMediaListQuery(page, pageSize, search, type, isWatched, genre), ct);
-        var meta = new ApiResponseMeta(result.Value.Page, result.Value.PageSize, result.Value.TotalCount, result.Value.TotalPages);
+        var meta = new ApiResponseMeta(result.Value.Page, result.Value.PageSize, result.Value.TotalCount,
+            result.Value.TotalPages);
         return Ok(ApiResponse<object>.Success(result.Value.Items, meta));
     }
 
@@ -67,7 +68,8 @@ public class MediaController(ISender sender) : ControllerBase
     {
         var result = await sender.Send(command, ct);
         return result.IsSuccess
-            ? CreatedAtAction(nameof(Get), new { id = result.Value }, ApiResponse<object>.Success(new { id = result.Value }))
+            ? CreatedAtAction(nameof(Get), new { id = result.Value },
+                ApiResponse<object>.Success(new { id = result.Value }))
             : BadRequest(ApiResponse<object>.Fail(result.Errors.Select(e => new ApiError("ERROR", e)).ToArray()));
     }
 

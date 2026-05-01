@@ -1,5 +1,3 @@
-#nullable enable
-
 using System.Text.Json;
 using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
@@ -11,9 +9,9 @@ using Microsoft.EntityFrameworkCore;
 namespace MediaHandler.Application.Features.Scan.Queries.GetScanRun;
 
 /// <summary>
-/// Returns the detail view of a specific scan run.
-/// When <see cref="IncludeReview"/> is <c>true</c>, attaches up to 100 of the most
-/// recent open <c>ReviewItem</c>s that were first seen during this run.
+///     Returns the detail view of a specific scan run.
+///     When <see cref="IncludeReview" /> is <c>true</c>, attaches up to 100 of the most
+///     recent open <c>ReviewItem</c>s that were first seen during this run.
 /// </summary>
 public record GetScanRunQuery(Guid Id, bool IncludeReview = false)
     : IRequest<Result<ScanRunDetailDto>>;
@@ -36,7 +34,6 @@ public sealed class GetScanRunQueryHandler(IApplicationDbContext db)
 
         IReadOnlyList<ReviewItemDto>? reviewItems = null;
         if (request.IncludeReview)
-        {
             reviewItems = await db.ReviewItems
                 .AsNoTracking()
                 .Where(ri => ri.FirstSeenScanRunId == request.Id && ri.Status == ReviewStatus.Open)
@@ -57,7 +54,6 @@ public sealed class GetScanRunQueryHandler(IApplicationDbContext db)
                     ri.ResolvedAt,
                     ri.CreatedAt))
                 .ToListAsync(cancellationToken);
-        }
 
         return Result.Success(new ScanRunDetailDto(
             run.Id,
@@ -78,4 +74,3 @@ public sealed class GetScanRunQueryHandler(IApplicationDbContext db)
             reviewItems));
     }
 }
-

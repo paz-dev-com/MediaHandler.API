@@ -48,7 +48,7 @@ public class MediaConfiguration : IEntityTypeConfiguration<Media>
 
         builder.HasOne(m => m.NfoMetadata)
             .WithOne()
-            .HasForeignKey<Domain.Entities.Media>(m => m.NfoMetadataId)
+            .HasForeignKey<Media>(m => m.NfoMetadataId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
     }

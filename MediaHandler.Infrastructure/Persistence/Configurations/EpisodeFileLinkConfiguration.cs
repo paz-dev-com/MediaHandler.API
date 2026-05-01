@@ -25,4 +25,3 @@ public class EpisodeFileLinkConfiguration : IEntityTypeConfiguration<EpisodeFile
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
-

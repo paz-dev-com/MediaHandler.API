@@ -4,8 +4,10 @@ namespace MediaHandler.Application.Common.Interfaces;
 
 public interface INasService
 {
-    /// <summary>Returns all entries (files AND directories) under the given path.
-    /// When basePath is null or empty, scans all configured base paths.</summary>
+    /// <summary>
+    ///     Returns all entries (files AND directories) under the given path.
+    ///     When basePath is null or empty, scans all configured base paths.
+    /// </summary>
     Task<IEnumerable<NasFileInfo>> ScanDirectoryAsync(string? basePath, CancellationToken cancellationToken = default);
 
     /// <summary>Returns the list of NAS base paths configured in appsettings.</summary>

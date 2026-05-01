@@ -1,4 +1,3 @@
-#nullable enable
 // StackingDetectorTests — Kodi multi-part stacking detection
 // SOURCE: https://kodi.wiki/view/Advancedsettings.xml#stackingregex
 // SOURCE: Kodi wiki "Stacked movies" — cd1/cd2, part1/part2, disc1/disc2, (a)/(b), pt1/pt2
@@ -10,9 +9,9 @@ using MediaHandler.Infrastructure.Nas.Scanner;
 namespace MediaHandler.Tests.Scanner;
 
 /// <summary>
-/// Tests for <see cref="StackingDetector"/> verifying all stacking suffix families.
-/// Each row derives from publicly documented Kodi stacking conventions.
-/// No text is copied from /home/tpfeifer/Repos/xbmc-master/ (R-001).
+///     Tests for <see cref="StackingDetector" /> verifying all stacking suffix families.
+///     Each row derives from publicly documented Kodi stacking conventions.
+///     No text is copied from /home/tpfeifer/Repos/xbmc-master/ (R-001).
 /// </summary>
 public class StackingDetectorTests
 {
@@ -29,7 +28,7 @@ public class StackingDetectorTests
         var files = new[]
         {
             MakeFile("/nas/Movies/Kill Bill (2003)/Kill.Bill.2003.cd1.mkv"),
-            MakeFile("/nas/Movies/Kill Bill (2003)/Kill.Bill.2003.cd2.mkv"),
+            MakeFile("/nas/Movies/Kill Bill (2003)/Kill.Bill.2003.cd2.mkv")
         };
 
         var groups = _sut.Group(files);
@@ -47,7 +46,7 @@ public class StackingDetectorTests
         var files = new[]
         {
             MakeFile("/nas/Movies/Film/Film.CD1.mkv"),
-            MakeFile("/nas/Movies/Film/Film.CD2.mkv"),
+            MakeFile("/nas/Movies/Film/Film.CD2.mkv")
         };
         var groups = _sut.Group(files);
         groups.Should().HaveCount(1);
@@ -65,7 +64,7 @@ public class StackingDetectorTests
         var files = new[]
         {
             MakeFile("/nas/Movies/Gettysburg (1993)/Gettysburg.part1.mkv"),
-            MakeFile("/nas/Movies/Gettysburg (1993)/Gettysburg.part2.mkv"),
+            MakeFile("/nas/Movies/Gettysburg (1993)/Gettysburg.part2.mkv")
         };
         var groups = _sut.Group(files);
         groups.Should().HaveCount(1);
@@ -79,7 +78,7 @@ public class StackingDetectorTests
         var files = new[]
         {
             MakeFile("/nas/Movies/Movie/Movie-part1.mkv"),
-            MakeFile("/nas/Movies/Movie/Movie-part2.mkv"),
+            MakeFile("/nas/Movies/Movie/Movie-part2.mkv")
         };
         var groups = _sut.Group(files);
         groups.Should().HaveCount(1);
@@ -96,7 +95,7 @@ public class StackingDetectorTests
         var files = new[]
         {
             MakeFile("/nas/Movies/Lawrence of Arabia (1962)/Lawrence.of.Arabia.disc1.mkv"),
-            MakeFile("/nas/Movies/Lawrence of Arabia (1962)/Lawrence.of.Arabia.disc2.mkv"),
+            MakeFile("/nas/Movies/Lawrence of Arabia (1962)/Lawrence.of.Arabia.disc2.mkv")
         };
         var groups = _sut.Group(files);
         groups.Should().HaveCount(1);
@@ -114,7 +113,7 @@ public class StackingDetectorTests
         var files = new[]
         {
             MakeFile("/nas/Movies/Movie (2001)/Movie (2001) (a).mkv"),
-            MakeFile("/nas/Movies/Movie (2001)/Movie (2001) (b).mkv"),
+            MakeFile("/nas/Movies/Movie (2001)/Movie (2001) (b).mkv")
         };
         var groups = _sut.Group(files);
         groups.Should().HaveCount(1);
@@ -131,7 +130,7 @@ public class StackingDetectorTests
         var files = new[]
         {
             MakeFile("/nas/Movies/Film/Film.pt1.mkv"),
-            MakeFile("/nas/Movies/Film/Film.pt2.mkv"),
+            MakeFile("/nas/Movies/Film/Film.pt2.mkv")
         };
         var groups = _sut.Group(files);
         groups.Should().HaveCount(1);
@@ -150,7 +149,7 @@ public class StackingDetectorTests
         {
             MakeFile("/nas/Movies/Long Film/LongFilm.cd1.mkv"),
             MakeFile("/nas/Movies/Long Film/LongFilm.cd2.mkv"),
-            MakeFile("/nas/Movies/Long Film/LongFilm.cd3.mkv"),
+            MakeFile("/nas/Movies/Long Film/LongFilm.cd3.mkv")
         };
         var groups = _sut.Group(files);
         groups.Should().HaveCount(1);
@@ -168,7 +167,7 @@ public class StackingDetectorTests
         var files = new[]
         {
             MakeFile("/nas/Movies/The Matrix (1999)/The.Matrix.mkv"),
-            MakeFile("/nas/Movies/Inception (2010)/Inception.mkv"),
+            MakeFile("/nas/Movies/Inception (2010)/Inception.mkv")
         };
         var groups = _sut.Group(files);
         groups.Should().BeEmpty();
@@ -180,7 +179,7 @@ public class StackingDetectorTests
         // A single "cd1" file without a matching cd2 is not a stack
         var files = new[]
         {
-            MakeFile("/nas/Movies/Movie/Movie.cd1.mkv"),
+            MakeFile("/nas/Movies/Movie/Movie.cd1.mkv")
         };
         var groups = _sut.Group(files);
         groups.Should().BeEmpty();
@@ -195,7 +194,7 @@ public class StackingDetectorTests
             MakeFile("/nas/Movies/Kill.Bill.cd1.mkv"),
             MakeFile("/nas/Movies/Kill.Bill.cd2.mkv"),
             MakeFile("/nas/Movies/Goodfellas.cd1.mkv"),
-            MakeFile("/nas/Movies/Goodfellas.cd2.mkv"),
+            MakeFile("/nas/Movies/Goodfellas.cd2.mkv")
         };
         var groups = _sut.Group(files);
         groups.Should().HaveCount(2);
@@ -208,7 +207,7 @@ public class StackingDetectorTests
         var files = new[]
         {
             MakeFile("/nas/Movies/Movie/Movie.cd2.mkv"),
-            MakeFile("/nas/Movies/Movie/Movie.cd1.mkv"),
+            MakeFile("/nas/Movies/Movie/Movie.cd1.mkv")
         };
         var groups = _sut.Group(files);
         groups.Should().HaveCount(1);
@@ -218,8 +217,7 @@ public class StackingDetectorTests
 
     private static NasFileEntry MakeFile(string path)
     {
-        var name = System.IO.Path.GetFileName(path);
+        var name = Path.GetFileName(path);
         return new NasFileEntry(path, name, 1_073_741_824L, DateTime.UtcNow, false, "mkv");
     }
 }
-

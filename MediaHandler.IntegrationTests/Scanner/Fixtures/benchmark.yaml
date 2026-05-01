@@ -22,17 +22,17 @@ movies:
   # -- Per-folder layout (authoritative: folder name "Title (Year)") ----------
   # SOURCE: Kodi wiki — recommended folder naming scheme for movies
   - folder: "The Matrix (1999)"
-    files: [{name: "The Matrix (1999).mkv"}]
+    files: [ { name: "The Matrix (1999).mkv" } ]
     expected_classification: movie
     expected_tmdb_id: 603
 
   - folder: "Inception (2010)"
-    files: [{name: "Inception (2010).mkv"}]
+    files: [ { name: "Inception (2010).mkv" } ]
     expected_classification: movie
     expected_tmdb_id: 27205
 
   - folder: "The Dark Knight (2008)"
-    files: [{name: "The Dark Knight (2008).mkv"}]
+    files: [ { name: "The Dark Knight (2008).mkv" } ]
     expected_classification: movie
     expected_tmdb_id: 155
 
@@ -41,7 +41,7 @@ movies:
   # -- Per-folder with NFO sidecar (5 entries) --------------------------------
   # SOURCE: Kodi wiki — NFO files: https://kodi.wiki/view/NFO_files/Movies
   - folder: "Pan's Labyrinth (2006)"
-    files: [{name: "Pans Labyrinth (2006).mkv"}]
+    files: [ { name: "Pans Labyrinth (2006).mkv" } ]
     nfo: |
       <?xml version="1.0" encoding="utf-8"?>
       <movie>
@@ -53,7 +53,7 @@ movies:
     expected_tmdb_id: 1905
 
   - folder: "Spirited Away (2001)"
-    files: [{name: "Spirited Away (2001).mkv"}]
+    files: [ { name: "Spirited Away (2001).mkv" } ]
     nfo: |
       <?xml version="1.0" encoding="utf-8"?>
       <movie>
@@ -96,12 +96,12 @@ movies:
   # -- Flat layout (20 entries, no sub-folder) --------------------------------
   # SOURCE: Kodi wiki — flat library support: filename carries title+year
   - flat: true
-    files: [{name: "Inception.2010.1080p.BluRay.x264-GROUP.mkv"}]
+    files: [ { name: "Inception.2010.1080p.BluRay.x264-GROUP.mkv" } ]
     expected_classification: movie
     expected_tmdb_id: 27205
 
   - flat: true
-    files: [{name: "Parasite.2019.1080p.mkv"}]
+    files: [ { name: "Parasite.2019.1080p.mkv" } ]
     expected_classification: movie
     expected_tmdb_id: 496243
 

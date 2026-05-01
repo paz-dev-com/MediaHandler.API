@@ -1,11 +1,9 @@
-#nullable enable
 // AdminReviewController — admin endpoints for managing the TMDB review queue.
 // All endpoints: AdminOnly policy, fixed rate limiter, ApiResponse<T> envelope.
 
 using MediaHandler.API.Contracts.Admin;
 using MediaHandler.API.Models;
 using MediaHandler.Application.Common.DTOs;
-using MediaHandler.Application.Common.Models;
 using MediaHandler.Application.Features.Review.Commands.ResolveReviewItem;
 using MediaHandler.Application.Features.Review.Queries.ListReviewItems;
 using MediaHandler.Domain.Enums;
@@ -17,8 +15,8 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace MediaHandler.API.Controllers;
 
 /// <summary>
-/// Admin endpoints for managing items in the TMDB review queue.
-/// All endpoints require the <c>AdminOnly</c> policy.
+///     Admin endpoints for managing items in the TMDB review queue.
+///     All endpoints require the <c>AdminOnly</c> policy.
 /// </summary>
 [ApiController]
 [Route("api/v1/admin/review-items")]
@@ -27,9 +25,9 @@ namespace MediaHandler.API.Controllers;
 public class AdminReviewController(ISender sender) : ControllerBase
 {
     /// <summary>
-    /// List items in the review queue (default: Open items only).
-    /// Supports filtering by <c>status</c>, <c>reason</c>, and <c>scanRunId</c>.
-    /// Paginated with <c>page</c> and <c>pageSize</c> (max 100).
+    ///     List items in the review queue (default: Open items only).
+    ///     Supports filtering by <c>status</c>, <c>reason</c>, and <c>scanRunId</c>.
+    ///     Paginated with <c>page</c> and <c>pageSize</c> (max 100).
     /// </summary>
     [HttpGet("")]
     [ProducesResponseType<ApiResponse<IReadOnlyList<ReviewItemDto>>>(StatusCodes.Status200OK)]
@@ -52,16 +50,16 @@ public class AdminReviewController(ISender sender) : ControllerBase
 
         var pagedResult = result.Value;
         var meta = new ApiResponseMeta(
-            Page: pagedResult.Page,
-            PageSize: pagedResult.PageSize,
-            TotalCount: pagedResult.TotalCount,
-            TotalPages: pagedResult.TotalPages);
+            pagedResult.Page,
+            pagedResult.PageSize,
+            pagedResult.TotalCount,
+            pagedResult.TotalPages);
 
         return Ok(ApiResponse<IReadOnlyList<ReviewItemDto>>.Success(pagedResult.Items, meta));
     }
 
     /// <summary>
-    /// Resolve a review item by assigning a TMDB id, dismissing it, or deleting its underlying file.
+    ///     Resolve a review item by assigning a TMDB id, dismissing it, or deleting its underlying file.
     /// </summary>
     /// <param name="id">The review item id.</param>
     /// <param name="request">Resolution action and optional TMDB mapping.</param>
@@ -106,4 +104,3 @@ public class AdminReviewController(ISender sender) : ControllerBase
         return Ok(ApiResponse<ReviewItemDto>.Success(result.Value));
     }
 }
-

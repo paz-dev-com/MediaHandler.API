@@ -1,4 +1,3 @@
-#nullable enable
 // ExclusionEvaluator — clean-room implementation of Kodi-equivalent file/folder exclusion rules.
 //
 // R-001 CLEAN-ROOM DECLARATION
@@ -9,13 +8,12 @@
 
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models.Scanner;
-using MediaHandler.Domain.Enums;
 
 namespace MediaHandler.Infrastructure.Nas.Scanner;
 
 /// <summary>
-/// Evaluates each NAS entry against the configured exclusion rules.
-/// Returns an <see cref="ExclusionVerdict"/> for every entry.
+///     Evaluates each NAS entry against the configured exclusion rules.
+///     Returns an <see cref="ExclusionVerdict" /> for every entry.
 /// </summary>
 public sealed class ExclusionEvaluator : IExclusionEvaluator
 {
@@ -34,26 +32,18 @@ public sealed class ExclusionEvaluator : IExclusionEvaluator
         // ── .nomedia subtree ─────────────────────────────────────────────────
         // SOURCE: Kodi advancedsettings — any file under a .nomedia-marked folder is excluded
         if (ctx.NomediaFolders is { Count: > 0 })
-        {
             foreach (var markedFolder in ctx.NomediaFolders)
-            {
                 if (entry.AbsolutePath.StartsWith(markedFolder, StringComparison.OrdinalIgnoreCase)
                     && entry.AbsolutePath.Length > markedFolder.Length)
-                {
                     return new ExclusionVerdict(true, $"Under .nomedia folder: {markedFolder}", "nomedia-subtree");
-                }
-            }
-        }
 
         // ── Hidden folder (Unix dot-prefix) ──────────────────────────────────
         // SOURCE: Observed Kodi behaviour — directories whose names start with '.' are skipped
         var normalised = entry.AbsolutePath.Replace('\\', '/');
         var pathSegments = normalised.Split('/');
         foreach (var segment in pathSegments[..^1]) // all directory segments, not the filename
-        {
             if (segment.StartsWith('.') && segment.Length > 1)
                 return new ExclusionVerdict(true, $"Hidden folder: {segment}", "hidden-folder");
-        }
 
         // ── Excluded folder names (Extras, Sample, Featurettes, etc.) ────────
         // SOURCE: Kodi wiki — these subfolder names are excluded from media scanning
@@ -79,13 +69,12 @@ public sealed class ExclusionEvaluator : IExclusionEvaluator
         // SOURCE: Kodi wiki advancedsettings <videoextensions>
         if (string.IsNullOrEmpty(entry.Extension)
             || !KodiRegexCatalog.VideoExtensions.Contains(entry.Extension))
-        {
-            return new ExclusionVerdict(true, $"Non-video extension: .{entry.Extension ?? "(none)"}", "non-video-extension");
-        }
+            return new ExclusionVerdict(true, $"Non-video extension: .{entry.Extension ?? "(none)"}",
+                "non-video-extension");
 
         // ── Sample filename pattern ───────────────────────────────────────────
         // SOURCE: Kodi wiki — "Files with '-sample' suffix are excluded"
-        var nameNoExt = System.IO.Path.GetFileNameWithoutExtension(entry.FileName);
+        var nameNoExt = Path.GetFileNameWithoutExtension(entry.FileName);
         if (KodiRegexCatalog.SampleFilenamePattern.IsMatch(nameNoExt))
             return new ExclusionVerdict(true, "Sample file", "sample-filename");
 
@@ -114,4 +103,3 @@ public sealed class ExclusionEvaluator : IExclusionEvaluator
         };
     }
 }
-

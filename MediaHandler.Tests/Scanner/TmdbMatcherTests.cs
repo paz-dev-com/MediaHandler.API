@@ -1,4 +1,3 @@
-#nullable enable
 // TmdbMatcherTests — unit tests for the TMDB precedence-chain resolver.
 // These tests must FAIL before TmdbMatcher.cs is implemented.
 
@@ -13,8 +12,8 @@ using NSubstitute.ExceptionExtensions;
 namespace MediaHandler.Tests.Scanner;
 
 /// <summary>
-/// Unit tests for <c>TmdbMatcher</c>.
-/// Covers: precedence chain, ambiguity policy, year-mismatch policy, transient error tolerance.
+///     Unit tests for <c>TmdbMatcher</c>.
+///     Covers: precedence chain, ambiguity policy, year-mismatch policy, transient error tolerance.
 /// </summary>
 public class TmdbMatcherTests
 {
@@ -22,22 +21,32 @@ public class TmdbMatcherTests
     // Test fixture helpers
     // =========================================================================
 
-    private static ITmdbService CreateService() => Substitute.For<ITmdbService>();
+    private static ITmdbService CreateService()
+    {
+        return Substitute.For<ITmdbService>();
+    }
 
-    private static TmdbMatcher CreateMatcher(ITmdbService service) => new(service);
+    private static TmdbMatcher CreateMatcher(ITmdbService service)
+    {
+        return new TmdbMatcher(service);
+    }
 
-    private static TmdbSearchCandidate Movie(int id, string title, int year, double popularity = 50.0) =>
-        new(id, MediaType.Film, title, year, (decimal)popularity, null);
+    private static TmdbSearchCandidate Movie(int id, string title, int year, double popularity = 50.0)
+    {
+        return new TmdbSearchCandidate(id, MediaType.Film, title, year, (decimal)popularity, null);
+    }
 
-    private static TmdbSearchCandidate TvShow(int id, string title, int year, double popularity = 50.0) =>
-        new(id, MediaType.TvShow, title, year, (decimal)popularity, null);
+    private static TmdbSearchCandidate TvShow(int id, string title, int year, double popularity = 50.0)
+    {
+        return new TmdbSearchCandidate(id, MediaType.TvShow, title, year, (decimal)popularity, null);
+    }
 
     // =========================================================================
     // Precedence: NfoTmdbId wins
     // =========================================================================
 
     /// <remarks>
-    /// SOURCE: tasks.md spec — NfoTmdbId has highest precedence in the resolution chain.
+    ///     SOURCE: tasks.md spec — NfoTmdbId has highest precedence in the resolution chain.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_NfoTmdbId_WinsOverTitleYear()
@@ -48,11 +57,11 @@ public class TmdbMatcherTests
 
         // Title+year stub — should NOT be called
         service.SearchCandidatesAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<MediaType?>(),
-            Arg.Any<string>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
         var matcher = CreateMatcher(service);
-        var query = new MatchQuery("Some Other Movie", 2000, MediaType.Film, NfoTmdbId: 12345);
+        var query = new MatchQuery("Some Other Movie", 2000, MediaType.Film, 12345);
 
         var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
@@ -71,7 +80,7 @@ public class TmdbMatcherTests
     // =========================================================================
 
     /// <remarks>
-    /// SOURCE: tasks.md spec — ExplicitTokenId (e.g., {tmdbid=12345} in filename) is second precedence.
+    ///     SOURCE: tasks.md spec — ExplicitTokenId (e.g., {tmdbid=12345} in filename) is second precedence.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_ExplicitTokenId_WinsOverTitleYear()
@@ -82,7 +91,7 @@ public class TmdbMatcherTests
 
         var matcher = CreateMatcher(service);
         var query = new MatchQuery("Noisy.Release.2009.BluRay", 2009, MediaType.Film,
-            NfoTmdbId: null, ExplicitTokenId: 99999);
+            null, 99999);
 
         var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
@@ -100,14 +109,15 @@ public class TmdbMatcherTests
     // =========================================================================
 
     /// <remarks>
-    /// SOURCE: tasks.md spec — Title+Year search should be tried before Title-only.
-    /// When a single candidate is returned for title+year, it is accepted.
+    ///     SOURCE: tasks.md spec — Title+Year search should be tried before Title-only.
+    ///     When a single candidate is returned for title+year, it is accepted.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_TitleAndYear_ReturnsMatch_WhenSingleCandidate()
     {
         var service = CreateService();
-        service.SearchCandidatesAsync("Inception", 2010, MediaType.Film, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        service.SearchCandidatesAsync("Inception", 2010, MediaType.Film, Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
             .Returns([Movie(27205, "Inception", 2010, 80)]);
 
         var matcher = CreateMatcher(service);
@@ -125,7 +135,7 @@ public class TmdbMatcherTests
     // =========================================================================
 
     /// <remarks>
-    /// SOURCE: tasks.md T086 — ≥ 2 candidates within 5% popularity gap → MultipleCandidates review reason.
+    ///     SOURCE: tasks.md T086 — ≥ 2 candidates within 5% popularity gap → MultipleCandidates review reason.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_MultipleCandidatesWithinPopularityGap_ReturnsNeedsReview()
@@ -133,7 +143,8 @@ public class TmdbMatcherTests
         var service = CreateService();
 
         // Both candidates have similar popularity — within 5%
-        service.SearchCandidatesAsync("The Fly", 1986, Arg.Any<MediaType?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        service.SearchCandidatesAsync("The Fly", 1986, Arg.Any<MediaType?>(), Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
             .Returns([
                 Movie(10001, "The Fly", 1986, 60.0),
                 Movie(10002, "The Fly", 1986, 58.0) // within 5% of 60
@@ -155,7 +166,7 @@ public class TmdbMatcherTests
     // =========================================================================
 
     /// <remarks>
-    /// SOURCE: tasks.md T086 — year mismatch > ±1 → YearMismatch review reason.
+    ///     SOURCE: tasks.md T086 — year mismatch > ±1 → YearMismatch review reason.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_YearMismatch_BeyondOneTolerance_ReturnsNeedsReview()
@@ -163,7 +174,8 @@ public class TmdbMatcherTests
         var service = CreateService();
 
         // Query year = 2010, result year = 2014 → 4-year mismatch → needs review
-        service.SearchCandidatesAsync("Inception", 2010, Arg.Any<MediaType?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        service.SearchCandidatesAsync("Inception", 2010, Arg.Any<MediaType?>(), Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
             .Returns([Movie(27205, "Inception", 2014, 80)]);
 
         var matcher = CreateMatcher(service);
@@ -186,7 +198,8 @@ public class TmdbMatcherTests
     public async Task ResolveAsync_YearWithinOneTolerance_IsAccepted(int queryYear, int tmdbYear)
     {
         var service = CreateService();
-        service.SearchCandidatesAsync(Arg.Any<string>(), queryYear, Arg.Any<MediaType?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        service.SearchCandidatesAsync(Arg.Any<string>(), queryYear, Arg.Any<MediaType?>(), Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
             .Returns([Movie(27205, "Inception", tmdbYear, 80)]);
 
         var matcher = CreateMatcher(service);
@@ -203,14 +216,14 @@ public class TmdbMatcherTests
     // =========================================================================
 
     /// <remarks>
-    /// SOURCE: tasks.md T086 — empty candidate list → NoTmdbResult review reason.
+    ///     SOURCE: tasks.md T086 — empty candidate list → NoTmdbResult review reason.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_NoResults_ReturnsNeedsReview_WithNoTmdbResultReason()
     {
         var service = CreateService();
         service.SearchCandidatesAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<MediaType?>(),
-            Arg.Any<string>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
         var matcher = CreateMatcher(service);
@@ -228,14 +241,14 @@ public class TmdbMatcherTests
     // =========================================================================
 
     /// <remarks>
-    /// SOURCE: tasks.md T086 — transient HTTP errors surfaced as NeedsReview without aborting the run (FR-017).
+    ///     SOURCE: tasks.md T086 — transient HTTP errors surfaced as NeedsReview without aborting the run (FR-017).
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_TransientHttpFailure_DoesNotThrow_ReturnsNeedsReview()
     {
         var service = CreateService();
         service.SearchCandidatesAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<MediaType?>(),
-            Arg.Any<string>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Connection timed out"));
 
         var matcher = CreateMatcher(service);
@@ -264,7 +277,7 @@ public class TmdbMatcherTests
             .Returns((TmdbIdLookupResult?)null);
 
         var matcher = CreateMatcher(service);
-        var query = new MatchQuery("Unknown", 2010, MediaType.Film, NfoTmdbId: 999999);
+        var query = new MatchQuery("Unknown", 2010, MediaType.Film, 999999);
 
         var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
@@ -280,7 +293,8 @@ public class TmdbMatcherTests
     public async Task ResolveAsync_SameQuery_UsesCachedResult()
     {
         var service = CreateService();
-        service.SearchCandidatesAsync("Inception", 2010, MediaType.Film, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        service.SearchCandidatesAsync("Inception", 2010, MediaType.Film, Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
             .Returns([Movie(27205, "Inception", 2010, 80)]);
 
         var matcher = CreateMatcher(service);
@@ -304,7 +318,7 @@ public class TmdbMatcherTests
 
         // Scores: 100 and 93 → gap is 7% → outside 5% tolerance → highest score wins
         service.SearchCandidatesAsync(Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<MediaType?>(),
-            Arg.Any<string>(), Arg.Any<CancellationToken>())
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns([
                 Movie(27205, "Inception", 2010, 100.0),
                 Movie(12345, "Inception II", 2009, 93.0)
@@ -330,11 +344,13 @@ public class TmdbMatcherTests
         var service = CreateService();
 
         // title+year returns nothing
-        service.SearchCandidatesAsync("Inception", 2010, Arg.Any<MediaType?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        service.SearchCandidatesAsync("Inception", 2010, Arg.Any<MediaType?>(), Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
             .Returns([]);
 
         // title-only returns one candidate
-        service.SearchCandidatesAsync("Inception", null, Arg.Any<MediaType?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        service.SearchCandidatesAsync("Inception", null, Arg.Any<MediaType?>(), Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
             .Returns([Movie(27205, "Inception", 2010, 80)]);
 
         var matcher = CreateMatcher(service);
@@ -352,8 +368,8 @@ public class TmdbMatcherTests
     // =========================================================================
 
     /// <remarks>
-    /// When both an NFO id and an explicit filename token id are present, the NFO id wins.
-    /// This asserts the full precedence chain: NfoTmdbId > ExplicitTokenId > Title+Year > Title.
+    ///     When both an NFO id and an explicit filename token id are present, the NFO id wins.
+    ///     This asserts the full precedence chain: NfoTmdbId > ExplicitTokenId > Title+Year > Title.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_NfoTmdbId_WinsOverExplicitTokenId()
@@ -371,7 +387,7 @@ public class TmdbMatcherTests
         var matcher = CreateMatcher(service);
         // Both NfoTmdbId and ExplicitTokenId set — NFO wins
         var query = new MatchQuery("Inception", 2010, MediaType.Film,
-            NfoTmdbId: 27205, ExplicitTokenId: 99999);
+            27205, 99999);
 
         var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
@@ -384,8 +400,8 @@ public class TmdbMatcherTests
     }
 
     /// <remarks>
-    /// When an NFO id is present, no title-based TMDB search is performed at all.
-    /// This guarantees the NFO is the definitive override regardless of how well the filename parses.
+    ///     When an NFO id is present, no title-based TMDB search is performed at all.
+    ///     This guarantees the NFO is the definitive override regardless of how well the filename parses.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_NfoTmdbId_WinsOverTitleYearSearch_NoSearchCalled()
@@ -397,7 +413,7 @@ public class TmdbMatcherTests
 
         var matcher = CreateMatcher(service);
         // NfoTmdbId given alongside a perfectly valid title+year
-        var query = new MatchQuery("Inception", 2010, MediaType.Film, NfoTmdbId: 27205);
+        var query = new MatchQuery("Inception", 2010, MediaType.Film, 27205);
 
         var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
@@ -411,9 +427,9 @@ public class TmdbMatcherTests
     }
 
     /// <remarks>
-    /// An NFO-provided tmdbid that does not exist on TMDB (lookup returns null for both
-    /// movie and TV show) must produce NeedsReview, not fall through to title+year search.
-    /// This protects against stale or incorrect NFO ids silently picking the wrong item.
+    ///     An NFO-provided tmdbid that does not exist on TMDB (lookup returns null for both
+    ///     movie and TV show) must produce NeedsReview, not fall through to title+year search.
+    ///     This protects against stale or incorrect NFO ids silently picking the wrong item.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_NfoTmdbId_NotFoundOnTmdb_ReturnsNeedsReview_WithoutTitleFallback()
@@ -427,7 +443,7 @@ public class TmdbMatcherTests
             .Returns((TmdbIdLookupResult?)null);
 
         var matcher = CreateMatcher(service);
-        var query = new MatchQuery("Inception", 2010, MediaType.Film, NfoTmdbId: 99999);
+        var query = new MatchQuery("Inception", 2010, MediaType.Film, 99999);
 
         var result = await matcher.ResolveAsync(query, TestContext.Current.CancellationToken);
 
@@ -440,5 +456,3 @@ public class TmdbMatcherTests
             Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }
-
-

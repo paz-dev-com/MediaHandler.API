@@ -1,11 +1,13 @@
-#nullable enable
 // ResolveReviewItem — command, handler, and validator for admin review-item resolution.
 // Supports three actions: Assign (map to TMDB id), Dismiss (acknowledge without mapping), Delete (remove file).
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluentValidation;
 using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
+using MediaHandler.Domain.Entities;
 using MediaHandler.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -58,12 +60,12 @@ public class ResolveReviewItemCommandValidator : AbstractValidator<ResolveReview
 // =========================================================================
 
 /// <summary>
-/// Handles <see cref="ResolveReviewItemCommand"/>.
-/// <list type="bullet">
-///   <item><b>Assign</b>: verifies the TMDB id is real, writes resolution fields, status → Resolved.</item>
-///   <item><b>Dismiss</b>: marks status → Dismissed.</item>
-///   <item><b>Delete</b>: removes the underlying <see cref="MediaFile"/> (and orphaned parents), marks Dismissed.</item>
-/// </list>
+///     Handles <see cref="ResolveReviewItemCommand" />.
+///     <list type="bullet">
+///         <item><b>Assign</b>: verifies the TMDB id is real, writes resolution fields, status → Resolved.</item>
+///         <item><b>Dismiss</b>: marks status → Dismissed.</item>
+///         <item><b>Delete</b>: removes the underlying <see cref="MediaFile" /> (and orphaned parents), marks Dismissed.</item>
+///     </list>
 /// </summary>
 public sealed class ResolveReviewItemCommandHandler(
     IApplicationDbContext db,
@@ -108,7 +110,7 @@ public sealed class ResolveReviewItemCommandHandler(
     // =========================================================================
 
     private async Task<Result<ReviewItemDto>> HandleAssignAsync(
-        Domain.Entities.ReviewItem reviewItem,
+        ReviewItem reviewItem,
         ResolveReviewItemCommand request,
         CancellationToken ct)
     {
@@ -116,17 +118,15 @@ public sealed class ResolveReviewItemCommandHandler(
         var kind = request.Kind!.Value;
 
         // Verify the TMDB id actually exists
-        TmdbIdLookupResult? lookup = kind == MediaType.Film
+        var lookup = kind == MediaType.Film
             ? await tmdbService.GetMovieByIdAsync(tmdbId, cancellationToken: ct)
             : await tmdbService.GetTvShowByIdAsync(tmdbId, cancellationToken: ct);
 
         // Try the other kind if not found with the specified one
         if (lookup is null)
-        {
             lookup = kind == MediaType.Film
                 ? await tmdbService.GetTvShowByIdAsync(tmdbId, cancellationToken: ct)
                 : await tmdbService.GetMovieByIdAsync(tmdbId, cancellationToken: ct);
-        }
 
         if (lookup is null)
             return Result.Fail<ReviewItemDto>(
@@ -149,7 +149,7 @@ public sealed class ResolveReviewItemCommandHandler(
     // =========================================================================
 
     private async Task<Result<ReviewItemDto>> HandleDismissAsync(
-        Domain.Entities.ReviewItem reviewItem,
+        ReviewItem reviewItem,
         CancellationToken ct)
     {
         reviewItem.Status = ReviewStatus.Dismissed;
@@ -166,7 +166,7 @@ public sealed class ResolveReviewItemCommandHandler(
     // =========================================================================
 
     private async Task<Result<ReviewItemDto>> HandleDeleteAsync(
-        Domain.Entities.ReviewItem reviewItem,
+        ReviewItem reviewItem,
         CancellationToken ct)
     {
         // Remove underlying MediaFile(s) matching the review item's file path
@@ -174,10 +174,7 @@ public sealed class ResolveReviewItemCommandHandler(
             .Where(mf => mf.FilePath == reviewItem.FilePath)
             .ToListAsync(ct);
 
-        if (mediaFilesToRemove.Count > 0)
-        {
-            db.MediaFiles.RemoveRange(mediaFilesToRemove);
-        }
+        if (mediaFilesToRemove.Count > 0) db.MediaFiles.RemoveRange(mediaFilesToRemove);
 
         reviewItem.Status = ReviewStatus.Dismissed;
         reviewItem.ResolvedBy = currentUser.OktaId;
@@ -192,7 +189,7 @@ public sealed class ResolveReviewItemCommandHandler(
     // DTO mapping
     // =========================================================================
 
-    private static ReviewItemDto MapToDto(Domain.Entities.ReviewItem item)
+    private static ReviewItemDto MapToDto(ReviewItem item)
     {
         // Deserialize candidates JSON
         IReadOnlyList<TmdbCandidateDto> candidates = [];
@@ -200,13 +197,16 @@ public sealed class ResolveReviewItemCommandHandler(
         {
             if (!string.IsNullOrWhiteSpace(item.CandidatesJson) && item.CandidatesJson != "[]")
             {
-                var raw = System.Text.Json.JsonSerializer.Deserialize<List<CandidateJson>>(item.CandidatesJson);
+                var raw = JsonSerializer.Deserialize<List<CandidateJson>>(item.CandidatesJson);
                 candidates = raw?.Select(c => new TmdbCandidateDto(
-                    c.TmdbId, Enum.Parse<MediaType>(c.Kind, true), c.Title, c.Year, c.Score, c.PosterPath))
+                        c.TmdbId, Enum.Parse<MediaType>(c.Kind, true), c.Title, c.Year, c.Score, c.PosterPath))
                     .ToList() ?? [];
             }
         }
-        catch { /* ignore malformed JSON — return empty list */ }
+        catch
+        {
+            /* ignore malformed JSON — return empty list */
+        }
 
         return new ReviewItemDto(
             item.Id,
@@ -225,11 +225,11 @@ public sealed class ResolveReviewItemCommandHandler(
     }
 
     private record CandidateJson(
-        [property: System.Text.Json.Serialization.JsonPropertyName("tmdbId")] int TmdbId,
-        [property: System.Text.Json.Serialization.JsonPropertyName("kind")] string Kind,
-        [property: System.Text.Json.Serialization.JsonPropertyName("title")] string Title,
-        [property: System.Text.Json.Serialization.JsonPropertyName("year")] int? Year,
-        [property: System.Text.Json.Serialization.JsonPropertyName("score")] decimal Score,
-        [property: System.Text.Json.Serialization.JsonPropertyName("posterPath")] string? PosterPath);
+        [property: JsonPropertyName("tmdbId")] int TmdbId,
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("title")] string Title,
+        [property: JsonPropertyName("year")] int? Year,
+        [property: JsonPropertyName("score")] decimal Score,
+        [property: JsonPropertyName("posterPath")]
+        string? PosterPath);
 }
-

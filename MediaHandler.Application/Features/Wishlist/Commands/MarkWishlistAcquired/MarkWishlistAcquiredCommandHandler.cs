@@ -10,10 +10,14 @@ namespace MediaHandler.Application.Features.Wishlist.Commands.MarkWishlistAcquir
 
 public record MarkWishlistAcquiredCommand(Guid Id, bool IsAcquired) : IRequest<Result<WishlistItemDto>>;
 
-public class MarkWishlistAcquiredCommandHandler(IApplicationDbContext context, ICurrentUserService currentUser, IMapper mapper)
+public class MarkWishlistAcquiredCommandHandler(
+    IApplicationDbContext context,
+    ICurrentUserService currentUser,
+    IMapper mapper)
     : IRequestHandler<MarkWishlistAcquiredCommand, Result<WishlistItemDto>>
 {
-    public async Task<Result<WishlistItemDto>> Handle(MarkWishlistAcquiredCommand request, CancellationToken cancellationToken)
+    public async Task<Result<WishlistItemDto>> Handle(MarkWishlistAcquiredCommand request,
+        CancellationToken cancellationToken)
     {
         var userId = await currentUser.ResolveUserIdAsync(context, cancellationToken);
 

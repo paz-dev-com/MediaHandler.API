@@ -28,8 +28,8 @@ public static class DependencyInjection
             var auditInterceptor = sp.GetRequiredService<AuditableEntitySaveChangesInterceptor>();
             var domainEventInterceptor = sp.GetRequiredService<DomainEventDispatchInterceptor>();
             options.UseSqlServer(
-                configuration.GetConnectionString("DefaultConnection"),
-                b => b.MigrationsAssembly(typeof(MediaHandlerDbContext).Assembly.FullName))
+                    configuration.GetConnectionString("DefaultConnection"),
+                    b => b.MigrationsAssembly(typeof(MediaHandlerDbContext).Assembly.FullName))
                 .AddInterceptors(auditInterceptor, domainEventInterceptor);
         });
 
@@ -66,7 +66,8 @@ public static class DependencyInjection
         services.AddScoped<IMediaAutoMatchService, MediaAutoMatchService>();
 
         // ── Scanner services ─────────────────────────────────────────────────
-        // Singleton: owns in-memory scan state across requests
+        // Singleton: owns in-memory scan state across requests.
+        // Uses IServiceScopeFactory internally to resolve scoped dependencies per scan run.
         services.AddSingleton<ScanRunCoordinator>();
         services.AddSingleton<IScanRunCoordinator>(sp => sp.GetRequiredService<ScanRunCoordinator>());
 
@@ -76,6 +77,11 @@ public static class DependencyInjection
         services.AddScoped<IExclusionEvaluator, ExclusionEvaluator>();
         services.AddScoped<IStackingDetector, StackingDetector>();
         services.AddScoped<ITvEpisodeMatcher, TvEpisodeMatcher>();
+
+        // ScanPipeline: scoped so each scan run gets a fresh pipeline (and fresh DbContext).
+        // Resolved by ScanRunCoordinator via IServiceScopeFactory — never injected directly
+        // into a singleton.
+        services.AddScoped<ScanPipeline>();
 
         // TmdbMatcher: scoped so its per-scan LRU cache is isolated per request/scan run
         services.AddScoped<ITmdbMatcher, TmdbMatcher>();
@@ -94,9 +100,9 @@ public static class DependencyInjection
     }
 
     /// <summary>
-    /// On application startup, transitions any <c>ScanRun</c> rows left in <c>Running</c>
-    /// status to <c>Failed</c> with a standard failure reason.
-    /// Call this from <c>Program.cs</c> after the app is built but before it starts accepting requests.
+    ///     On application startup, transitions any <c>ScanRun</c> rows left in <c>Running</c>
+    ///     status to <c>Failed</c> with a standard failure reason.
+    ///     Call this from <c>Program.cs</c> after the app is built but before it starts accepting requests.
     /// </summary>
     public static async Task ApplyScanRunRecoveryAsync(IServiceProvider serviceProvider)
     {

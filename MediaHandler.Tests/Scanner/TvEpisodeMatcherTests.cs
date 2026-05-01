@@ -1,4 +1,3 @@
-#nullable enable
 // TvEpisodeMatcherTests — Kodi TV episode number extraction
 // SOURCE: https://kodi.wiki/view/Naming_video_files/TV_shows
 // SOURCE: Kodi wiki "Episode matching patterns" (observed default behaviour)
@@ -10,13 +9,13 @@ using MediaHandler.Infrastructure.Nas.Scanner;
 namespace MediaHandler.Tests.Scanner;
 
 /// <summary>
-/// Table-driven tests for <see cref="TvEpisodeMatcher"/>.
-/// Every pattern is sourced from public Kodi documentation; no text from GPL source.
+///     Table-driven tests for <see cref="TvEpisodeMatcher" />.
+///     Every pattern is sourced from public Kodi documentation; no text from GPL source.
 /// </summary>
 public class TvEpisodeMatcherTests
 {
-    private readonly TvEpisodeMatcher _sut = new();
     private static readonly EpisodeNumberingHint NoHint = new();
+    private readonly TvEpisodeMatcher _sut = new();
 
     // =========================================================================
     // SxxExx canonical format
@@ -29,8 +28,8 @@ public class TvEpisodeMatcherTests
     [InlineData("Show.S08E06.mkv", 8, 6)]
     [InlineData("Show.S10E18.mkv", 10, 18)]
     [InlineData("Show.S01E100.mkv", 1, 100)]
-    [InlineData("show.s01e01.mkv", 1, 1)]       // lowercase
-    [InlineData("Show.S01E01.720p.mkv", 1, 1)]  // with quality tag
+    [InlineData("show.s01e01.mkv", 1, 1)] // lowercase
+    [InlineData("Show.S01E01.720p.mkv", 1, 1)] // with quality tag
     [InlineData("Show.S03E07.WEB.mkv", 3, 7)]
     [InlineData("Show.S12E01.mkv", 12, 1)]
     [InlineData("Show - S05E02 - Title.mkv", 5, 2)]
@@ -41,8 +40,8 @@ public class TvEpisodeMatcherTests
         var result = _sut.Match(filename, NoHint);
 
         result.Should().HaveCount(1);
-        result[0].Season.Should().Be(expectedSeason, because: $"filename: {filename}");
-        result[0].Episode.Should().Be(expectedEpisode, because: $"filename: {filename}");
+        result[0].Season.Should().Be(expectedSeason, $"filename: {filename}");
+        result[0].Episode.Should().Be(expectedEpisode, $"filename: {filename}");
     }
 
     // =========================================================================
@@ -55,7 +54,7 @@ public class TvEpisodeMatcherTests
     {
         var result = _sut.Match("Breaking.Bad.S02E05-E06.mkv", NoHint);
 
-        result.Should().HaveCountGreaterThanOrEqualTo(2, because: "S02E05-E06 spans two episodes");
+        result.Should().HaveCountGreaterThanOrEqualTo(2, "S02E05-E06 spans two episodes");
         result[0].Season.Should().Be(2);
         result[0].Episode.Should().Be(5);
         result[1].Episode.Should().Be(6);
@@ -67,7 +66,7 @@ public class TvEpisodeMatcherTests
         // SOURCE: Kodi wiki — compacted form SxxExxEyy (no dash)
         var result = _sut.Match("Show.S01E01E02.mkv", NoHint);
 
-        result.Should().HaveCountGreaterThanOrEqualTo(2, because: "S01E01E02 spans two episodes");
+        result.Should().HaveCountGreaterThanOrEqualTo(2, "S01E01E02 spans two episodes");
         result[0].Episode.Should().Be(1);
         result[1].Episode.Should().Be(2);
     }
@@ -90,13 +89,13 @@ public class TvEpisodeMatcherTests
     [InlineData("show.2x12.mkv", 2, 12)]
     [InlineData("show.3x01.mkv", 3, 1)]
     [InlineData("show.10x24.mkv", 10, 24)]
-    [InlineData("Show.1X03.mkv", 1, 3)]    // uppercase X
+    [InlineData("Show.1X03.mkv", 1, 3)] // uppercase X
     [InlineData("Show.2X07.mkv", 2, 7)]
     public void Match_SeasonXEpisode_ExtractsCorrectNumbers(string filename, int expectedSeason, int expectedEpisode)
     {
         var result = _sut.Match(filename, NoHint);
 
-        result.Should().HaveCount(1, because: $"filename: {filename}");
+        result.Should().HaveCount(1, $"filename: {filename}");
         result[0].Season.Should().Be(expectedSeason);
         result[0].Episode.Should().Be(expectedEpisode);
     }
@@ -110,13 +109,13 @@ public class TvEpisodeMatcherTests
     [InlineData("The.Daily.Show.2024.03.19.mkv", 2024, 3, 19)]
     [InlineData("Late.Night.2023.11.04.mkv", 2023, 11, 4)]
     [InlineData("News.2022.01.15.mkv", 2022, 1, 15)]
-    [InlineData("Show.2024-03-19.mkv", 2024, 3, 19)]   // dash-separated variant
+    [InlineData("Show.2024-03-19.mkv", 2024, 3, 19)] // dash-separated variant
     public void Match_DateBased_ExtractsYearAsSeasonAndDayOfYear(string filename, int year, int month, int day)
     {
         var result = _sut.Match(filename, NoHint);
 
-        result.Should().HaveCount(1, because: $"date-based file: {filename}");
-        result[0].Season.Should().Be(year, because: "year maps to season for date-based episodes");
+        result.Should().HaveCount(1, $"date-based file: {filename}");
+        result[0].Season.Should().Be(year, "year maps to season for date-based episodes");
         // Episode is encoded as ordinal day-of-year (consistent with Kodi's observed mapping)
         var expectedEpisode = new DateTime(year, month, day).DayOfYear;
         result[0].Episode.Should().Be(expectedEpisode);
@@ -151,7 +150,7 @@ public class TvEpisodeMatcherTests
     public void Match_NoPattern_ReturnsEmpty(string filename)
     {
         var result = _sut.Match(filename, NoHint);
-        result.Should().BeEmpty(because: $"'{filename}' has no recognisable episode pattern");
+        result.Should().BeEmpty($"'{filename}' has no recognisable episode pattern");
     }
 
     // =========================================================================
@@ -163,11 +162,11 @@ public class TvEpisodeMatcherTests
     public void Match_WithSeasonHint_UsesHintSeason()
     {
         // When the filename has an episode number but no season, the folder hint provides it
-        var hint = new EpisodeNumberingHint(SeasonFromFolder: 3);
+        var hint = new EpisodeNumberingHint(3);
         var result = _sut.Match("Show.E07.mkv", hint);
 
         result.Should().HaveCount(1);
-        result[0].Season.Should().Be(3, because: "the folder hint Season 03 provides the season");
+        result[0].Season.Should().Be(3, "the folder hint Season 03 provides the season");
         result[0].Episode.Should().Be(7);
     }
 
@@ -175,11 +174,10 @@ public class TvEpisodeMatcherTests
     public void Match_SxxExx_IgnoresHintInFavourOfExplicitSeason()
     {
         // SOURCE: Observed Kodi behaviour — explicit SxxExx always wins over folder hint
-        var hint = new EpisodeNumberingHint(SeasonFromFolder: 9);
+        var hint = new EpisodeNumberingHint(9);
         var result = _sut.Match("Show.S02E05.mkv", hint);
 
         result.Should().HaveCount(1);
-        result[0].Season.Should().Be(2, because: "S02 explicitly overrides the folder hint of 9");
+        result[0].Season.Should().Be(2, "S02 explicitly overrides the folder hint of 9");
     }
 }
-

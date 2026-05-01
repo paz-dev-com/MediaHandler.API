@@ -141,5 +141,3 @@ public class MediaFileNameParserTests
         result.Year.Should().Be(2008);
     }
 }
-
-

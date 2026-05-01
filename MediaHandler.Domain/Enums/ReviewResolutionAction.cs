@@ -1,14 +1,14 @@
 namespace MediaHandler.Domain.Enums;
 
 /// <summary>
-/// The action an administrator takes when resolving an open <c>ReviewItem</c>.
-/// Referenced by the review-items API contract.
+///     The action an administrator takes when resolving an open <c>ReviewItem</c>.
+///     Referenced by the review-items API contract.
 /// </summary>
 public enum ReviewResolutionAction
 {
     /// <summary>
-    /// Assign a specific TMDB id to the file, persisting the resolution so subsequent
-    /// scans re-use it without re-querying TMDB title search.
+    ///     Assign a specific TMDB id to the file, persisting the resolution so subsequent
+    ///     scans re-use it without re-querying TMDB title search.
     /// </summary>
     Assign,
 
@@ -16,9 +16,8 @@ public enum ReviewResolutionAction
     Dismiss,
 
     /// <summary>
-    /// Remove the underlying <c>MediaFile</c> row (and its orphaned parents if applicable)
-    /// from the database; sets the review item to <c>Dismissed</c>.
+    ///     Remove the underlying <c>MediaFile</c> row (and its orphaned parents if applicable)
+    ///     from the database; sets the review item to <c>Dismissed</c>.
     /// </summary>
     Delete
 }
-

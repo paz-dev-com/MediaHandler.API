@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using ValidationException = MediaHandler.Domain.Exceptions.ValidationException;
 
 namespace MediaHandler.Application.Common.Behaviors;
 
@@ -7,7 +8,8 @@ public class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TReq
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next,
+        CancellationToken cancellationToken)
     {
         if (!validators.Any())
             return await next();
@@ -21,7 +23,7 @@ public class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TReq
             .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
 
         if (failures.Count != 0)
-            throw new Domain.Exceptions.ValidationException(failures);
+            throw new ValidationException(failures);
 
         return await next();
     }

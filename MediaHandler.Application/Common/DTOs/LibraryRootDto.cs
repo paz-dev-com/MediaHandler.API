@@ -3,8 +3,8 @@ using MediaHandler.Domain.Enums;
 namespace MediaHandler.Application.Common.DTOs;
 
 /// <summary>
-/// Data-transfer object for a configured <c>LibraryRoot</c>.
-/// Used by both the list and the create response.
+///     Data-transfer object for a configured <c>LibraryRoot</c>.
+///     Used by both the list and the create response.
 /// </summary>
 public record LibraryRootDto(
     Guid Id,
@@ -14,4 +14,3 @@ public record LibraryRootDto(
     bool IsEnabled,
     DateTime CreatedAt,
     DateTime? UpdatedAt);
-

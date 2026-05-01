@@ -1,4 +1,3 @@
-#nullable enable
 // KodiRegexCatalog — clean-room re-derived regex tables for the NAS scanner pipeline.
 //
 // R-001 CLEAN-ROOM DECLARATION
@@ -23,9 +22,9 @@ using MediaHandler.Domain.Enums;
 namespace MediaHandler.Infrastructure.Nas.Scanner;
 
 /// <summary>
-/// Static catalogue of compiled regexes and rule lists used by
-/// <see cref="KodiNameParser"/>, <see cref="ExclusionEvaluator"/>,
-/// <see cref="StackingDetector"/>, and <see cref="TvEpisodeMatcher"/>.
+///     Static catalogue of compiled regexes and rule lists used by
+///     <see cref="KodiNameParser" />, <see cref="ExclusionEvaluator" />,
+///     <see cref="StackingDetector" />, and <see cref="TvEpisodeMatcher" />.
 /// </summary>
 public sealed class KodiRegexCatalog
 {
@@ -83,17 +82,24 @@ public sealed class KodiRegexCatalog
     [
         // SOURCE: observed release-group tags (after the year separator)
         new(@"[\s._-]?(BluRay|Blu-Ray|BDRip|BRRip|BD)[\s._-]?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new(@"[\s._-]?(WEB-DL|WEBRip|WEB\b|AMZN|NF|DSNP|HULU)[\s._-]?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new(@"[\s._-]?(HDTV|PDTV|TVRip|DVDRip|DVDScr|DVD|VHSRip)[\s._-]?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new(@"[\s._-]?(2160p|1080p|1080i|720p|576p|480p|4K|UHD|FHD|HD)[\s._-]?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new(@"[\s._-]?(x264|x265|h264|h265|HEVC|AVC|XVID|DivX|VC-1)[\s._-]?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new(@"[\s._-]?(AAC|AC3|DTS|TrueHD|Atmos|DD5\.1|DDP5\.1|FLAC|MP3|EAC3)[\s._-]?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new(@"[\s._-]?(PROPER|REPACK|EXTENDED|THEATRICAL|UNRATED|DIRECTORS\.CUT|IMAX|REMUX|HYBRID)[\s._-]?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new(@"[\s._-]?(LIMITED|INTERNAL|RETAIL|REMASTERED|RESTORED)[\s._-]?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new(@"[\s._-]?(WEB-DL|WEBRip|WEB\b|AMZN|NF|DSNP|HULU)[\s._-]?",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new(@"[\s._-]?(HDTV|PDTV|TVRip|DVDRip|DVDScr|DVD|VHSRip)[\s._-]?",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new(@"[\s._-]?(2160p|1080p|1080i|720p|576p|480p|4K|UHD|FHD|HD)[\s._-]?",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new(@"[\s._-]?(x264|x265|h264|h265|HEVC|AVC|XVID|DivX|VC-1)[\s._-]?",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new(@"[\s._-]?(AAC|AC3|DTS|TrueHD|Atmos|DD5\.1|DDP5\.1|FLAC|MP3|EAC3)[\s._-]?",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new(@"[\s._-]?(PROPER|REPACK|EXTENDED|THEATRICAL|UNRATED|DIRECTORS\.CUT|IMAX|REMUX|HYBRID)[\s._-]?",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new(@"[\s._-]?(LIMITED|INTERNAL|RETAIL|REMASTERED|RESTORED)[\s._-]?",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled),
         new(@"[\s._-]?(HDR10?|SDR|DoVi|DV|HDR)[\s._-]?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
         // SOURCE: observed — release group at end in brackets: "[GROUP]" or "-GROUP" suffix
         new(@"[\s._-]?\[.+?\]$", RegexOptions.Compiled),
-        new(@"[\s._-][A-Za-z0-9]+$", RegexOptions.Compiled), // trailing release group
+        new(@"[\s._-][A-Za-z0-9]+$", RegexOptions.Compiled) // trailing release group
     ];
 
     // =========================================================================
@@ -108,7 +114,8 @@ public sealed class KodiRegexCatalog
 
     // SOURCE: Kodi wiki — "Multi-episode files use SxxExx-Eyy or SxxExxEyy"
     public static readonly Regex SxxExxToEyy =
-        new(@"(?<![A-Za-z0-9])S(\d{1,2})E(\d{1,3})(?:[- ]?E(\d{1,3}))+(?![A-Za-z0-9])", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        new(@"(?<![A-Za-z0-9])S(\d{1,2})E(\d{1,3})(?:[- ]?E(\d{1,3}))+(?![A-Za-z0-9])",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     // SOURCE: Kodi wiki — "1x05 and similar SeasonXEpisode formats"
     public static readonly Regex SeasonXEpisode =
@@ -160,11 +167,11 @@ public sealed class KodiRegexCatalog
     // Consolidated list of all stack patterns, in priority order
     public static readonly (string Discriminator, Regex Pattern)[] AllStackPatterns =
     [
-        ("cd",   StackSuffixCd),
+        ("cd", StackSuffixCd),
         ("disc", StackSuffixDisc),
         ("part", StackSuffixPart),
-        ("pt",   StackSuffixPt),
-        ("()",   StackSuffixLetter),
+        ("pt", StackSuffixPt),
+        ("()", StackSuffixLetter)
     ];
 
     // =========================================================================
@@ -225,7 +232,7 @@ public sealed class KodiRegexCatalog
             {
                 Name = "non-video-extension",
                 RuleId = "non-video-extension",
-                Pattern = "non-video",   // interpreted by ExclusionEvaluator as the extension check
+                Pattern = "non-video", // interpreted by ExclusionEvaluator as the extension check
                 Scope = ExclusionScope.Extension,
                 IsEnabled = true,
                 Priority = 10
@@ -368,14 +375,13 @@ public sealed class KodiRegexCatalog
             {
                 Name = "nomedia-subtree",
                 RuleId = "nomedia-subtree",
-                Pattern = ".nomedia-subtree",  // special sentinel handled by ExclusionEvaluator
+                Pattern = ".nomedia-subtree", // special sentinel handled by ExclusionEvaluator
                 Scope = ExclusionScope.Folder,
                 IsEnabled = true,
                 Priority = 51
-            },
+            }
         };
 
         return rules;
     }
 }
-

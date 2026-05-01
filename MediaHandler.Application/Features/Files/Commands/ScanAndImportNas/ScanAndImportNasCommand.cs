@@ -4,24 +4,24 @@ using MediatR;
 namespace MediaHandler.Application.Features.Files.Commands.ScanAndImportNas;
 
 /// <summary>
-/// Command that triggers a NAS scan followed by automatic TMDB matching and import
-/// for all newly detected (and previously unlinked) <c>MediaFile</c> records.
+///     Command that triggers a NAS scan followed by automatic TMDB matching and import
+///     for all newly detected (and previously unlinked) <c>MediaFile</c> records.
 /// </summary>
 /// <param name="BasePath">
-/// Optional NAS base path to restrict the scan. When <c>null</c>, all configured
-/// base paths are scanned.
+///     Optional NAS base path to restrict the scan. When <c>null</c>, all configured
+///     base paths are scanned.
 /// </param>
 /// <param name="Language">
-/// BCP-47 language tag forwarded to TMDB metadata requests (e.g., <c>"en"</c>, <c>"fr"</c>).
-/// Defaults to <c>"en"</c> when <c>null</c>.
+///     BCP-47 language tag forwarded to TMDB metadata requests (e.g., <c>"en"</c>, <c>"fr"</c>).
+///     Defaults to <c>"en"</c> when <c>null</c>.
 /// </param>
 public record ScanAndImportNasCommand(
     string? BasePath = null,
     string? Language = null) : IRequest<Result<ScanAndImportNasResult>>;
 
 /// <summary>
-/// Aggregated outcome of a scan-and-import operation, combining NAS scan statistics
-/// with TMDB auto-match counters.
+///     Aggregated outcome of a scan-and-import operation, combining NAS scan statistics
+///     with TMDB auto-match counters.
 /// </summary>
 /// <param name="NewFiles">Number of new <c>MediaFile</c> records discovered and added during this scan.</param>
 /// <param name="ExistingFiles">Number of file paths already present in the database.</param>
@@ -40,4 +40,3 @@ public record ScanAndImportNasResult(
     int Skipped,
     int Failed,
     IReadOnlyList<string> Errors);
-

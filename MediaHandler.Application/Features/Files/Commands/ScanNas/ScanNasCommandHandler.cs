@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MediaHandler.Application.Features.Files.Commands.ScanNas;
 
 public record ScanNasCommand(string? BasePath = null) : IRequest<Result<ScanNasResult>>;
+
 public record ScanNasResult(int NewFiles, int ExistingFiles, int TotalScanned, int FoldersFound);
 
 public class ScanNasCommandHandler(IApplicationDbContext context, INasService nas)
@@ -37,7 +38,7 @@ public class ScanNasCommandHandler(IApplicationDbContext context, INasService na
                 FileSizeBytes = file.SizeBytes,
                 Format = file.Format,
                 Fingerprint = $"{file.FilePath}|{file.SizeBytes}|0",
-                LibraryRootId = Guid.Empty,   // sentinel "Legacy" root; corrected by migration
+                LibraryRootId = Guid.Empty, // sentinel "Legacy" root; corrected by migration
                 Role = MediaFileRole.Main
             });
             newFiles++;
@@ -47,9 +48,9 @@ public class ScanNasCommandHandler(IApplicationDbContext context, INasService na
             await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success(new ScanNasResult(
-            NewFiles: newFiles,
-            ExistingFiles: existingPaths.Count,
-            TotalScanned: files.Count,
-            FoldersFound: foldersFound));
+            newFiles,
+            existingPaths.Count,
+            files.Count,
+            foldersFound));
     }
 }

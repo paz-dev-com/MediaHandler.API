@@ -6,7 +6,6 @@ using MediaHandler.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
@@ -14,12 +13,14 @@ namespace MediaHandler.API.Extensions;
 
 public static class ServiceExtensions
 {
-    public static IServiceCollection AddApiAuthentication(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
+    public static IServiceCollection AddApiAuthentication(this IServiceCollection services,
+        IConfiguration configuration, IHostEnvironment environment)
     {
         if (environment.IsDevelopment())
         {
             services.AddAuthentication(DevAuthenticationHandler.SchemeName)
-                .AddScheme<AuthenticationSchemeOptions, DevAuthenticationHandler>(DevAuthenticationHandler.SchemeName, null);
+                .AddScheme<AuthenticationSchemeOptions, DevAuthenticationHandler>(DevAuthenticationHandler.SchemeName,
+                    null);
         }
         else
         {
@@ -109,4 +110,3 @@ public static class ServiceExtensions
         return services;
     }
 }
-

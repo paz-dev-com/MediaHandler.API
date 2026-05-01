@@ -7,21 +7,21 @@ using Microsoft.Extensions.Logging;
 namespace MediaHandler.Infrastructure.Services;
 
 /// <summary>
-/// Infrastructure implementation of <see cref="IMediaAutoMatchService"/>.
-/// <para>
-/// Iterates over unlinked <see cref="MediaFile"/> records, parses each filename,
-/// queries TMDB, imports (or retrieves) the matching <c>Media</c> entity, and sets
-/// <c>MediaFile.MediaId</c>. Changes are flushed to the database in batches of 10.
-/// </para>
-/// <para>
-/// TMDB rate limit: 40 requests per 10 seconds (4 req/s). A <see cref="TmdbDelayMs"/>
-/// delay is applied after every TMDB HTTP call to stay within this limit.
-/// An in-memory title cache prevents duplicate TMDB round-trips for TV shows
-/// that have many episode files sharing the same title (e.g., 20 episodes of one
-/// series only trigger 1 TMDB search + 1 details call instead of 20).
-/// The Polly <c>StandardResilienceHandler</c> on the TMDB HttpClient handles any
-/// HTTP 429 responses automatically with exponential back-off.
-/// </para>
+///     Infrastructure implementation of <see cref="IMediaAutoMatchService" />.
+///     <para>
+///         Iterates over unlinked <see cref="MediaFile" /> records, parses each filename,
+///         queries TMDB, imports (or retrieves) the matching <c>Media</c> entity, and sets
+///         <c>MediaFile.MediaId</c>. Changes are flushed to the database in batches of 10.
+///     </para>
+///     <para>
+///         TMDB rate limit: 40 requests per 10 seconds (4 req/s). A <see cref="TmdbDelayMs" />
+///         delay is applied after every TMDB HTTP call to stay within this limit.
+///         An in-memory title cache prevents duplicate TMDB round-trips for TV shows
+///         that have many episode files sharing the same title (e.g., 20 episodes of one
+///         series only trigger 1 TMDB search + 1 details call instead of 20).
+///         The Polly <c>StandardResilienceHandler</c> on the TMDB HttpClient handles any
+///         HTTP 429 responses automatically with exponential back-off.
+///     </para>
 /// </summary>
 public sealed class MediaAutoMatchService(
     IMediaFileNameParser parser,
@@ -34,14 +34,14 @@ public sealed class MediaAutoMatchService(
     private const int BatchSize = 10;
 
     /// <summary>
-    /// Delay in milliseconds applied after every TMDB API call.
-    /// TMDB allows 40 req/10 s (~4 req/s → 250 ms minimum spacing).
-    /// Using 300 ms gives a comfortable margin when two calls are made
-    /// per file (search + details).
+    ///     Delay in milliseconds applied after every TMDB API call.
+    ///     TMDB allows 40 req/10 s (~4 req/s → 250 ms minimum spacing).
+    ///     Using 300 ms gives a comfortable margin when two calls are made
+    ///     per file (search + details).
     /// </summary>
     private const int TmdbDelayMs = 300;
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<AutoMatchResult> MatchAndLinkUnlinkedFilesAsync(
         IReadOnlyList<MediaFile> unlinkedFiles,
         string language,
@@ -201,5 +201,3 @@ public sealed class MediaAutoMatchService(
         return new AutoMatchResult(matched, skipped, failed, errors);
     }
 }
-
-

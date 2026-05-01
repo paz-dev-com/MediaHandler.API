@@ -61,14 +61,14 @@ movies:
 
 ### `MovieEntry` fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `folder` | string | No* | Relative folder path e.g. `"The Matrix (1999)"`. Omit when `flat: true`. |
-| `flat` | bool | No | When `true`, file is placed directly in the root movies folder. |
-| `files` | list of `FileEntry` | Yes | Physical files to create in the folder. |
-| `expected_tmdb_id` | int | Yes | Ground-truth TMDB id for SC-001/SC-002 assertion. |
-| `expected_classification` | string | Yes | `movie` \| `stacked_movie` \| `review` |
-| `nfo` | string (inline XML) | No | If present, written as `movie.nfo` in the folder. |
+| Field                     | Type                | Required | Description                                                              |
+|---------------------------|---------------------|----------|--------------------------------------------------------------------------|
+| `folder`                  | string              | No*      | Relative folder path e.g. `"The Matrix (1999)"`. Omit when `flat: true`. |
+| `flat`                    | bool                | No       | When `true`, file is placed directly in the root movies folder.          |
+| `files`                   | list of `FileEntry` | Yes      | Physical files to create in the folder.                                  |
+| `expected_tmdb_id`        | int                 | Yes      | Ground-truth TMDB id for SC-001/SC-002 assertion.                        |
+| `expected_classification` | string              | Yes      | `movie` \| `stacked_movie` \| `review`                                   |
+| `nfo`                     | string (inline XML) | No       | If present, written as `movie.nfo` in the folder.                        |
 
 ---
 
@@ -135,30 +135,30 @@ tv_shows:
 
 ### `TvShowEntry` fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `show` | string | Yes | Show name (used as folder name under `TV Shows/`). |
-| `expected_tmdb_id` | int | Yes | Ground-truth TMDB series id. |
-| `nfo` | string | No | Written as `tvshow.nfo` in the show root folder. |
-| `seasons` | list of `SeasonEntry` | Yes | Season definitions. |
+| Field              | Type                  | Required | Description                                        |
+|--------------------|-----------------------|----------|----------------------------------------------------|
+| `show`             | string                | Yes      | Show name (used as folder name under `TV Shows/`). |
+| `expected_tmdb_id` | int                   | Yes      | Ground-truth TMDB series id.                       |
+| `nfo`              | string                | No       | Written as `tvshow.nfo` in the show root folder.   |
+| `seasons`          | list of `SeasonEntry` | Yes      | Season definitions.                                |
 
 ### `SeasonEntry` fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `season` | int | Yes | Season number (0 = Specials). |
-| `folder_name` | string | No | Overrides automatic `Season XX` naming. |
-| `episodes` | list of `EpisodeEntry` | Yes | Episode definitions. |
+| Field         | Type                   | Required | Description                             |
+|---------------|------------------------|----------|-----------------------------------------|
+| `season`      | int                    | Yes      | Season number (0 = Specials).           |
+| `folder_name` | string                 | No       | Overrides automatic `Season XX` naming. |
+| `episodes`    | list of `EpisodeEntry` | Yes      | Episode definitions.                    |
 
 ### `EpisodeEntry` fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `episode` | int | Yes | Episode number (start of range for multi-episode). |
-| `episode_end` | int | No | Inclusive end of multi-episode range. |
-| `file` | string | Yes | Physical filename. |
-| `expected_classification` | string | Yes | `episode` \| `review` |
-| `nfo` | string | No | Per-episode NFO content (written as `<basename>.nfo`). |
+| Field                     | Type   | Required | Description                                            |
+|---------------------------|--------|----------|--------------------------------------------------------|
+| `episode`                 | int    | Yes      | Episode number (start of range for multi-episode).     |
+| `episode_end`             | int    | No       | Inclusive end of multi-episode range.                  |
+| `file`                    | string | Yes      | Physical filename.                                     |
+| `expected_classification` | string | Yes      | `episode` \| `review`                                  |
+| `nfo`                     | string | No       | Per-episode NFO content (written as `<basename>.nfo`). |
 
 ---
 
@@ -191,11 +191,11 @@ exclusion_baits:
 
 ### `ExclusionBaitEntry` fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `path` | string | Yes | Path relative to `base_path`. |
-| `expected_exclusion_reason` | string | Yes | Human-readable label tying the row to an `ExclusionRule.Name`. |
-| `is_nomedia_marker` | bool | No | When `true`, `FixtureBuilder` writes a zero-byte `.nomedia` file here. |
+| Field                       | Type   | Required | Description                                                            |
+|-----------------------------|--------|----------|------------------------------------------------------------------------|
+| `path`                      | string | Yes      | Path relative to `base_path`.                                          |
+| `expected_exclusion_reason` | string | Yes      | Human-readable label tying the row to an `ExclusionRule.Name`.         |
+| `is_nomedia_marker`         | bool   | No       | When `true`, `FixtureBuilder` writes a zero-byte `.nomedia` file here. |
 
 ---
 
@@ -221,12 +221,12 @@ review_baits:
 
 ### `ReviewBaitEntry` fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `path` | string | Yes | Path relative to `base_path`. |
-| `expected_review_reason` | string | Yes | Must match a `ReviewReason` enum value name. |
-| `parsed_title` | string | No | Expected `ReviewItem.ParsedTitle` for assertion. |
-| `parsed_year` | int/null | No | Expected `ReviewItem.ParsedYear` for assertion. |
+| Field                    | Type     | Required | Description                                      |
+|--------------------------|----------|----------|--------------------------------------------------|
+| `path`                   | string   | Yes      | Path relative to `base_path`.                    |
+| `expected_review_reason` | string   | Yes      | Must match a `ReviewReason` enum value name.     |
+| `parsed_title`           | string   | No       | Expected `ReviewItem.ParsedTitle` for assertion. |
+| `parsed_year`            | int/null | No       | Expected `ReviewItem.ParsedYear` for assertion.  |
 
 ---
 
@@ -234,12 +234,12 @@ review_baits:
 
 Used inside `movies[].files` and `tv_shows[].seasons[].episodes`.
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `name` | string | Yes | Filename (no path). |
-| `stack_part` | int | No | Stack part number (`1`, `2`, …) — sets `MediaFileRole = StackedPart`. |
-| `size_bytes` | long | No | Simulated file size (default: 1 073 741 824 = 1 GiB). |
-| `mtime_utc` | string (ISO 8601) | No | Simulated last-modified time (default: `2024-01-01T00:00:00Z`). |
+| Field        | Type              | Required | Description                                                           |
+|--------------|-------------------|----------|-----------------------------------------------------------------------|
+| `name`       | string            | Yes      | Filename (no path).                                                   |
+| `stack_part` | int               | No       | Stack part number (`1`, `2`, …) — sets `MediaFileRole = StackedPart`. |
+| `size_bytes` | long              | No       | Simulated file size (default: 1 073 741 824 = 1 GiB).                 |
+| `mtime_utc`  | string (ISO 8601) | No       | Simulated last-modified time (default: `2024-01-01T00:00:00Z`).       |
 
 ---
 
@@ -259,19 +259,19 @@ Used inside `movies[].files` and `tv_shows[].seasons[].episodes`.
 The `FixtureBuilder` asserts at construction time that `benchmark.yaml` meets the following
 minimums (per `quickstart.md §1.1`):
 
-| Requirement | Minimum |
-|---|---|
-| Movies total | 200 |
-| Movies in per-folder layout | 160 (≥ 80 %) |
-| Movies in flat layout | 20 (≥ 10 %) |
-| Stacked movies (cd/part/disc) | 5 |
-| TV shows | 50 |
-| Shows with Specials folder | 5 |
-| Shows with multi-episode file | 5 |
-| Shows with 1x05-style numbering | 2 |
-| Shows with date-based numbering | 1 |
-| NFO sidecars — movies | 5 |
-| NFO sidecars — TV shows | 3 |
-| Exclusion bait entries | 1 per exclusion rule (≥ 6) |
-| Review bait entries | 3 |
+| Requirement                     | Minimum                    |
+|---------------------------------|----------------------------|
+| Movies total                    | 200                        |
+| Movies in per-folder layout     | 160 (≥ 80 %)               |
+| Movies in flat layout           | 20 (≥ 10 %)                |
+| Stacked movies (cd/part/disc)   | 5                          |
+| TV shows                        | 50                         |
+| Shows with Specials folder      | 5                          |
+| Shows with multi-episode file   | 5                          |
+| Shows with 1x05-style numbering | 2                          |
+| Shows with date-based numbering | 1                          |
+| NFO sidecars — movies           | 5                          |
+| NFO sidecars — TV shows         | 3                          |
+| Exclusion bait entries          | 1 per exclusion rule (≥ 6) |
+| Review bait entries             | 3                          |
 

@@ -33,4 +33,3 @@ public class NfoMetadataConfiguration : IEntityTypeConfiguration<NfoMetadata>
             .IsUnique();
     }
 }
-

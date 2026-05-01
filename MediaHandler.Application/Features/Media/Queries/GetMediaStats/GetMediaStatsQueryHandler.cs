@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MediaHandler.Application.Features.Media.Queries.GetMediaStats;
 
-public record GetMediaStatsQuery() : IRequest<Result<MediaStatsDto>>;
+public record GetMediaStatsQuery : IRequest<Result<MediaStatsDto>>;
 
 public class GetMediaStatsQueryHandler(IApplicationDbContext context, ICurrentUserService currentUser)
     : IRequestHandler<GetMediaStatsQuery, Result<MediaStatsDto>>
@@ -30,10 +30,8 @@ public class GetMediaStatsQueryHandler(IApplicationDbContext context, ICurrentUs
 
         var watchedByUser = 0;
         if (userId.HasValue)
-        {
             watchedByUser = await context.UserMedias
                 .CountAsync(um => um.UserId == userId.Value && um.IsWatched, cancellationToken);
-        }
 
         return Result.Success(new MediaStatsDto(
             totalMedia,
