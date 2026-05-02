@@ -90,12 +90,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T011 [P] [US3] Create unit tests for the Reopen case in `MediaHandler.Tests/Features/Review/ResolveReviewItemReopenTests.cs`. Cover: success reopen from `Resolved` status, success reopen from `Dismissed` status (verify all resolution fields cleared and status set to `Open`), already-open conflict (409 `REVIEW_ALREADY_OPEN`), not-found (404). Follow existing `ResolveReviewItemCommandHandlerTests` pattern.
+- [x] T011 [P] [US3] Create unit tests for the Reopen case in `MediaHandler.Tests/Features/Review/ResolveReviewItemReopenTests.cs`. Cover: success reopen from `Resolved` status, success reopen from `Dismissed` status (verify all resolution fields cleared and status set to `Open`), already-open conflict (409 `REVIEW_ALREADY_OPEN`), not-found (404). Follow existing `ResolveReviewItemCommandHandlerTests` pattern.
 
 ### Implementation for User Story 3
 
-- [ ] T012 [US3] Add `Reopen` case to the `switch` statement in the existing `ResolveReviewItemCommandHandler` in `MediaHandler.Application/Features/Review/Commands/ResolveReviewItem/ResolveReviewItemCommand.cs`. The `Reopen` case must: (1) guard that current status is `Resolved` or `Dismissed` — if `Open`, return failure with `REVIEW_ALREADY_OPEN` message; (2) set `Status = ReviewStatus.Open`; (3) clear `ResolvedTmdbId = null`, `ResolvedKind = null`, `ResolvedAt = null`, `ResolvedBy = null`; (4) save and return the updated `ReviewItemDto`.
-- [ ] T013 [US3] Add `REVIEW_ALREADY_OPEN` error mapping to `MediaHandler.API/Controllers/AdminReviewController.cs`. In the resolve action's error handling, add a case for error messages containing `REVIEW_ALREADY_OPEN` → return 409 Conflict. Follow the existing `REVIEW_ALREADY_RESOLVED` → 409 pattern already in the controller.
+- [x] T012 [US3] Add `Reopen` case to the `switch` statement in the existing `ResolveReviewItemCommandHandler` in `MediaHandler.Application/Features/Review/Commands/ResolveReviewItem/ResolveReviewItemCommand.cs`. The `Reopen` case must: (1) guard that current status is `Resolved` or `Dismissed` — if `Open`, return failure with `REVIEW_ALREADY_OPEN` message; (2) set `Status = ReviewStatus.Open`; (3) clear `ResolvedTmdbId = null`, `ResolvedKind = null`, `ResolvedAt = null`, `ResolvedBy = null`; (4) save and return the updated `ReviewItemDto`.
+- [x] T013 [US3] Add `REVIEW_ALREADY_OPEN` error mapping to `MediaHandler.API/Controllers/AdminReviewController.cs`. In the resolve action's error handling, add a case for error messages containing `REVIEW_ALREADY_OPEN` → return 409 Conflict. Follow the existing `REVIEW_ALREADY_RESOLVED` → 409 pattern already in the controller.
 
 **Checkpoint**: US3 is fully functional — review items can be reopened with proper state validation and error responses.
 
@@ -105,10 +105,10 @@
 
 **Purpose**: Final validation across all three user stories.
 
-- [ ] T014 Run full build and verify zero warnings: `dotnet build` from repository root
-- [ ] T015 [P] Run all unit tests: `dotnet test MediaHandler.Tests`
-- [ ] T016 [P] Run format check: `dotnet format --verify-no-changes`
-- [ ] T017 Run quickstart.md verification scenarios (all 6 acceptance checks from quickstart.md § Verification)
+- [x] T014 Run full build and verify zero warnings: `dotnet build` from repository root
+- [x] T015 [P] Run all unit tests: `dotnet test MediaHandler.Tests`
+- [x] T016 [P] Run format check: `dotnet format --verify-no-changes`
+- [x] T017 Run quickstart.md verification scenarios (all 6 acceptance checks from quickstart.md § Verification)
 
 ---
 

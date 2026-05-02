@@ -59,7 +59,8 @@ public class AdminReviewController(ISender sender) : ControllerBase
     }
 
     /// <summary>
-    ///     Resolve a review item by assigning a TMDB id, dismissing it, or deleting its underlying file.
+    ///     Resolve a review item by assigning a TMDB id, dismissing it, deleting its underlying file,
+    ///     or reopening it to allow re-processing.
     /// </summary>
     /// <param name="id">The review item id.</param>
     /// <param name="request">Resolution action and optional TMDB mapping.</param>
@@ -93,6 +94,10 @@ public class AdminReviewController(ISender sender) : ControllerBase
             if (error.Contains("REVIEW_ALREADY_RESOLVED", StringComparison.OrdinalIgnoreCase))
                 return Conflict(ApiResponse.Fail(new ApiError("REVIEW_ALREADY_RESOLVED",
                     "This review item has already been resolved or dismissed.")));
+
+            if (error.Contains("REVIEW_ALREADY_OPEN", StringComparison.OrdinalIgnoreCase))
+                return Conflict(ApiResponse.Fail(new ApiError("REVIEW_ALREADY_OPEN",
+                    "This review item is already Open and cannot be reopened.")));
 
             if (error.Contains("TMDB_ID_NOT_FOUND", StringComparison.OrdinalIgnoreCase))
                 return UnprocessableEntity(ApiResponse.Fail(new ApiError("TMDB_ID_NOT_FOUND",
