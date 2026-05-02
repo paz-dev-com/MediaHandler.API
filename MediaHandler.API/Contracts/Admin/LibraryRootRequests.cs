@@ -9,3 +9,8 @@ public record AddLibraryRootRequest(
     string Path,
     LibraryRootKind Kind,
     string? Label);
+
+/// <summary>
+///     Request body for <c>PUT /api/v1/admin/library-roots/{id}/enabled</c>.
+/// </summary>
+public record ToggleLibraryRootEnabledRequest(bool IsEnabled);

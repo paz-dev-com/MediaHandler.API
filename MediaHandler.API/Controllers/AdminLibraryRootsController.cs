@@ -1,7 +1,9 @@
 using MediaHandler.API.Contracts.Admin;
 using MediaHandler.API.Models;
+using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Features.LibraryRoots.Commands.AddLibraryRoot;
 using MediaHandler.Application.Features.LibraryRoots.Commands.RemoveLibraryRoot;
+using MediaHandler.Application.Features.LibraryRoots.Commands.ToggleLibraryRootEnabled;
 using MediaHandler.Application.Features.LibraryRoots.Queries.ListLibraryRoots;
 using MediaHandler.Domain.Enums;
 using MediatR;
@@ -110,5 +112,36 @@ public class AdminLibraryRootsController(ISender sender) : ControllerBase
         }
 
         return NoContent();
+    }
+
+    /// <summary>
+    ///     Enable or disable a library root by id.
+    ///     Returns 409 Conflict when a scan referencing this root is currently running.
+    /// </summary>
+    [HttpPut("{id:guid}/enabled")]
+    [ProducesResponseType<ApiResponse<LibraryRootDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ToggleEnabled(Guid id, [FromBody] ToggleLibraryRootEnabledRequest request, CancellationToken ct)
+    {
+        var result = await sender.Send(new ToggleLibraryRootEnabledCommand(id, request.IsEnabled), ct);
+
+        if (!result.IsSuccess)
+        {
+            var error = result.Errors.FirstOrDefault() ?? "Unknown error";
+
+            if (error.Contains("NOT_FOUND", StringComparison.OrdinalIgnoreCase))
+                return NotFound(ApiResponse.Fail(new ApiError("NOT_FOUND",
+                    $"Library root '{id}' was not found.")));
+
+            if (error.Contains("SCAN_IN_PROGRESS", StringComparison.OrdinalIgnoreCase))
+                return Conflict(ApiResponse.Fail(new ApiError("SCAN_IN_PROGRESS",
+                    "Cannot toggle a library root while a scan targeting it is running.")));
+
+            return BadRequest(ApiResponse.Fail(new ApiError("BAD_REQUEST", error)));
+        }
+
+        return Ok(ApiResponse<LibraryRootDto>.Success(result.Value));
     }
 }
