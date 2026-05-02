@@ -19,5 +19,11 @@ public enum ReviewResolutionAction
     ///     Remove the underlying <c>MediaFile</c> row (and its orphaned parents if applicable)
     ///     from the database; sets the review item to <c>Dismissed</c>.
     /// </summary>
-    Delete
+    Delete,
+
+    /// <summary>
+    ///     Re-open a previously resolved or dismissed <c>ReviewItem</c>, reverting it back to
+    ///     <c>Open</c> status so it can be reviewed again.
+    /// </summary>
+    Reopen
 }
