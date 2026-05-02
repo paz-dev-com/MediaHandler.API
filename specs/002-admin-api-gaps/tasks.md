@@ -71,12 +71,12 @@
 
 ### Tests for User Story 2
 
-- [ ] T008 [P] [US2] Create unit tests for the scan history query handler in `MediaHandler.Tests/Features/Scan/ListScanHistoryQueryHandlerTests.cs`. Cover: success with paginated results (verify ordering by `StartedAt` DESC), empty results (`totalCount=0`), page beyond total range, pageSize capped at 100. Follow existing `ListReviewItemsQueryHandlerTests` pattern.
+- [x] T008 [P] [US2] Create unit tests for the scan history query handler in `MediaHandler.Tests/Features/Scan/ListScanHistoryQueryHandlerTests.cs`. Cover: success with paginated results (verify ordering by `StartedAt` DESC), empty results (`totalCount=0`), page beyond total range, pageSize capped at 100. Follow existing `ListReviewItemsQueryHandlerTests` pattern.
 
 ### Implementation for User Story 2
 
-- [ ] T009 [P] [US2] Create `ListScanHistoryQuery` record, `ListScanHistoryQueryValidator`, and `ListScanHistoryQueryHandler` in `MediaHandler.Application/Features/Scan/Queries/ListScanHistory/ListScanHistoryQuery.cs`. Query takes `int Page` (default 1) and `int PageSize` (default 20). Validator: `Page` ≥ 1, `PageSize` 1–100. Handler: query `ScanRuns` with `AsNoTracking()`, order by `StartedAt` descending, count total, apply `Skip`/`Take`, map to `ScanRunDto`, return `PagedResult<ScanRunDto>`. Follow the `ListReviewItemsQuery` pagination pattern.
-- [ ] T010 [US2] Add `ListHistory` action method to `MediaHandler.API/Controllers/AdminScanController.cs`. Route: `[HttpGet]` on the existing controller base route (which is `/api/v1/admin/scan`). Accept `[FromQuery] int page = 1, int pageSize = 20`, map to `ListScanHistoryQuery`, send via MediatR. Return `ApiResponse<List<ScanRunDto>>` with `ApiResponseMeta` containing `page`, `pageSize`, `totalCount`, `totalPages`. Add `[ProducesResponseType]` attributes for 200, 400.
+- [x] T009 [P] [US2] Create `ListScanHistoryQuery` record, `ListScanHistoryQueryValidator`, and `ListScanHistoryQueryHandler` in `MediaHandler.Application/Features/Scan/Queries/ListScanHistory/ListScanHistoryQuery.cs`. Query takes `int Page` (default 1) and `int PageSize` (default 20). Validator: `Page` ≥ 1, `PageSize` 1–100. Handler: query `ScanRuns` with `AsNoTracking()`, order by `StartedAt` descending, count total, apply `Skip`/`Take`, map to `ScanRunDto`, return `PagedResult<ScanRunDto>`. Follow the `ListReviewItemsQuery` pagination pattern.
+- [x] T010 [US2] Add `ListHistory` action method to `MediaHandler.API/Controllers/AdminScanController.cs`. Route: `[HttpGet]` on the existing controller base route (which is `/api/v1/admin/scan`). Accept `[FromQuery] int page = 1, int pageSize = 20`, map to `ListScanHistoryQuery`, send via MediatR. Return `ApiResponse<List<ScanRunDto>>` with `ApiResponseMeta` containing `page`, `pageSize`, `totalCount`, `totalPages`. Add `[ProducesResponseType]` attributes for 200, 400.
 
 **Checkpoint**: US2 is fully functional — scan history is browsable with correct pagination metadata.
 

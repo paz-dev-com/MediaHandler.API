@@ -5,6 +5,7 @@ using MediaHandler.Application.Features.Scan.Commands.CancelScan;
 using MediaHandler.Application.Features.Scan.Commands.StartScan;
 using MediaHandler.Application.Features.Scan.Queries.GetActiveScan;
 using MediaHandler.Application.Features.Scan.Queries.GetScanRun;
+using MediaHandler.Application.Features.Scan.Queries.ListScanHistory;
 using MediaHandler.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -141,5 +142,35 @@ public class AdminScanController(ISender sender) : ControllerBase
             d.Id, d.Mode, d.Status, d.StartedAt, d.FinishedAt, d.LibraryRootIds, d.Counts);
 
         return Ok(ApiResponse<ScanRunSummaryResponse>.Success(summary));
+    }
+
+    /// <summary>
+    ///     Browse the scan-run history, ordered by start time descending.
+    ///     Paginated with <c>page</c> and <c>pageSize</c> (max 100, default 20).
+    /// </summary>
+    [HttpGet("")]
+    [ProducesResponseType<ApiResponse<IReadOnlyList<ScanRunDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListHistory(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var result = await sender.Send(new ListScanHistoryQuery(page, pageSize), ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse.Fail(new ApiError("VALIDATION_ERROR",
+                result.Errors.FirstOrDefault() ?? "Invalid query parameters.")));
+
+        var pagedResult = result.Value;
+        var meta = new ApiResponseMeta(
+            pagedResult.Page,
+            pagedResult.PageSize,
+            pagedResult.TotalCount,
+            pagedResult.TotalPages);
+
+        return Ok(ApiResponse<IReadOnlyList<ScanRunDto>>.Success(pagedResult.Items, meta));
     }
 }
