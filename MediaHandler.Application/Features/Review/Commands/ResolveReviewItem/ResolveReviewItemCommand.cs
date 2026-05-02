@@ -1,5 +1,5 @@
 // ResolveReviewItem — command, handler, and validator for admin review-item resolution.
-// Supports three actions: Assign (map to TMDB id), Dismiss (acknowledge without mapping), Delete (remove file).
+// Supports four actions: Assign (map to TMDB id), Dismiss (acknowledge without mapping), Delete (remove file), Reopen (revert to Open).
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -65,6 +65,7 @@ public class ResolveReviewItemCommandValidator : AbstractValidator<ResolveReview
 ///         <item><b>Assign</b>: verifies the TMDB id is real, writes resolution fields, status → Resolved.</item>
 ///         <item><b>Dismiss</b>: marks status → Dismissed.</item>
 ///         <item><b>Delete</b>: removes the underlying <see cref="MediaFile" /> (and orphaned parents), marks Dismissed.</item>
+///         <item><b>Reopen</b>: clears all resolution fields, status → Open.</item>
 ///     </list>
 /// </summary>
 public sealed class ResolveReviewItemCommandHandler(
@@ -84,7 +85,11 @@ public sealed class ResolveReviewItemCommandHandler(
         if (reviewItem is null)
             return Result.Fail<ReviewItemDto>($"ReviewItem '{request.ReviewItemId}' was not found.");
 
-        // Must be Open to be resolved
+        // Reopen is handled before the Open guard — it operates on non-Open items
+        if (request.Action == ReviewResolutionAction.Reopen)
+            return await HandleReopenAsync(reviewItem, cancellationToken);
+
+        // All other actions require the item to be Open
         if (reviewItem.Status != ReviewStatus.Open)
             return Result.Fail<ReviewItemDto>(
                 $"REVIEW_ALREADY_RESOLVED: ReviewItem '{request.ReviewItemId}' is already {reviewItem.Status}.");
@@ -179,6 +184,30 @@ public sealed class ResolveReviewItemCommandHandler(
         reviewItem.Status = ReviewStatus.Dismissed;
         reviewItem.ResolvedBy = currentUser.OktaId;
         reviewItem.ResolvedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync(ct);
+
+        return Result.Success(MapToDto(reviewItem));
+    }
+
+    // =========================================================================
+    // Reopen action
+    // =========================================================================
+
+    private async Task<Result<ReviewItemDto>> HandleReopenAsync(
+        ReviewItem reviewItem,
+        CancellationToken ct)
+    {
+        // Guard: cannot reopen an already-Open item
+        if (reviewItem.Status == ReviewStatus.Open)
+            return Result.Fail<ReviewItemDto>(
+                $"REVIEW_ALREADY_OPEN: ReviewItem '{reviewItem.Id}' is already Open.");
+
+        reviewItem.Status = ReviewStatus.Open;
+        reviewItem.ResolvedTmdbId = null;
+        reviewItem.ResolvedKind = null;
+        reviewItem.ResolvedAt = null;
+        reviewItem.ResolvedBy = null;
 
         await db.SaveChangesAsync(ct);
 
