@@ -141,6 +141,31 @@ public sealed class KodiRegexCatalog
     public static readonly Regex SpecialsFolderName =
         new(@"^(?:Specials|Season 00|S00)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // SOURCE: Observed NAS naming conventions — season-level folder detection used when
+    // resolving the show-level folder title by walking the path upward.
+    // Fully-anchored to match the complete folder segment, not a substring.
+    public static readonly Regex SeasonFolderPattern =
+        new(
+            @"^(?:Season|Saison|Staffel)\s*\d{1,2}$|^S\d{2}$|^(?:Specials|Season\s*00|S00)$",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // SOURCE: Observed NAS folder naming conventions — top-level TV library containers.
+    // These folder names indicate the library root, not a show title, and must be skipped
+    // when resolving the show name from the folder hierarchy.
+    public static readonly HashSet<string> TvRootFolderNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Séries", "Series", "TV Shows", "TV", "Shows"
+    };
+
+    // SOURCE: Observed NAS folder naming conventions — generic container folders with no
+    // show-title value. Mirrors the movie-scanner GenericFolderNames set.
+    public static readonly HashSet<string> TvGenericFolderNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Video", "Videos", "Media", "Downloads",
+        "NAS", "Torrents", "Archive", "Content",
+        "Disque NAS 1"
+    };
+
     // =========================================================================
     // Stacking suffix patterns
     // SOURCE: Kodi wiki advancedsettings stackingregex — default stack suffixes

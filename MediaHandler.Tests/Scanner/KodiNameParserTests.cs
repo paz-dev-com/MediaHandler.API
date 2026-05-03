@@ -419,4 +419,129 @@ public class KodiNameParserTests
         result.Title.Should().Be("My Show Name",
             "underscores in pre-SxxExx text must be replaced with spaces");
     }
+
+    // =========================================================================
+    // FolderTitle: show name inferred from the folder hierarchy
+    // SOURCE: contracts/internal-contracts.md behavioral contract table
+    // =========================================================================
+
+    /// <summary>
+    ///     FolderTitle rows: (fullPath, expectedFolderTitle).
+    ///     SOURCE: contracts/internal-contracts.md — FolderTitle behavioral contract table.
+    /// </summary>
+    public static TheoryData<string, string?> FolderTitleData => new()
+    {
+        // ── Behavioral contract table (from contracts/internal-contracts.md) ───
+        // SOURCE: contracts/internal-contracts.md — "Slow Horses"
+        // Season S03 is skipped; parent "Slow Horses" is the show folder.
+        {
+            "/Séries/Slow Horses/S03/Slow.Horses.S03E05.MULTi.1080p.WEBRip.x264.AC3-MULTiViSiON.mkv",
+            "Slow Horses"
+        },
+        // SOURCE: contracts/internal-contracts.md — "Law and Order SVU"
+        // Folder hierarchy /Law and Order/SVU/S19/ → sub-show concatenation.
+        {
+            "/Séries/Law and Order/SVU/S19/Law.and.Order.SUV.S19E23.FRENCH.DVDRip.XviD-Wawacity.tv.avi",
+            "Law and Order SVU"
+        },
+        // SOURCE: contracts/internal-contracts.md — "The Nanny"
+        // Release-pack folder "Une.Nounou.Denfer.S04.MULTi..." is skipped; "The Nanny" is used.
+        {
+            "/Séries/The Nanny/Une.Nounou.Denfer.S04.MULTi.DVDRIP.x264-ETAY/Une.Nounou.Denfer.S04E10.MULTi.DVDRIP.x264-ETAY.mkv",
+            "The Nanny"
+        },
+        // SOURCE: contracts/internal-contracts.md — "The Wire"
+        // Duplicate nesting /The Wire/The Wire/ must not produce "The Wire The Wire".
+        {
+            "/Séries/The Wire/The Wire/Sur écoute S04E01 - La fin de l'été.mkv",
+            "The Wire"
+        },
+        // SOURCE: contracts/internal-contracts.md — "The Killing US"
+        // Season S03 is skipped; "The Killing US" is the show folder.
+        {
+            "/Séries/The Killing US/S03/The.Killing.US.2011.S03E10.1080p.MULTi.WEB-DL.AvALoN.mkv",
+            "The Killing US"
+        },
+
+        // ── Season folder patterns to skip ───────────────────────────────────
+        // SOURCE: Kodi wiki — Season XX and Saison XX are standard season folder names.
+        { "/TV Shows/Breaking Bad/Season 03/Breaking.Bad.S03E01.mkv", "Breaking Bad" },
+        { "/Séries/Some Show/Saison 05/Show.S05E01.mkv", "Some Show" },
+        { "/Séries/Some Show/Specials/Show.S00E01.mkv", "Some Show" },
+
+        // ── TV-root folder names to skip ─────────────────────────────────────
+        // SOURCE: Observed NAS folder naming — top-level TV containers must not become show title.
+        { "/Series/The Sopranos/Season 01/Sopranos.S01E01.mkv", "The Sopranos" },
+        { "/TV/Show Name/S01/Show.Name.S01E01.mkv", "Show Name" },
+        { "/Shows/Sherlock/S02/Sherlock.S02E01.mkv", "Sherlock" },
+
+        // ── Generic folder names to skip ─────────────────────────────────────
+        // SOURCE: Observed NAS folder naming — generic containers must not become show title.
+        { "/Videos/My Show/S01/Show.S01E01.mkv", "My Show" },
+        { "/Media/My Show/Season 01/Show.S01E01.mkv", "My Show" },
+        { "/Downloads/My Show/S02/Show.S02E01.mkv", "My Show" },
+
+        // ── No usable folder available ────────────────────────────────────────
+        // No show-level folder can be found above season or root-only paths.
+        { "/Séries/S03/Show.S03E01.mkv", null },
+    };
+
+    [Theory]
+    [MemberData(nameof(FolderTitleData))]
+    public void ParseEpisode_FolderTitle_ResolvedFromFolderHierarchy(
+        string fullPath, string? expectedFolderTitle)
+    {
+        var result = _sut.ParseEpisode(fullPath, new EpisodeNumberingHint());
+
+        result.FolderTitle.Should().Be(expectedFolderTitle,
+            $"FolderTitle should be the show-level folder name for '{fullPath}'");
+    }
+
+    [Fact]
+    public void ParseEpisode_FolderTitle_SubShowConcatenation_LawAndOrderSvu()
+    {
+        // SOURCE: contracts/internal-contracts.md — multi-level nesting rule.
+        // /Law and Order/SVU/S19/ → parent "Law and Order" and sub-show "SVU" are concatenated
+        // because the grandparent is a TV-root folder.
+        var result = _sut.ParseEpisode(
+            "/Séries/Law and Order/SVU/S19/Law.and.Order.SUV.S19E23.FRENCH.DVDRip.XviD-Wawacity.tv.avi",
+            new EpisodeNumberingHint());
+
+        result.FolderTitle.Should().Be("Law and Order SVU",
+            "SVU sub-show folders must concatenate with their parent to form the full show title");
+    }
+
+    [Fact]
+    public void ParseEpisode_FolderTitle_DuplicateFolderNames_NoDuplication()
+    {
+        // SOURCE: contracts/internal-contracts.md — The Wire uses /The Wire/The Wire/ nesting.
+        // The folder title must be "The Wire", not "The Wire The Wire".
+        var result = _sut.ParseEpisode(
+            "/Séries/The Wire/The Wire/Sur écoute S04E01 - La fin de l'été.mkv",
+            new EpisodeNumberingHint());
+
+        result.FolderTitle.Should().Be("The Wire",
+            "duplicate parent/child folder names must not be concatenated");
+    }
+
+    [Fact]
+    public void ParseEpisode_FolderTitle_ReleasePackFolder_ParentUsedInstead()
+    {
+        // SOURCE: contracts/internal-contracts.md — The Nanny pack folder.
+        // The dotted release-pack folder must be skipped; the named show folder above is used.
+        var result = _sut.ParseEpisode(
+            "/Séries/The Nanny/Une.Nounou.Denfer.S04.MULTi.DVDRIP.x264-ETAY/Une.Nounou.Denfer.S04E10.MULTi.DVDRIP.x264-ETAY.mkv",
+            new EpisodeNumberingHint());
+
+        result.FolderTitle.Should().Be("The Nanny",
+            "a release-pack folder (dotted, no spaces) must be skipped and the parent show folder used");
+    }
+
+    [Fact]
+    public void ParseEpisode_FolderTitle_EmptyPath_ReturnsNull()
+    {
+        var result = _sut.ParseEpisode(string.Empty, new EpisodeNumberingHint());
+
+        result.FolderTitle.Should().BeNull("empty path produces no folder title");
+    }
 }

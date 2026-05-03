@@ -71,15 +71,19 @@ public sealed class KodiNameParser : IKodiNameParser
         var filename = Path.GetFileName(fullPath);
         var episodes = _episodeMatcher.Match(filename, hint);
 
+        var folderTitle = ResolveShowFolderTitle(fullPath);
+
         if (episodes.Count == 0)
         {
             if (hint.SeasonFromFolder.HasValue)
                 return new EpisodeNameParseResult(
                     true, ExtractShowTitle(fullPath),
                     [new EpisodeNumber(hint.SeasonFromFolder.Value, 0)],
-                    "Episode number could not be determined from filename");
+                    "Episode number could not be determined from filename",
+                    FolderTitle: folderTitle);
 
-            return new EpisodeNameParseResult(false, ExtractShowTitle(fullPath), [], "No episode pattern found");
+            return new EpisodeNameParseResult(false, ExtractShowTitle(fullPath), [],
+                "No episode pattern found", FolderTitle: folderTitle);
         }
 
         var filenameNoExt = Path.GetFileNameWithoutExtension(filename);
@@ -90,7 +94,8 @@ public sealed class KodiNameParser : IKodiNameParser
         // are preserved in the show title for TMDB disambiguation.
         var showTitle = ExtractShowTitleFromFilename(filename);
         var episodeTitle = ExtractEpisodeTitle(filenameNoExt, episodes[0]);
-        return new EpisodeNameParseResult(true, showTitle, episodes, EpisodeTitle: episodeTitle);
+        return new EpisodeNameParseResult(true, showTitle, episodes,
+            EpisodeTitle: episodeTitle, FolderTitle: folderTitle);
     }
 
     /// <summary>
@@ -118,6 +123,100 @@ public sealed class KodiNameParser : IKodiNameParser
 
         return string.IsNullOrWhiteSpace(title) ? null : title;
     }
+
+    /// <summary>
+    ///     Resolves the TV show title by walking the folder hierarchy upward from the file path,
+    ///     skipping season-level folders, TV-root library containers, and generic media folders.
+    ///     Handles the sub-show concatenation pattern (e.g. /Law and Order/SVU/ → "Law and Order SVU")
+    ///     and ignores dotted release-pack folders (e.g. Show.Name.S04.MULTi.DVDRIP.x264/).
+    /// </summary>
+    /// <param name="fullPath">Absolute path to the episode file.</param>
+    /// <returns>The show-level folder name, or <c>null</c> if no usable folder is found.</returns>
+    internal static string? ResolveShowFolderTitle(string fullPath)
+    {
+        if (string.IsNullOrWhiteSpace(fullPath))
+            return null;
+
+        var normalized = NormaliseSeparators(fullPath);
+        var allSegments = normalized.Split('/');
+
+        // Build a clean list of path segments: drop the filename (last) and empty entries.
+        var segments = allSegments
+            .Take(allSegments.Length - 1)
+            .Where(s => !string.IsNullOrEmpty(s))
+            .ToList();
+
+        if (segments.Count == 0)
+            return null;
+
+        // Walk bottom-up to find the first usable show-level folder.
+        var candidateIndex = -1;
+        for (var i = segments.Count - 1; i >= 0; i--)
+        {
+            var seg = segments[i];
+
+            // Stop when we reach a TV library root — too high up to be a show name.
+            if (KodiRegexCatalog.TvRootFolderNames.Contains(seg))
+                break;
+
+            // Skip season folders, generic containers, and dotted release-pack folders.
+            if (IsSeasonFolderSegment(seg)
+                || KodiRegexCatalog.TvGenericFolderNames.Contains(seg)
+                || IsReleasePackFolder(seg))
+                continue;
+
+            candidateIndex = i;
+            break;
+        }
+
+        if (candidateIndex < 0)
+            return null;
+
+        var candidate = segments[candidateIndex];
+
+        // Check parent for sub-show concatenation (e.g. /Law and Order/SVU/).
+        if (candidateIndex == 0)
+            return candidate;
+
+        var parent = segments[candidateIndex - 1];
+
+        // Parent must itself be a plain show-name folder (not root/season/generic/pack).
+        if (string.IsNullOrEmpty(parent)
+            || KodiRegexCatalog.TvRootFolderNames.Contains(parent)
+            || IsSeasonFolderSegment(parent)
+            || KodiRegexCatalog.TvGenericFolderNames.Contains(parent)
+            || IsReleasePackFolder(parent))
+            return candidate;
+
+        // Avoid duplicating when the folder is nested inside a same-named parent
+        // (e.g. /The Wire/The Wire/).
+        if (string.Equals(parent, candidate, StringComparison.OrdinalIgnoreCase))
+            return candidate;
+
+        // Only concatenate when the grandparent is a TV-root, confirming a
+        // deliberate sub-show layout (e.g. /Séries/Law and Order/SVU/).
+        if (candidateIndex < 2)
+            return candidate;
+
+        var grandparent = segments[candidateIndex - 2];
+        if (KodiRegexCatalog.TvRootFolderNames.Contains(grandparent)
+            || string.IsNullOrEmpty(grandparent))
+            return parent + " " + candidate;
+
+        return candidate;
+    }
+
+    /// <summary>Returns <c>true</c> when <paramref name="segment" /> names a season-level folder.</summary>
+    private static bool IsSeasonFolderSegment(string segment)
+        => KodiRegexCatalog.SeasonFolderPattern.IsMatch(segment);
+
+    /// <summary>
+    ///     Returns <c>true</c> when <paramref name="segment" /> looks like a scene release-pack folder
+    ///     (e.g. <c>Show.Name.S04.MULTi.DVDRIP.x264-ETAY</c>): no spaces but contains dots.
+    ///     Legitimate show-folder names use spaces; batch/pack folders use dots as separators.
+    /// </summary>
+    private static bool IsReleasePackFolder(string segment)
+        => !segment.Contains(' ') && segment.Contains('.');
 
     private static string NormaliseSeparators(string path)
     {
