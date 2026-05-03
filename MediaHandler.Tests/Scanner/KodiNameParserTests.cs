@@ -544,4 +544,87 @@ public class KodiNameParserTests
 
         result.FolderTitle.Should().BeNull("empty path produces no folder title");
     }
+
+    // =========================================================================
+    // Release tag stripping — titles with tags BEFORE the SxxExx marker
+    // SOURCE: contracts/internal-contracts.md — CleanTvShowTitle pipeline
+    // =========================================================================
+
+    /// <summary>
+    ///     Release tag stripping rows: (fullPath, expectedCleanTitle).
+    ///     Tags that appear in the filename text BEFORE the SxxExx marker must be stripped.
+    ///     Accented characters, apostrophes, and title-internal hyphens must be preserved.
+    ///     SOURCE: contracts/internal-contracts.md — CleanTvShowTitle requirements.
+    /// </summary>
+    public static TheoryData<string, string> ReleaseTagStrippingData => new()
+    {
+        // ── Quality tags before SxxExx ────────────────────────────────────────
+        // SOURCE: observed scene filenames — quality identifiers sometimes precede SxxExx
+        { "/nas/TV/My Show/S01/My.Show.1080p.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.720p.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.2160p.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.4K.S01E01.mkv", "My Show" },
+
+        // ── Codec tags before SxxExx ──────────────────────────────────────────
+        { "/nas/TV/My Show/S01/My.Show.x264.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.x265.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.XviD.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.HEVC.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.H264.S01E01.mkv", "My Show" },
+
+        // ── Source tags before SxxExx ─────────────────────────────────────────
+        { "/nas/TV/My Show/S01/My.Show.DVDRip.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.WEBRip.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.BluRay.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.HDTV.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.BDRip.S01E01.mkv", "My Show" },
+
+        // ── Language tags before SxxExx ───────────────────────────────────────
+        { "/nas/TV/My Show/S01/My.Show.FRENCH.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.MULTi.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.VOSTFR.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.TRUEFRENCH.S01E01.mkv", "My Show" },
+
+        // ── Release group suffix attached to last word before SxxExx ─────────
+        { "/nas/TV/Show Name/S01/Show.Name-ETAY.S01E01.mkv", "Show Name" },
+        { "/nas/TV/Show Name/S01/Show.Name-AvALoN.S01E01.mkv", "Show Name" },
+
+        // ── Multiple tags before SxxExx ───────────────────────────────────────
+        { "/nas/TV/My Show/S01/My.Show.MULTi.1080p.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.FRENCH.DVDRip.S01E01.mkv", "My Show" },
+        { "/nas/TV/My Show/S01/My.Show.720p.x264.WEBRip.S01E01.mkv", "My Show" },
+
+        // ── Accented characters MUST be preserved ─────────────────────────────
+        // SOURCE: contracts/internal-contracts.md — Unicode preservation rule.
+        { "/nas/TV/Ma Série/S01/Ma.Serie.FRENCH.S01E01.mkv", "Ma Serie" },
+
+        // ── Apostrophe in title MUST be preserved ─────────────────────────────
+        // SOURCE: contracts/internal-contracts.md — apostrophe preservation rule.
+        { "/Séries/The Nanny/S04/Une.Nounou.D'enfer.FRENCH.S04E10.mkv", "Une Nounou D'enfer" },
+    };
+
+    [Theory]
+    [MemberData(nameof(ReleaseTagStrippingData))]
+    public void ParseEpisode_ReleaseTagsBeforeSxxExx_AreStrippedFromTitle(
+        string fullPath, string expectedCleanTitle)
+    {
+        var result = _sut.ParseEpisode(fullPath, new EpisodeNumberingHint());
+
+        result.IsSuccess.Should().BeTrue($"'{fullPath}' must parse successfully");
+        result.Title.Should().Be(expectedCleanTitle,
+            $"release tags before SxxExx must be stripped from the show title for '{Path.GetFileName(fullPath)}'");
+    }
+
+    [Fact]
+    public void ParseEpisode_WEBDLBeforeSxxExx_IsStripped()
+    {
+        // WEB-DL contains a hyphen — verify the hyphen in the tag name is handled correctly.
+        var result = _sut.ParseEpisode(
+            "/nas/TV/My Show/S01/My.Show.WEB-DL.S01E01.mkv",
+            new EpisodeNumberingHint());
+
+        result.IsSuccess.Should().BeTrue();
+        result.Title.Should().Be("My Show",
+            "WEB-DL source tag appearing before SxxExx must be stripped");
+    }
 }

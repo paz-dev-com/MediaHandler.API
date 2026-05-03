@@ -97,14 +97,14 @@
 
 ### Tests for User Story 4
 
-- [ ] T017 [P] [US4] Add unit tests for release tag stripping covering quality tags (1080p, 720p), codecs (x264, XviD), sources (DVDRip, WEBRip), language tags (MULTi, FRENCH, VOSTFR), and release group suffixes (-GROUP, -Wawacity.tv) in `MediaHandler.Tests/Scanner/KodiNameParserTests.cs`
+- [X] T017 [P] [US4] Add unit tests for release tag stripping covering quality tags (1080p, 720p), codecs (x264, XviD), sources (DVDRip, WEBRip), language tags (MULTi, FRENCH, VOSTFR), and release group suffixes (-GROUP, -Wawacity.tv) in `MediaHandler.Tests/Scanner/KodiNameParserTests.cs`
 
 ### Implementation for User Story 4
 
-- [ ] T018 [US4] Add pre-SxxExx release tag patterns (quality, codec, source, language, release group) to `KodiRegexCatalog` — expose as a reusable `CleanTvShowTitle` regex array in `MediaHandler.Infrastructure/Nas/Scanner/KodiRegexCatalog.cs`
-- [ ] T019 [US4] Inject `IOptionsMonitor<ReleaseTagOptions>` into `KodiNameParser` and merge additional patterns with built-in defaults in `CleanTvShowTitle` application — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
-- [ ] T020 [US4] Apply `CleanTvShowTitle` stripping in `ExtractShowTitleFromFilename` after dot/underscore replacement and before returning — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
-- [ ] T021 [US4] Handle Unicode characters correctly in the cleaning pipeline: preserve accented characters (é, è, ê, etc.), normalize filename separators to spaces but preserve title-internal hyphens and apostrophes (e.g., "D'enfer", "Spider-Man") — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
+- [X] T018 [US4] Add pre-SxxExx release tag patterns (quality, codec, source, language, release group) to `KodiRegexCatalog` — expose as a reusable `CleanTvShowTitle` regex array in `MediaHandler.Infrastructure/Nas/Scanner/KodiRegexCatalog.cs`
+- [X] T019 [US4] Inject `IOptionsMonitor<ReleaseTagOptions>` into `KodiNameParser` and merge additional patterns with built-in defaults in `CleanTvShowTitle` application — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
+- [X] T020 [US4] Apply `CleanTvShowTitle` stripping in `ExtractShowTitleFromFilename` after dot/underscore replacement and before returning — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
+- [X] T021 [US4] Handle Unicode characters correctly in the cleaning pipeline: preserve accented characters (é, è, ê, etc.), normalize filename separators to spaces but preserve title-internal hyphens and apostrophes (e.g., "D'enfer", "Spider-Man") — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
 
 **Checkpoint**: The title cleaning pipeline produces clean show titles with no release tags, while preserving accented characters and title-internal punctuation.
 
@@ -120,18 +120,15 @@
 
 ### Tests for User Story 3
 
-- [ ] T022 [P] [US3] Add unit tests for multi-language TMDB resolution covering: primary language match, fallback language match, FallbackTitle retry after primary title exhausted, deduplication cache preventing duplicate API calls (same title+language+year+kind not called twice), `FallbackTitle == Title` guard (no duplicate call when both are identical), and NeedsReview when all attempts fail — in `MediaHandler.Tests/Scanner/TmdbMatcherTests.cs`
+- [X] T022 [P] [US3] Add unit tests for multi-language TMDB resolution covering: primary language match, fallback language match, FallbackTitle retry after primary title exhausted, deduplication cache preventing duplicate API calls (same title+language+year+kind not called twice), `FallbackTitle == Title` guard (no duplicate call when both are identical), and NeedsReview when all attempts fail — in `MediaHandler.Tests/Scanner/TmdbMatcherTests.cs`
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] Replace `LruCache<(string, int?, MediaType?), TmdbMatchResult>` with `ConcurrentDictionary<(string title, string language, int? year, MediaType? kind), TmdbMatchResult>` in `TmdbMatcher` — use the full tuple key to avoid cache collisions between queries with same title+language but different year or media type — in `MediaHandler.Infrastructure/Nas/Scanner/TmdbMatcher.cs`
-  > ⚠️ **I2 fix**: Dropping `year` and `kind` from the cache key would cause incorrect cache hits (e.g., movie vs. TV show with same title). Keep the full 4-tuple key.
-  > ⚠️ **M1 — DI lifetime**: Register `TmdbMatcher` as **Scoped** (per scan-invocation), NOT Singleton. The `ConcurrentDictionary` must reset between scan runs. Ensure `ScanPipeline` resolves it from a new scope per scan execution.
-- [ ] T024 [US3] Implement multi-language iteration loop in `TmdbMatcher.ResolveAsync`: iterate through `query.SearchLanguages ?? ["en-US"]`, search TMDB with `query.Title + language`, check/update deduplication cache, and return on first match — in `MediaHandler.Infrastructure/Nas/Scanner/TmdbMatcher.cs`
-- [ ] T025 [US3] Implement FallbackTitle retry in `TmdbMatcher.ResolveAsync`: after primary title exhausts all languages, retry with `query.FallbackTitle` (if non-null and different from Title) using the same language sequence — in `MediaHandler.Infrastructure/Nas/Scanner/TmdbMatcher.cs`
-- [ ] T026 [US3] Update `ScanPipeline` to populate `FallbackTitle` (from `EpisodeNameParseResult.FolderTitle`, only if different from `Title`) and `SearchLanguages` (from `LibraryRoot.SearchLanguages` or global default) in `MatchQuery` construction — in `MediaHandler.Infrastructure/Nas/Scanner/ScanPipeline.cs`
-  > ⚠️ **F2 fix**: Set `FallbackTitle = folderTitle != parsedTitle ? folderTitle : null` — never set FallbackTitle equal to Title, or the matcher will issue a duplicate TMDB call with no benefit.
-- [ ] T027 [US3] Read `Scanner:DefaultSearchLanguages` from configuration and pass as fallback when `LibraryRoot.SearchLanguages` is null — in `MediaHandler.Infrastructure/Nas/Scanner/ScanPipeline.cs`
+- [X] T023 [US3] Replace `LruCache<(string, int?, MediaType?), TmdbMatchResult>` with `ConcurrentDictionary<(string title, string language, int? year, MediaType? kind), TmdbMatchResult>` in `TmdbMatcher` — use the full tuple key to avoid cache collisions between queries with same title+language but different year or media type — in `MediaHandler.Infrastructure/Nas/Scanner/TmdbMatcher.cs`
+- [X] T024 [US3] Implement multi-language iteration loop in `TmdbMatcher.ResolveAsync`: iterate through `query.SearchLanguages ?? ["en-US"]`, search TMDB with `query.Title + language`, check/update deduplication cache, and return on first match — in `MediaHandler.Infrastructure/Nas/Scanner/TmdbMatcher.cs`
+- [X] T025 [US3] Implement FallbackTitle retry in `TmdbMatcher.ResolveAsync`: after primary title exhausts all languages, retry with `query.FallbackTitle` (if non-null and different from Title) using the same language sequence — in `MediaHandler.Infrastructure/Nas/Scanner/TmdbMatcher.cs`
+- [X] T026 [US3] Update `ScanPipeline` to populate `FallbackTitle` (from `EpisodeNameParseResult.FolderTitle`, only if different from `Title`) and `SearchLanguages` (from `LibraryRoot.SearchLanguages` or global default) in `MatchQuery` construction — in `MediaHandler.Infrastructure/Nas/Scanner/ScanPipeline.cs`
+- [X] T027 [US3] Read `Scanner:DefaultSearchLanguages` from configuration and pass as fallback when `LibraryRoot.SearchLanguages` is null — in `MediaHandler.Infrastructure/Nas/Scanner/ScanPipeline.cs`
 
 **Checkpoint**: TMDB matcher now tries multiple languages and the folder-derived fallback title before routing to review. French titles like "Une Nounou Denfer" match via `fr-FR` search.
 

@@ -1,8 +1,10 @@
 // TmdbMatcher — resolves parsed file metadata to a TMDB entry using the precedence chain:
-//   NfoTmdbId → ExplicitTokenId → Title+Year → Title
-// Maintains an in-process LRU cache and applies the ambiguity / year-mismatch policy.
+//   NfoTmdbId → ExplicitTokenId → Multi-language title search → FallbackTitle retry → NeedsReview
+// Maintains a per-scan ConcurrentDictionary cache keyed on (title, language, year?, kind?) to
+// prevent duplicate TMDB API calls within the same scan run.
 // Transient HTTP failures are caught and surfaced as NeedsReview without aborting the scan.
 
+using System.Collections.Concurrent;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models.Scanner;
 using MediaHandler.Domain.Enums;
@@ -15,13 +17,17 @@ namespace MediaHandler.Infrastructure.Nas.Scanner;
 ///     Production implementation of <see cref="ITmdbMatcher" />.
 ///     Wraps <see cref="ITmdbService" /> and applies:
 ///     <list type="bullet">
-///         <item>Precedence chain: NfoTmdbId → ExplicitTokenId → Title+Year → Title</item>
+///         <item>Precedence chain: NfoTmdbId → ExplicitTokenId → Multi-language title search → FallbackTitle → NeedsReview</item>
 ///         <item>
 ///             Ambiguity policy: ≥ 2 candidates within 5 % popularity gap →
 ///             <see cref="ReviewReason.MultipleCandidates" />
 ///         </item>
 ///         <item>Year tolerance: mismatch &gt; ±1 → <see cref="ReviewReason.YearMismatch" /></item>
-///         <item>LRU cache keyed on <c>(title, year, kind)</c> — max 1,000 entries per scan instance</item>
+///         <item>
+///             Per-scan deduplication cache keyed on <c>(title, language, year?, kind?)</c> using
+///             <see cref="ConcurrentDictionary{TKey,TValue}" />. Only successful matches are cached;
+///             NeedsReview results are not cached so transient failures can be retried.
+///         </item>
 ///         <item>Transient error tolerance: <see cref="HttpRequestException" /> caught, result surfaced as NeedsReview</item>
 ///     </list>
 /// </summary>
@@ -34,8 +40,14 @@ public sealed class TmdbMatcher : ITmdbMatcher
     // Year tolerance: if the TMDB year differs from the query year by more than this, flag as mismatch.
     private const int YearToleranceYears = 1;
 
-    // LRU cache: keyed on (title, year, kind) — stores the final TmdbMatchResult
-    private readonly LruCache<(string title, int? year, MediaType? kind), TmdbMatchResult> _cache;
+    // Per-scan deduplication cache: keyed on (title, language, year?, kind?) — stores successful matches only.
+    // Full 4-tuple key avoids cache collisions between:
+    //   • movies and TV shows with the same title (kind dimension)
+    //   • shows with the same name in different years (year dimension)
+    //   • localised searches for the same title in different languages (language dimension)
+    private readonly ConcurrentDictionary<(string title, string language, int? year, MediaType? kind), TmdbMatchResult>
+        _cache = new();
+
     private readonly ILogger<TmdbMatcher> _logger;
     private readonly ITmdbService _tmdb;
 
@@ -43,7 +55,6 @@ public sealed class TmdbMatcher : ITmdbMatcher
     {
         _tmdb = tmdb;
         _logger = logger ?? NullLogger<TmdbMatcher>.Instance;
-        _cache = new LruCache<(string, int?, MediaType?), TmdbMatchResult>(1_000);
     }
 
     /// <inheritdoc />
@@ -98,32 +109,66 @@ public sealed class TmdbMatcher : ITmdbMatcher
             return NeedsReview(ReviewReason.NoTmdbResult, []);
         }
 
-        // ── Steps 3+4: Title+Year → Title ────────────────────────────────────
-        var cacheKey = (query.Title, query.Year, query.KindHint);
-        if (_cache.TryGet(cacheKey, out var cached))
+        // ── Steps 3+4: Multi-language title search ───────────────────────────
+        // When SearchLanguages is set, iterate the full list. Otherwise fall back to the
+        // legacy Language field (defaults to "en-US") for backward compatibility.
+        var languages = query.SearchLanguages ?? [query.Language];
+
+        TmdbMatchResult? lastFailResult = null;
+
+        // Primary title — try in each language
+        foreach (var lang in languages)
         {
-            _logger.LogDebug("TMDB: cache hit for '{Title}' ({Year})", query.Title, query.Year);
-            return cached!;
+            var cacheKey = (query.Title, lang, query.Year, query.KindHint);
+            if (_cache.TryGetValue(cacheKey, out var cached))
+            {
+                _logger.LogDebug("TMDB: cache hit for '{Title}' (lang={Lang}, year={Year})",
+                    query.Title, lang, query.Year);
+                return cached;
+            }
+
+            var result = await TryResolveByTitleAsync(query with { Language = lang }, ct);
+            if (result is { NeedsReview: false })
+            {
+                _cache[cacheKey] = result;
+                return result;
+            }
+
+            lastFailResult = result;
         }
 
-        // Try Title+Year first
-        TmdbMatchResult matchResult;
-        if (query.Year.HasValue)
+        // ── Step 5: FallbackTitle retry ───────────────────────────────────────
+        // Only when FallbackTitle is set AND differs from the primary title.
+        // Callers must ensure FallbackTitle != Title to avoid a duplicate API call (F2 guard).
+        if (query.FallbackTitle is not null && query.FallbackTitle != query.Title)
         {
-            var yearCandidates = await _tmdb.SearchCandidatesAsync(
-                query.Title, query.Year, query.KindHint, query.Language, ct);
+            foreach (var lang in languages)
+            {
+                var cacheKey = (query.FallbackTitle, lang, (int?)null, query.KindHint);
+                if (_cache.TryGetValue(cacheKey, out var cached))
+                {
+                    _logger.LogDebug("TMDB: cache hit for FallbackTitle '{Title}' (lang={Lang})",
+                        query.FallbackTitle, lang);
+                    return cached;
+                }
 
-            matchResult = yearCandidates.Count > 0
-                ? ApplyPolicy(yearCandidates, query.Year)
-                : await TryTitleOnlyAsync(query, ct);
-        }
-        else
-        {
-            matchResult = await TryTitleOnlyAsync(query, ct);
+                // FallbackTitle searches are year-agnostic: the folder title may not carry
+                // the same year disambiguation as the filename-derived title.
+                var fallbackQuery = query with { Title = query.FallbackTitle, Year = null, Language = lang };
+                var result = await TryResolveByTitleAsync(fallbackQuery, ct);
+                if (result is { NeedsReview: false })
+                {
+                    _cache[cacheKey] = result;
+                    return result;
+                }
+
+                lastFailResult = result;
+            }
         }
 
-        _cache.Set(cacheKey, matchResult);
-        return matchResult;
+        // All language × title combinations exhausted — return the last failure reason so that
+        // YearMismatch / MultipleCandidates reasons surface correctly on single-language queries.
+        return lastFailResult ?? NeedsReview(ReviewReason.NoTmdbResult, []);
     }
 
     // =========================================================================
@@ -152,11 +197,28 @@ public sealed class TmdbMatcher : ITmdbMatcher
     }
 
     // =========================================================================
-    // Title-only fallback
+    // Title-based resolution — year+title first, then title-only fallback
     // =========================================================================
 
-    private async Task<TmdbMatchResult> TryTitleOnlyAsync(MatchQuery query, CancellationToken ct)
+    /// <summary>
+    ///     Attempts to resolve <paramref name="query" /> by title (+year if provided).
+    ///     Uses the year+title search when <see cref="MatchQuery.Year" /> is set, falling back to
+    ///     title-only when the year search returns zero candidates. Always applies
+    ///     <see cref="ApplyPolicy" /> to the candidate list before returning.
+    /// </summary>
+    private async Task<TmdbMatchResult> TryResolveByTitleAsync(MatchQuery query, CancellationToken ct)
     {
+        if (query.Year.HasValue)
+        {
+            var yearCandidates = await _tmdb.SearchCandidatesAsync(
+                query.Title, query.Year, query.KindHint, query.Language, ct);
+
+            if (yearCandidates.Count > 0)
+                return ApplyPolicy(yearCandidates, query.Year);
+
+            // Year search returned nothing — try title-only as fallback
+        }
+
         var candidates = await _tmdb.SearchCandidatesAsync(
             query.Title, null, query.KindHint, query.Language, ct);
 
@@ -247,50 +309,5 @@ public sealed class TmdbMatcher : ITmdbMatcher
         return src.Select(c => new TmdbCandidate(c.TmdbId, c.Kind, c.Title, c.Year, c.PopularityScore, c.PosterPath))
             .ToList();
     }
-
-    // =========================================================================
-    // Bounded LRU cache (simple linked-list + dictionary implementation)
-    // =========================================================================
-
-    private sealed class LruCache<TKey, TValue>(int capacity) where TKey : notnull
-    {
-        private readonly int _capacity = capacity;
-        private readonly LinkedList<(TKey key, TValue value)> _list = new();
-        private readonly Dictionary<TKey, LinkedListNode<(TKey key, TValue value)>> _map = new();
-
-        public bool TryGet(TKey key, out TValue? value)
-        {
-            if (!_map.TryGetValue(key, out var node))
-            {
-                value = default;
-                return false;
-            }
-
-            // Move to front (most recently used)
-            _list.Remove(node);
-            _list.AddFirst(node);
-            value = node.Value.value;
-            return true;
-        }
-
-        public void Set(TKey key, TValue value)
-        {
-            if (_map.TryGetValue(key, out var existing))
-            {
-                _list.Remove(existing);
-                _map.Remove(key);
-            }
-            else if (_map.Count >= _capacity)
-            {
-                // Evict least recently used
-                var last = _list.Last!;
-                _map.Remove(last.Value.key);
-                _list.RemoveLast();
-            }
-
-            var node = new LinkedListNode<(TKey, TValue)>((key, value));
-            _list.AddFirst(node);
-            _map[key] = node;
-        }
-    }
 }
+
