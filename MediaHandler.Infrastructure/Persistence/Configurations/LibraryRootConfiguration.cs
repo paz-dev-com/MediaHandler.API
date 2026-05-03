@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MediaHandler.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -20,6 +21,15 @@ public class LibraryRootConfiguration : IEntityTypeConfiguration<LibraryRoot>
 
         builder.Property(r => r.Label)
             .HasMaxLength(200);
+
+        // SearchLanguages: stored as a JSON array in a jsonb column (PostgreSQL).
+        // Null when not configured — the scanner falls back to the global default ("en-US").
+        builder.Property(r => r.SearchLanguages)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                v => (IReadOnlyList<string>?)(JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>()))
+            .IsRequired(false);
 
         // Unique index on Path — enforces no duplicate roots
         builder.HasIndex(r => r.Path)

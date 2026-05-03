@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using MediaHandler.Application.Common.Interfaces;
+using MediaHandler.Application.Common.Models.Scanner;
 using MediaHandler.Domain.Enums;
 using MediaHandler.Infrastructure.Nas;
 using MediaHandler.Infrastructure.Nas.Scanner;
@@ -47,6 +48,11 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(NasOptions.Section))
             .ValidateDataAnnotations()
             .ValidateOnStart();
+
+        // Scanner options — IOptionsMonitor<ReleaseTagOptions> is available for injection
+        // by any service that needs runtime-reloadable release-tag pattern configuration.
+        services.AddOptions<ReleaseTagOptions>()
+            .Bind(configuration.GetSection(ReleaseTagOptions.SectionName));
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<MediaHandlerDbContext>());
 
