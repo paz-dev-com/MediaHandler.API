@@ -27,8 +27,19 @@ public record EpisodeNumberingHint(int? SeasonFromFolder = null);
 ///     Result of <c>IKodiNameParser.ParseEpisode</c>.
 ///     Contains one or more <see cref="EpisodeNumber" /> for multi-episode files.
 /// </summary>
+/// <param name="EpisodeTitle">
+///     The episode-specific title extracted from text <em>after</em> the SxxExx marker, if present.
+///     Distinct from <see cref="TmdbMatchModels.MatchQuery.Title" />, which carries the <em>show</em> title.
+/// </param>
+/// <param name="FolderTitle">
+///     The show title inferred by walking the folder hierarchy upward from the file,
+///     skipping season-level and TV-root folders. Used as a fallback / validation signal
+///     when the filename-derived title is unreliable.
+/// </param>
 public record EpisodeNameParseResult(
     bool IsSuccess,
     string? Title,
     IReadOnlyList<EpisodeNumber> EpisodeNumbers,
-    string? Warning = null);
+    string? Warning = null,
+    string? EpisodeTitle = null,
+    string? FolderTitle = null);

@@ -21,7 +21,11 @@ try
         .WriteTo.Console()
         .WriteTo.File("logs/mediahandler-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7));
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

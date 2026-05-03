@@ -29,6 +29,15 @@ public class LibraryRoot : BaseEntity
     /// </summary>
     public bool IsEnabled { get; set; } = true;
 
+    /// <summary>
+    ///     Ordered list of BCP-47 language tags used for TMDB searches scoped to this root
+    ///     (e.g., <c>["fr-FR", "en-US"]</c> for a French-language TV library).
+    ///     When non-null, overrides the global <c>Scanner:DefaultSearchLanguages</c> setting.
+    ///     When null, the scanner falls back to the global default language sequence.
+    ///     Persisted as a JSONB column; mapped in <c>LibraryRootConfiguration</c>.
+    /// </summary>
+    public IReadOnlyList<string>? SearchLanguages { get; set; }
+
     // ── Navigation ──────────────────────────────────────────────────────────
 
     /// <summary>All <c>MediaFile</c> rows whose physical location lies under this root.</summary>
