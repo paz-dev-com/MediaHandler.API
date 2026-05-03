@@ -139,7 +139,8 @@ namespace MediaHandler.Infrastructure.Migrations
                         .HasColumnType("nvarchar(1024)");
 
                     b.Property<string>("SearchLanguages")
-                        .HasColumnType("jsonb");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
