@@ -259,7 +259,7 @@ public class KodiNameParserTests
     }
 
     // =========================================================================
-    // NFO override-precedence contract (US3 mapping note)
+    // NFO override-precedence contract
     // These tests document the parser's output BEFORE NFO override is applied.
     // The pipeline replaces the parser result with NFO data when a sidecar is present.
     // SOURCE: plan.md — "NfoTmdbId → ExplicitTokenId → Title+Year → Title"
@@ -268,7 +268,8 @@ public class KodiNameParserTests
     /// <summary>
     ///     Documents a deliberately misnamed file so the reader understands why the NFO
     ///     override matters: the filename parser alone cannot produce the correct TMDB id.
-    ///     The ScanPipeline replaces the parser's title/year with NFO values (US3 wiring).
+    ///     When a movie.nfo with a tmdbid exists alongside this file, the pipeline
+    ///     replaces the parser output with the NFO's authoritative values.
     /// </summary>
     [Fact]
     public void ParseMovie_MisnamedFile_ProducesFilenameGuess_NfoWouldOverride()
@@ -293,19 +294,129 @@ public class KodiNameParserTests
     [Fact]
     public void ParseEpisode_WellFormedFilename_ProducesEpisodeResult_NfoTmdbIdWouldOverride()
     {
-        // A perfectly named episode file. Even so, when tvshow.nfo contains <tmdbid>,
-        // the pipeline passes that id as NfoTmdbId to the MatchQuery, giving it highest
-        // precedence over both this title guess and any ExplicitTokenId in the path.
         var result = _sut.ParseEpisode(
             "/nas/TV/Breaking Bad/Season 1/Breaking.Bad.S01E01.mkv",
             new EpisodeNumberingHint(1));
 
-        // The parser successfully extracts the episode numbers from the well-named file.
-        // The title output from the parser (which may be null or partial) is irrelevant
-        // when a tvshow.nfo is present — the NFO's TmdbId is used as the authoritative signal.
         result.IsSuccess.Should().BeTrue();
         result.EpisodeNumbers.Should().NotBeEmpty("well-named SxxExx file must yield at least one episode number");
         result.EpisodeNumbers[0].Season.Should().Be(1);
         result.EpisodeNumbers[0].Episode.Should().Be(1);
+    }
+
+    // =========================================================================
+    // Show title extraction: ParseEpisode.Title = SHOW title (text BEFORE SxxExx)
+    // =========================================================================
+
+    /// <summary>
+    ///     Show-title extraction rows: (fullPath, expectedShowTitle).
+    ///     SOURCE: contracts/internal-contracts.md behavioral contract table.
+    /// </summary>
+    public static TheoryData<string, string> ShowTitleFromFilenameData => new()
+    {
+        // SOURCE: contracts/internal-contracts.md — "Slow Horses"
+        // Dots are separators; text before S03E05 = "Slow.Horses." → "Slow Horses"
+        {
+            "/Séries/Slow Horses/S03/Slow.Horses.S03E05.MULTi.1080p.WEBRip.x264.AC3-MULTiViSiON.mkv",
+            "Slow Horses"
+        },
+        // SOURCE: contracts/internal-contracts.md — "Law and Order SUV" (typo preserved from filename)
+        // text before S19E23 = "Law.and.Order.SUV." → "Law and Order SUV"
+        {
+            "/Séries/Law and Order/SVU/S19/Law.and.Order.SUV.S19E23.FRENCH.DVDRip.XviD-Wawacity.tv.avi",
+            "Law and Order SUV"
+        },
+        // SOURCE: contracts/internal-contracts.md — "Une Nounou Denfer"
+        // text before S04E10 = "Une.Nounou.Denfer." → "Une Nounou Denfer"
+        {
+            "/Séries/The Nanny/Une.Nounou.Denfer.S04.MULTi.DVDRIP.x264-ETAY/Une.Nounou.Denfer.S04E10.MULTi.DVDRIP.x264-ETAY.mkv",
+            "Une Nounou Denfer"
+        },
+        // SOURCE: contracts/internal-contracts.md — "Sur écoute"
+        // Space-separated filename; accented é MUST be preserved.
+        // text before S04E01 = "Sur écoute " → trimmed → "Sur écoute"
+        {
+            "/Séries/The Wire/The Wire/Sur écoute S04E01 - La fin de l'été.mkv",
+            "Sur écoute"
+        },
+        // SOURCE: contracts/internal-contracts.md — "The Killing US 2011" (year preservation)
+        // Year 2011 appears BEFORE SxxExx → must NOT be stripped; it is part of the show title.
+        // text before S03E10 = "The.Killing.US.2011." → "The Killing US 2011"
+        {
+            "/Séries/The Killing US/S03/The.Killing.US.2011.S03E10.1080p.MULTi.WEB-DL.AvALoN.mkv",
+            "The Killing US 2011"
+        },
+    };
+
+    /// <summary>
+    ///     Verifies that <c>ParseEpisode.Title</c> returns the show name (text before SxxExx),
+    ///     not the release-tag text after it.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ShowTitleFromFilenameData))]
+    public void ParseEpisode_ShowTitle_ExtractedFromTextBeforeSxxExx(
+        string fullPath, string expectedShowTitle)
+    {
+        var result = _sut.ParseEpisode(fullPath, new EpisodeNumberingHint());
+
+        result.IsSuccess.Should().BeTrue($"'{fullPath}' must parse successfully");
+        result.Title.Should().Be(expectedShowTitle,
+            $"Title should be the show name (text before SxxExx) — not release tags — for '{Path.GetFileName(fullPath)}'");
+    }
+
+    [Fact]
+    public void ParseEpisode_YearBeforeSxxExx_IsPreservedInShowTitle()
+    {
+        // SOURCE: contracts/internal-contracts.md — year preservation rule.
+        // "The.Killing.US.2011.S03E10..." → year 2011 precedes SxxExx and must remain
+        // in the title to enable TMDB disambiguation. It is NOT stripped.
+        var result = _sut.ParseEpisode(
+            "/Séries/The Killing US/S03/The.Killing.US.2011.S03E10.1080p.MULTi.WEB-DL.AvALoN.mkv",
+            new EpisodeNumberingHint());
+
+        result.Title.Should().Be("The Killing US 2011",
+            "a year-like number that appears before the SxxExx marker is part of the show title and must be preserved");
+    }
+
+    [Fact]
+    public void ParseEpisode_AccentedCharactersInTitle_ArePreserved()
+    {
+        // SOURCE: contracts/internal-contracts.md — accented character preservation rule.
+        // é in "Sur écoute" must survive the dot/underscore-to-space replacement.
+        var result = _sut.ParseEpisode(
+            "/Séries/The Wire/The Wire/Sur écoute S04E01 - La fin de l'été.mkv",
+            new EpisodeNumberingHint());
+
+        result.Title.Should().Be("Sur écoute",
+            "accented characters (é, è, ê, etc.) must not be stripped or transliterated");
+    }
+
+    [Fact]
+    public void ParseEpisode_EpisodeTitleField_PopulatedWithTextAfterSxxExx()
+    {
+        // SOURCE: contracts/internal-contracts.md — EpisodeTitle carries text after SxxExx.
+        // "Sur écoute S04E01 - La fin de l'été" → EpisodeTitle = "La fin de l'été"
+        var result = _sut.ParseEpisode(
+            "/Séries/The Wire/The Wire/Sur écoute S04E01 - La fin de l'été.mkv",
+            new EpisodeNumberingHint());
+
+        result.EpisodeTitle.Should().NotBeNull(
+            "text after SxxExx should be placed in EpisodeTitle, not Title");
+        result.EpisodeTitle.Should().Contain("fin",
+            "episode-specific title text after SxxExx must be preserved in EpisodeTitle");
+    }
+
+    [Fact]
+    public void ParseEpisode_UnderscoreSeparatedFilename_TitleExtractedCorrectly()
+    {
+        // SOURCE: Kodi wiki — underscore is a common separator in TV filenames alongside dot.
+        // Underscores before SxxExx must be replaced with spaces in the show title.
+        var result = _sut.ParseEpisode(
+            "/nas/TV/Show/S01/My_Show_Name_S01E11_720p.mkv",
+            new EpisodeNumberingHint());
+
+        result.IsSuccess.Should().BeTrue();
+        result.Title.Should().Be("My Show Name",
+            "underscores in pre-SxxExx text must be replaced with spaces");
     }
 }

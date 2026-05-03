@@ -756,7 +756,6 @@ public sealed class ScanPipeline(
 
     // =========================================================================
     // Fingerprint: SHA-256 of "absPath|size|mtimeUnix"
-    // SOURCE: tasks.md T022 — SHA256 hex of size+mtime+absolute path
     // =========================================================================
 
     internal static string ComputeFingerprint(string absPath, long sizeBytes, DateTime mtimeUtc)

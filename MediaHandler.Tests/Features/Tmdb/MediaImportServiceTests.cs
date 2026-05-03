@@ -40,7 +40,6 @@ public class MediaImportServiceTests
             NullLogger<MediaImportService>.Instance);
     }
 
-    // ── T025 ────────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task ImportOrGetExisting_NewTmdbId_CreatesMedia()
@@ -88,7 +87,6 @@ public class MediaImportServiceTests
         _context.Medias.Count().Should().Be(1, "no duplicate Media row must be inserted");
     }
 
-    // ── T026 ────────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task ImportOrGetExisting_TmdbReturnsNull_ReturnsFail()

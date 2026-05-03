@@ -1,5 +1,4 @@
 // Unit tests for the NFO sidecar file parser.
-// These tests MUST fail before NfoParser.cs is implemented (T097).
 
 using FluentAssertions;
 using MediaHandler.Infrastructure.Nas.Scanner;
