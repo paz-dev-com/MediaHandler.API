@@ -40,10 +40,10 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Add `SearchLanguages` jsonb column mapping in `MediaHandler.Infrastructure/Persistence/Configurations/LibraryRootConfiguration.cs`
-- [ ] T006 Generate EF Core migration `AddSearchLanguagesToLibraryRoot` via `dotnet ef migrations add` (project: `MediaHandler.Infrastructure`, startup: `MediaHandler.API`)
-- [ ] T007 [P] Add `Scanner:ReleaseTags` and `Scanner:DefaultSearchLanguages` sections to `MediaHandler.API/appsettings.json`
-- [ ] T008 [P] Register `IOptionsMonitor<ReleaseTagOptions>` in DI and bind to `Scanner:ReleaseTags` config section in `MediaHandler.API/Program.cs` (or service registration extension)
+- [X] T005 Add `SearchLanguages` jsonb column mapping in `MediaHandler.Infrastructure/Persistence/Configurations/LibraryRootConfiguration.cs`
+- [X] T006 Generate EF Core migration `AddSearchLanguagesToLibraryRoot` via `dotnet ef migrations add` (project: `MediaHandler.Infrastructure`, startup: `MediaHandler.API`)
+- [X] T007 [P] Add `Scanner:ReleaseTags` and `Scanner:DefaultSearchLanguages` sections to `MediaHandler.API/appsettings.json`
+- [X] T008 [P] Register `IOptionsMonitor<ReleaseTagOptions>` in DI and bind to `Scanner:ReleaseTags` config section in `MediaHandler.API/Program.cs` (or service registration extension)
 
 **Checkpoint**: Foundation ready — models extended, migration created, configuration wired. User story implementation can now begin.
 
