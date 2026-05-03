@@ -77,13 +77,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T013 [P] [US2] Add unit tests for `ResolveShowFolderTitle` covering season folder skip (`Season XX`, `Saison XX`, `S##`, `Specials`), TV-root skip (`Séries`, `Series`, `TV Shows`, `TV`, `Shows`), multi-level nesting (`/Law and Order/SVU/S19/`), **generic folder names that must not be used as show titles** (e.g., `Video`, `Videos`, `Media`, `Downloads`), and edge cases in `MediaHandler.Tests/Scanner/KodiNameParserTests.cs`
+- [X] T013 [P] [US2] Add unit tests for `ResolveShowFolderTitle` covering season folder skip (`Season XX`, `Saison XX`, `S##`, `Specials`), TV-root skip (`Séries`, `Series`, `TV Shows`, `TV`, `Shows`), multi-level nesting (`/Law and Order/SVU/S19/`), **generic folder names that must not be used as show titles** (e.g., `Video`, `Videos`, `Media`, `Downloads`), and edge cases in `MediaHandler.Tests/Scanner/KodiNameParserTests.cs`
 
 ### Implementation for User Story 2
 
-- [ ] T014 [P] [US2] Add TV-root indicators HashSet (`Séries`, `Series`, `TV Shows`, `TV`, `Shows`) **and generic folder names to skip** (`Video`, `Videos`, `Media`, `Downloads` — mirrors the movie-scanner `GenericFolderNames` set) plus season-folder regex patterns to `MediaHandler.Infrastructure/Nas/Scanner/KodiRegexCatalog.cs`
-- [ ] T015 [US2] Implement `ResolveShowFolderTitle` method in `KodiNameParser` that walks path segments upward, skips season-level and TV-root folders, concatenates multi-segment show names (e.g., "Law and Order SVU"), and returns the show-level folder name — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
-- [ ] T016 [US2] Update `ParseEpisode` to call `ResolveShowFolderTitle` and populate `FolderTitle` in the returned `EpisodeNameParseResult` — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
+- [X] T014 [P] [US2] Add TV-root indicators HashSet (`Séries`, `Series`, `TV Shows`, `TV`, `Shows`) **and generic folder names to skip** (`Video`, `Videos`, `Media`, `Downloads` — mirrors the movie-scanner `GenericFolderNames` set) plus season-folder regex patterns to `MediaHandler.Infrastructure/Nas/Scanner/KodiRegexCatalog.cs`
+- [X] T015 [US2] Implement `ResolveShowFolderTitle` method in `KodiNameParser` that walks path segments upward, skips season-level and TV-root folders, concatenates multi-segment show names (e.g., "Law and Order SVU"), and returns the show-level folder name — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
+- [X] T016 [US2] Update `ParseEpisode` to call `ResolveShowFolderTitle` and populate `FolderTitle` in the returned `EpisodeNameParseResult` — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
 
 **Checkpoint**: `ParseEpisode` now returns both `Title` (from filename) and `FolderTitle` (from folder hierarchy). Files with mangled filenames get the correct show name from the folder.
 
