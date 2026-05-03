@@ -15,9 +15,8 @@ namespace MediaHandler.Infrastructure.Nas.Scanner;
 /// <summary>
 ///     Clean-room re-implementation of Kodi's movie + episode filename parsing heuristics.
 ///     <para>
-///         <b>Movie parsing rule</b> (SOURCE: Kodi wiki "File naming / Movies"):
-///         When a movie file is inside a dedicated folder, the folder name is used as the
-///         authoritative title source. The filename is parsed only as a fallback.
+///         <b>Movie parsing rule</b>: When a movie file is inside a dedicated folder, the folder
+///         name is used as the authoritative title source. The filename is parsed only as fallback.
 ///     </para>
 /// </summary>
 public sealed class KodiNameParser : IKodiNameParser
@@ -29,11 +28,8 @@ public sealed class KodiNameParser : IKodiNameParser
         "nas", "downloads", "torrents", "archive"
     };
 
-    // =========================================================================
-    // Private helpers
-    // =========================================================================
-
     private readonly TvEpisodeMatcher _episodeMatcher = new();
+
     // =========================================================================
     // IKodiNameParser.ParseMovie
     // SOURCE: https://kodi.wiki/view/Naming_video_files/Movies
@@ -49,15 +45,9 @@ public sealed class KodiNameParser : IKodiNameParser
         if (segments.Length < 2)
             return ParseFromFilename(Path.GetFileNameWithoutExtension(fullPath));
 
-        // SOURCE: Kodi wiki — the folder containing the movie file is tried first.
-        // The folder is the parent directory of the file.
-        var filename = segments[^1]; // last segment
-        var folder = segments[^2]; // parent folder
+        var filename = segments[^1];
+        var folder = segments[^2];
 
-        // If the parent folder looks like it contains a year (i.e., it's a movie-specific
-        // folder like "Inception (2010)" rather than a generic folder like "Movies"),
-        // treat it as the authoritative source.
-        // SOURCE: Kodi wiki — "The recommended naming scheme is 'Movie Title (Year)'"
         if (!IsGenericFolder(folder))
         {
             var folderResult = ParseFromFolderName(folder);
@@ -65,7 +55,6 @@ public sealed class KodiNameParser : IKodiNameParser
                 return folderResult;
         }
 
-        // Fallback to filename without extension
         return ParseFromFilename(Path.GetFileNameWithoutExtension(filename));
     }
 
@@ -79,18 +68,11 @@ public sealed class KodiNameParser : IKodiNameParser
         if (string.IsNullOrWhiteSpace(fullPath))
             return new EpisodeNameParseResult(false, null, [], "Empty path");
 
-        // Pass the full filename (with extension) to the matcher so it can strip internally.
-        // Do NOT strip here — the matcher already calls GetFileNameWithoutExtension.
         var filename = Path.GetFileName(fullPath);
         var episodes = _episodeMatcher.Match(filename, hint);
 
         if (episodes.Count == 0)
         {
-            // When the season is known from the containing folder but no episode number
-            // is in the filename, classify the file as an episode in that season with
-            // episode=0 (unknown). This lets the scanner flag it for review rather than
-            // silently discarding it.
-            // SOURCE: Observed Kodi behaviour — folder context provides season when filename lacks it.
             if (hint.SeasonFromFolder.HasValue)
                 return new EpisodeNameParseResult(
                     true, ExtractShowTitle(fullPath),
@@ -101,8 +83,40 @@ public sealed class KodiNameParser : IKodiNameParser
         }
 
         var filenameNoExt = Path.GetFileNameWithoutExtension(filename);
-        var title = ExtractEpisodeTitle(filenameNoExt, episodes[0]);
-        return new EpisodeNameParseResult(true, title, episodes);
+
+        // Title carries the show name (text before SxxExx).
+        // EpisodeTitle carries the text after SxxExx.
+        // Year-like numbers before the SxxExx marker (e.g. "2011" in "Show.2011.S03E10")
+        // are preserved in the show title for TMDB disambiguation.
+        var showTitle = ExtractShowTitleFromFilename(filename);
+        var episodeTitle = ExtractEpisodeTitle(filenameNoExt, episodes[0]);
+        return new EpisodeNameParseResult(true, showTitle, episodes, EpisodeTitle: episodeTitle);
+    }
+
+    /// <summary>
+    ///     Extracts the TV show title from an episode filename by taking all text before
+    ///     the first SxxExx marker, replacing dot/underscore separators with spaces, and trimming.
+    ///     Accented characters (é, è, ê…) are preserved. Year-like numbers before the marker
+    ///     are intentionally kept as they aid TMDB disambiguation.
+    /// </summary>
+    /// <param name="filename">Filename only (not full path). Extension is stripped internally.</param>
+    /// <returns>The cleaned show title, or <c>null</c> if no SxxExx pattern is found.</returns>
+    internal static string? ExtractShowTitleFromFilename(string filename)
+    {
+        var filenameNoExt = Path.GetFileNameWithoutExtension(filename);
+        var sxxMatch = KodiRegexCatalog.SxxExx.Match(filenameNoExt);
+
+        if (!sxxMatch.Success)
+            return null;
+
+        var beforeSxx = filenameNoExt[..sxxMatch.Index];
+
+        var title = beforeSxx
+            .Replace('.', ' ')
+            .Replace('_', ' ')
+            .Trim(' ', '-');
+
+        return string.IsNullOrWhiteSpace(title) ? null : title;
     }
 
     private static string NormaliseSeparators(string path)
@@ -206,7 +220,7 @@ public sealed class KodiNameParser : IKodiNameParser
         return null;
     }
 
-    private static string? ExtractEpisodeTitle(string filenameNoExt, EpisodeNumber firstEp)
+    private static string? ExtractEpisodeTitle(string filenameNoExt, EpisodeNumber _)
     {
         // SOURCE: Kodi wiki — text after the SxxExx token is the episode title
         var sxxMatch = KodiRegexCatalog.SxxExx.Match(filenameNoExt);

@@ -135,7 +135,7 @@ public class TmdbMatcherTests
     // =========================================================================
 
     /// <remarks>
-    ///     SOURCE: tasks.md T086 — ≥ 2 candidates within 5% popularity gap → MultipleCandidates review reason.
+    ///     ≥ 2 candidates within 5% popularity gap → MultipleCandidates review reason.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_MultipleCandidatesWithinPopularityGap_ReturnsNeedsReview()
@@ -166,7 +166,7 @@ public class TmdbMatcherTests
     // =========================================================================
 
     /// <remarks>
-    ///     SOURCE: tasks.md T086 — year mismatch > ±1 → YearMismatch review reason.
+    ///     Year mismatch &gt; 1 → YearMismatch review reason.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_YearMismatch_BeyondOneTolerance_ReturnsNeedsReview()
@@ -216,7 +216,7 @@ public class TmdbMatcherTests
     // =========================================================================
 
     /// <remarks>
-    ///     SOURCE: tasks.md T086 — empty candidate list → NoTmdbResult review reason.
+    ///     Empty candidate list → NoTmdbResult review reason.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_NoResults_ReturnsNeedsReview_WithNoTmdbResultReason()
@@ -241,7 +241,7 @@ public class TmdbMatcherTests
     // =========================================================================
 
     /// <remarks>
-    ///     SOURCE: tasks.md T086 — transient HTTP errors surfaced as NeedsReview without aborting the run (FR-017).
+    ///     Transient HTTP errors are surfaced as NeedsReview without aborting the run.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_TransientHttpFailure_DoesNotThrow_ReturnsNeedsReview()
@@ -363,13 +363,13 @@ public class TmdbMatcherTests
     }
 
     // =========================================================================
-    // Override-precedence — NFO id always wins (US3 mapping note)
-    // SOURCE: plan.md US3 mapping note — NfoTmdbId precedes all other resolution signals.
+    // Override-precedence — NFO id always wins
+    // SOURCE: plan.md — NfoTmdbId precedes all other resolution signals.
     // =========================================================================
 
     /// <remarks>
     ///     When both an NFO id and an explicit filename token id are present, the NFO id wins.
-    ///     This asserts the full precedence chain: NfoTmdbId > ExplicitTokenId > Title+Year > Title.
+    ///     Full precedence chain: NfoTmdbId &gt; ExplicitTokenId &gt; Title+Year &gt; Title.
     /// </remarks>
     [Fact]
     public async Task ResolveAsync_NfoTmdbId_WinsOverExplicitTokenId()

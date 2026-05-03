@@ -57,13 +57,13 @@
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Add unit tests for `ExtractShowTitleFromFilename` covering all acceptance scenarios (Slow Horses, New York Unité Spéciale, Une Nounou Denfer, The Killing US 2011, Sur écoute, year-handling edge cases) in `MediaHandler.Tests/Scanner/KodiNameParserTests.cs`
+- [X] T009 [P] [US1] Add unit tests for `ExtractShowTitleFromFilename` covering all acceptance scenarios (Slow Horses, New York Unité Spéciale, Une Nounou Denfer, The Killing US 2011, Sur écoute, year-handling edge cases) in `MediaHandler.Tests/Scanner/KodiNameParserTests.cs`
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Add `ExtractShowTitleFromFilename` method to `KodiNameParser` that takes text before the first SxxExx match, replaces dots/underscores with spaces, and trims — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
-- [ ] T011 [US1] Update `ParseEpisode` in `KodiNameParser` to call `ExtractShowTitleFromFilename` and set `Title` to the show name (not episode title), and populate the new `EpisodeTitle` field with text after SxxExx — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
-- [ ] T012 [US1] Handle year-like numbers before SxxExx: preserve them in the title string and optionally extract as a separate year hint for TMDB disambiguation — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
+- [X] T010 [US1] Add `ExtractShowTitleFromFilename` method to `KodiNameParser` that takes text before the first SxxExx match, replaces dots/underscores with spaces, and trims — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
+- [X] T011 [US1] Update `ParseEpisode` in `KodiNameParser` to call `ExtractShowTitleFromFilename` and set `Title` to the show name (not episode title), and populate the new `EpisodeTitle` field with text after SxxExx — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
+- [X] T012 [US1] Handle year-like numbers before SxxExx: preserve them in the title string and optionally extract as a separate year hint for TMDB disambiguation — in `MediaHandler.Infrastructure/Nas/Scanner/KodiNameParser.cs`
 
 **Checkpoint**: Title extraction from filenames is correct. Running `ParseEpisode` on known failing filenames returns the show name, not release tags.
 

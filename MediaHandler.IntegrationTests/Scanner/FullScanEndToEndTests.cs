@@ -198,7 +198,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
         var stackDetector = new StackingDetector();
         var episodeMatcher = new TvEpisodeMatcher();
         var tmdbMatcher = Substitute.For<ITmdbMatcher>();
-        // TMDB stub: always return needs-review=false with no TmdbId (US1 scope)
+        // TMDB stub: always return needs-review=false with no TmdbId
         tmdbMatcher.ResolveAsync(Arg.Any<MatchQuery>(), Arg.Any<CancellationToken>())
             .Returns(new TmdbMatchResult(false, null, null, false, null, []));
 
@@ -376,7 +376,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
     }
 
     // =========================================================================
-    // US3 acceptance scenarios — NFO sidecar overrides filename guess
+    // NFO sidecar overrides filename guess
     // =========================================================================
 
     /// <summary>
