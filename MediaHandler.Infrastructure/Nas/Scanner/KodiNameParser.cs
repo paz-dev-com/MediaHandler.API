@@ -7,8 +7,10 @@
 //   https://kodi.wiki/view/Advancedsettings.xml
 // No GPL source code from /home/tpfeifer/Repos/xbmc-master/ was consulted.
 
+using System.Text.RegularExpressions;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models.Scanner;
+using Microsoft.Extensions.Options;
 
 namespace MediaHandler.Infrastructure.Nas.Scanner;
 
@@ -29,6 +31,24 @@ public sealed class KodiNameParser : IKodiNameParser
     };
 
     private readonly TvEpisodeMatcher _episodeMatcher = new();
+    private readonly IOptionsMonitor<ReleaseTagOptions>? _releaseTagOptions;
+
+    /// <summary>
+    ///     Default constructor — no options injection. Existing callers that use
+    ///     <c>new KodiNameParser()</c> continue to work unchanged; built-in
+    ///     <see cref="KodiRegexCatalog.CleanTvShowTitle" /> patterns are applied.
+    /// </summary>
+    public KodiNameParser() { }
+
+    /// <summary>
+    ///     Constructor with optional <see cref="IOptionsMonitor{ReleaseTagOptions}" /> injection.
+    ///     When provided, additional patterns from <c>Scanner:ReleaseTags:AdditionalPatterns</c>
+    ///     configuration are merged with the built-in <see cref="KodiRegexCatalog.CleanTvShowTitle" /> set.
+    /// </summary>
+    public KodiNameParser(IOptionsMonitor<ReleaseTagOptions>? releaseTagOptions)
+    {
+        _releaseTagOptions = releaseTagOptions;
+    }
 
     // =========================================================================
     // IKodiNameParser.ParseMovie
@@ -92,7 +112,7 @@ public sealed class KodiNameParser : IKodiNameParser
         // EpisodeTitle carries the text after SxxExx.
         // Year-like numbers before the SxxExx marker (e.g. "2011" in "Show.2011.S03E10")
         // are preserved in the show title for TMDB disambiguation.
-        var showTitle = ExtractShowTitleFromFilename(filename);
+        var showTitle = ExtractShowTitleFromFilename(filename, GetActiveTagPatterns());
         var episodeTitle = ExtractEpisodeTitle(filenameNoExt, episodes[0]);
         return new EpisodeNameParseResult(true, showTitle, episodes,
             EpisodeTitle: episodeTitle, FolderTitle: folderTitle);
@@ -100,13 +120,20 @@ public sealed class KodiNameParser : IKodiNameParser
 
     /// <summary>
     ///     Extracts the TV show title from an episode filename by taking all text before
-    ///     the first SxxExx marker, replacing dot/underscore separators with spaces, and trimming.
-    ///     Accented characters (é, è, ê…) are preserved. Year-like numbers before the marker
-    ///     are intentionally kept as they aid TMDB disambiguation.
+    ///     the first SxxExx marker, replacing dot/underscore separators with spaces, stripping
+    ///     known release tags (quality, codec, source, language, release-group), and trimming.
+    ///     Accented characters (é, è, ê…) and title-internal apostrophes are preserved by default
+    ///     because .NET <see cref="Regex" /> is Unicode-aware and none of the built-in patterns
+    ///     use <c>\w</c>-only anchors that would inadvertently strip non-ASCII code points.
+    ///     Year-like numbers before the marker are intentionally kept as they aid TMDB disambiguation.
     /// </summary>
     /// <param name="filename">Filename only (not full path). Extension is stripped internally.</param>
+    /// <param name="tagPatterns">
+    ///     Optional override of the tag-stripping pattern set. When <see langword="null" />,
+    ///     <see cref="KodiRegexCatalog.CleanTvShowTitle" /> is used (the built-in defaults).
+    /// </param>
     /// <returns>The cleaned show title, or <c>null</c> if no SxxExx pattern is found.</returns>
-    internal static string? ExtractShowTitleFromFilename(string filename)
+    internal static string? ExtractShowTitleFromFilename(string filename, IReadOnlyList<Regex>? tagPatterns = null)
     {
         var filenameNoExt = Path.GetFileNameWithoutExtension(filename);
         var sxxMatch = KodiRegexCatalog.SxxExx.Match(filenameNoExt);
@@ -121,7 +148,36 @@ public sealed class KodiNameParser : IKodiNameParser
             .Replace('_', ' ')
             .Trim(' ', '-');
 
+        // Apply release-tag stripping patterns. Each pattern replaces a matched token with a
+        // single space so that surrounding words remain correctly separated after cleanup.
+        // Regex.Replace is Unicode-safe by default in .NET — accented characters (é, è, etc.)
+        // and apostrophes (D'enfer) pass through unmodified.
+        var patterns = tagPatterns ?? KodiRegexCatalog.CleanTvShowTitle;
+        foreach (var pattern in patterns)
+            title = pattern.Replace(title, " ");
+
+        // Collapse multiple consecutive spaces introduced by stripping, then trim edges.
+        title = Regex.Replace(title, @"\s{2,}", " ").Trim();
+
         return string.IsNullOrWhiteSpace(title) ? null : title;
+    }
+
+    /// <summary>
+    ///     Returns the merged set of tag-stripping regexes: the built-in
+    ///     <see cref="KodiRegexCatalog.CleanTvShowTitle" /> patterns plus any additional
+    ///     patterns configured in <c>Scanner:ReleaseTags:AdditionalPatterns</c>.
+    /// </summary>
+    private IReadOnlyList<Regex> GetActiveTagPatterns()
+    {
+        var opts = _releaseTagOptions?.CurrentValue;
+        if (opts is null || opts.AdditionalPatterns.Count == 0)
+            return KodiRegexCatalog.CleanTvShowTitle;
+
+        var merged = new List<Regex>(KodiRegexCatalog.CleanTvShowTitle);
+        foreach (var pattern in opts.AdditionalPatterns)
+            merged.Add(new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Compiled));
+
+        return merged;
     }
 
     /// <summary>

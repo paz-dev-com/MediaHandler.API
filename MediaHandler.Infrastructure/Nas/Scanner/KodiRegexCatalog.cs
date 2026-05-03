@@ -149,6 +149,30 @@ public sealed class KodiRegexCatalog
             @"^(?:Season|Saison|Staffel)\s*\d{1,2}$|^S\d{2}$|^(?:Specials|Season\s*00|S00)$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // =========================================================================
+    // TV show title cleaning (release-tag stripping before SxxExx)
+    // SOURCE: Observed scene/release filename conventions — tags commonly added to TV filenames
+    //         before the SxxExx marker that are NOT part of the show title.
+    // =========================================================================
+
+    // SOURCE: Observed scene naming patterns — ordered from most-specific to least-specific
+    // to avoid inadvertent substring collisions. Applied after dot/underscore → space conversion.
+    public static readonly Regex[] CleanTvShowTitle =
+    [
+        // Quality identifiers
+        new(@"\b(4K|2160p|1080p|720p|480p)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        // Video codec identifiers
+        new(@"\b(x264|x265|XviD|HEVC|AVC|H264|H265)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        // Source/release type identifiers
+        new(@"\b(BluRay|WEBRip|WEB-DL|DVDRip|HDTV|BDRip|REMUX)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        // Language identifiers
+        new(@"\b(TRUEFRENCH|VOSTFR|FRENCH|ENGLISH|MULTi|MULTI)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        // Release-group suffix at end of string: "-GROUP", "-GROUP.tv", etc.
+        // Only strips when the hyphen is preceded by a word character (guards against single-word
+        // hyphenated titles being truncated when the boundary is at end-of-string).
+        new(@"(?<=\w\w)-[A-Za-z0-9]+(\.(tv|com|net|org|info))?$", RegexOptions.Compiled),
+    ];
+
     // SOURCE: Observed NAS folder naming conventions — top-level TV library containers.
     // These folder names indicate the library root, not a show title, and must be skipped
     // when resolving the show name from the folder hierarchy.

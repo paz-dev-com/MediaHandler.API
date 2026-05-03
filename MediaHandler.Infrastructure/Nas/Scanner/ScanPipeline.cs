@@ -13,6 +13,7 @@ using MediaHandler.Application.Common.Models.Scanner;
 using MediaHandler.Domain.Entities;
 using MediaHandler.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace MediaHandler.Infrastructure.Nas.Scanner;
@@ -30,7 +31,8 @@ public sealed class ScanPipeline(
     ITvEpisodeMatcher episodeMatcher,
     ITmdbMatcher tmdbMatcher,
     ILogger<ScanPipeline> logger,
-    INfoParser? nfoParser = null)
+    INfoParser? nfoParser = null,
+    IConfiguration? configuration = null)
 {
     // =========================================================================
     // Public entry point
@@ -705,12 +707,27 @@ public sealed class ScanPipeline(
                 ? nfoResult.Title
                 : episodeResult.Title ?? Path.GetFileNameWithoutExtension(file.FileName);
 
+            // F2 guard: only set FallbackTitle when it differs from the filename-derived title
+            // to avoid a duplicate TMDB call with no benefit.
+            var parsedTitle = episodeResult.Title;
+            var folderTitle = episodeResult.FolderTitle;
+            var fallbackTitle = folderTitle != null && folderTitle != parsedTitle ? folderTitle : null;
+
+            // SearchLanguages priority: LibraryRoot > Scanner:DefaultSearchLanguages config > null (uses "en-US" default)
+            var searchLanguages = root.SearchLanguages is { Count: > 0 }
+                ? root.SearchLanguages
+                : configuration?.GetSection("Scanner:DefaultSearchLanguages").Get<string[]>() is { Length: > 0 } cfg
+                    ? (IReadOnlyList<string>)cfg
+                    : null;
+
             return new MatchQuery(
                 title,
                 null,
                 MediaType.TvShow,
                 nfoTmdbId,
-                explicitTokenId);
+                explicitTokenId,
+                FallbackTitle: fallbackTitle,
+                SearchLanguages: searchLanguages);
         }
     }
 
