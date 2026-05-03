@@ -13,7 +13,8 @@ namespace MediaHandler.Infrastructure.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "SearchLanguages",
                 table: "LibraryRoots",
-                type: "jsonb",
+                type: "nvarchar(2000)",
+                maxLength: 2000,
                 nullable: true);
         }
 
