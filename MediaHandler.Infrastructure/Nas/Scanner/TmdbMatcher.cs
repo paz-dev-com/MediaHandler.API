@@ -286,12 +286,14 @@ public sealed class TmdbMatcher : ITmdbMatcher
 
     private static TmdbMatchResult Matched(TmdbIdLookupResult lookup)
     {
+        // Include the matched item as a single candidate so ScanItemDecision.CandidatesJson
+        // is populated even for ID-based (NFO / explicit token) lookups.
         return new TmdbMatchResult(true,
             lookup.TmdbId,
             lookup.Kind,
             false,
             null,
-            []);
+            [new TmdbCandidate(lookup.TmdbId, lookup.Kind, lookup.Title, lookup.Year, 0m, lookup.PosterPath)]);
     }
 
     private static TmdbMatchResult NeedsReview(ReviewReason reason, IReadOnlyList<TmdbSearchCandidate> candidates)

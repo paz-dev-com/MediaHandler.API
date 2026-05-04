@@ -136,7 +136,8 @@ public sealed class ScanPipeline(
                 FilePath = root.Path,
                 Kind = ScanDecisionKind.NeedsReview,
                 Reason = "NAS unreachable",
-                RuleId = null
+                RuleId = null,
+                LibraryRootId = root.Id
             }, ct);
             await db.SaveChangesAsync(ct);
             return false;
@@ -182,7 +183,8 @@ public sealed class ScanPipeline(
                         FilePath = entry.AbsolutePath,
                         Kind = ScanDecisionKind.Excluded,
                         Reason = verdict.Reason,
-                        RuleId = verdict.RuleId
+                        RuleId = verdict.RuleId,
+                        LibraryRootId = root.Id
                     }, ct);
 
                     // Structured per-file decision log
@@ -324,7 +326,8 @@ public sealed class ScanPipeline(
                     ScanRunId = scanRun.Id,
                     FilePath = file.AbsolutePath,
                     Kind = ScanDecisionKind.Unchanged,
-                    MediaFileId = existing.Id
+                    MediaFileId = existing.Id,
+                    LibraryRootId = root.Id
                 }, ct);
 
                 logger.LogInformation(
@@ -345,7 +348,8 @@ public sealed class ScanPipeline(
                 ScanRunId = scanRun.Id,
                 FilePath = file.AbsolutePath,
                 Kind = ScanDecisionKind.Updated,
-                MediaFileId = existing.Id
+                MediaFileId = existing.Id,
+                LibraryRootId = root.Id
             }, ct);
 
             logger.LogInformation(
@@ -448,6 +452,10 @@ public sealed class ScanPipeline(
                 }
         }
 
+        // Build the TMDB match query from parsed name data (and NFO metadata when available).
+        // Done here (before the resolved-review check) so all downstream branches have access.
+        var matchQuery = BuildMatchQuery(file, root, episodeNumbers, role, nfoResult);
+
         // ── TMDB resolution stage ─────────────────────────────────────────────
         // Check for a previously resolved ReviewItem for this path first.
         // If found, skip the TMDB title search and re-use the administrator's saved mapping.
@@ -460,12 +468,16 @@ public sealed class ScanPipeline(
 
             inFlightPaths.Add(file.AbsolutePath);
             await PersistNewMediaFileAsync(
-                scanRun, root, file, role, fingerprint, counters, ct);
+                scanRun, root, file, role, fingerprint, counters,
+                resolvedItem.ResolvedTmdbId, resolvedItem.ResolvedKind,
+                "[]",
+                matchQuery.Title, matchQuery.Year,
+                episodeNumbers.Count > 0 ? episodeNumbers[0].Season : (int?)null,
+                episodeNumbers.Count > 0 ? episodeNumbers[0].Episode : (int?)null,
+                matchQuery.KindHint,
+                ct);
             return;
         }
-
-        // Build the TMDB match query from parsed name data (and NFO metadata when available)
-        var matchQuery = BuildMatchQuery(file, root, episodeNumbers, role, nfoResult);
 
         // Resolve via matcher (handles precedence chain + cache + error tolerance)
         var tmdbResult = await tmdbMatcher.ResolveAsync(matchQuery, ct);
@@ -480,7 +492,7 @@ public sealed class ScanPipeline(
                 : tmdbResult.ReviewReason ?? ReviewReason.NoTmdbResult;
 
             await CreateReviewItemAsync(
-                scanRun, file, tmdbResult, matchQuery, episodeNumbers, counters,
+                scanRun, root.Id, file, tmdbResult, matchQuery, episodeNumbers, counters,
                 existingOpenReviewPaths, effectiveReason, ct);
             return;
         }
@@ -494,11 +506,24 @@ public sealed class ScanPipeline(
                 ScanRunId = scanRun.Id,
                 FilePath = file.AbsolutePath,
                 Kind = ScanDecisionKind.Added,
-                Reason = ReviewReason.NfoMalformed.ToString()
+                Reason = ReviewReason.NfoMalformed.ToString(),
+                LibraryRootId = root.Id,
+                ParsedTitle = matchQuery.Title,
+                ParsedYear = matchQuery.Year,
+                ParsedMediaType = matchQuery.KindHint,
+                CandidatesJson = SerializeCandidates(tmdbResult.Candidates)
             }, ct);
 
         inFlightPaths.Add(file.AbsolutePath);
-        await PersistNewMediaFileAsync(scanRun, root, file, role, fingerprint, counters, ct);
+        await PersistNewMediaFileAsync(
+            scanRun, root, file, role, fingerprint, counters,
+            tmdbResult.TmdbId, tmdbResult.Kind,
+            SerializeCandidates(tmdbResult.Candidates),
+            matchQuery.Title, matchQuery.Year,
+            episodeNumbers.Count > 0 ? episodeNumbers[0].Season : (int?)null,
+            episodeNumbers.Count > 0 ? episodeNumbers[0].Episode : (int?)null,
+            matchQuery.KindHint,
+            ct);
     }
 
     // =========================================================================
@@ -555,6 +580,14 @@ public sealed class ScanPipeline(
         MediaFileRole role,
         string fingerprint,
         ScanCounters counters,
+        int? assignedTmdbId,
+        MediaType? assignedTmdbKind,
+        string candidatesJson,
+        string? parsedTitle,
+        int? parsedYear,
+        int? parsedSeason,
+        int? parsedEpisode,
+        MediaType? parsedMediaType,
         CancellationToken ct)
     {
         var mediaFile = new MediaFile
@@ -581,7 +614,17 @@ public sealed class ScanPipeline(
             Kind = ScanDecisionKind.Added,
             // Set navigation property explicitly so EF Core orders the inserts correctly
             // when saving a large batch (MediaFile must be inserted before ScanItemDecision)
-            MediaFile = mediaFile
+            MediaFile = mediaFile,
+            // New dashboard fields
+            LibraryRootId = root.Id,
+            AssignedTmdbId = assignedTmdbId,
+            AssignedTmdbKind = assignedTmdbKind,
+            CandidatesJson = candidatesJson,
+            ParsedTitle = parsedTitle,
+            ParsedYear = parsedYear,
+            ParsedSeason = parsedSeason,
+            ParsedEpisode = parsedEpisode,
+            ParsedMediaType = parsedMediaType
         };
         await db.ScanItemDecisions.AddAsync(decision, ct);
 
@@ -597,6 +640,7 @@ public sealed class ScanPipeline(
 
     private async Task CreateReviewItemAsync(
         ScanRun scanRun,
+        Guid libraryRootId,
         NasFileEntry file,
         TmdbMatchResult tmdbResult,
         MatchQuery matchQuery,
@@ -643,7 +687,14 @@ public sealed class ScanPipeline(
             ScanRunId = scanRun.Id,
             FilePath = file.AbsolutePath,
             Kind = ScanDecisionKind.NeedsReview,
-            Reason = effectiveReason.ToString()
+            Reason = effectiveReason.ToString(),
+            LibraryRootId = libraryRootId,
+            ParsedTitle = matchQuery.Title,
+            ParsedYear = matchQuery.Year,
+            ParsedSeason = episodeNumbers.Count > 0 ? episodeNumbers[0].Season : null,
+            ParsedEpisode = episodeNumbers.Count > 0 ? episodeNumbers[0].Episode : null,
+            ParsedMediaType = matchQuery.KindHint,
+            CandidatesJson = SerializeCandidates(tmdbResult.Candidates)
         }, ct);
 
         // Structured per-file decision log for review items
@@ -762,7 +813,8 @@ public sealed class ScanPipeline(
                 ScanRunId = scanRun.Id,
                 FilePath = mf.FilePath,
                 Kind = ScanDecisionKind.Removed,
-                MediaFileId = mf.Id
+                MediaFileId = mf.Id,
+                LibraryRootId = mf.LibraryRootId
             }, ct);
 
             logger.LogInformation(
@@ -821,6 +873,25 @@ public sealed class ScanPipeline(
         {
             /* subscriber gone */
         }
+    }
+
+    // =========================================================================
+    // Serialize TMDB candidates for ScanItemDecision.CandidatesJson
+    // =========================================================================
+
+    private static string SerializeCandidates(IReadOnlyList<TmdbCandidate> candidates)
+    {
+        if (candidates.Count == 0) return "[]";
+        return JsonSerializer.Serialize(
+            candidates.Select(c => new
+            {
+                tmdbId = c.TmdbId,
+                kind = c.Kind.ToString(),
+                title = c.Title,
+                year = c.Year,
+                score = c.Score,
+                posterPath = c.PosterPath
+            }));
     }
 
     // =========================================================================

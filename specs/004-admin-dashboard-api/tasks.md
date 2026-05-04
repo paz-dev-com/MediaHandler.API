@@ -70,8 +70,8 @@
 
 ### Implementation for User Story 8
 
-- [ ] T020 [US8] Update `ScanPipeline` to populate new `ScanItemDecision` fields (`AssignedTmdbId`, `AssignedTmdbKind`, `CandidatesJson`, `ParsedTitle`, `ParsedYear`, `ParsedSeason`, `ParsedEpisode`, `ParsedMediaType`, `LibraryRootId`) when creating decision records in MediaHandler.Infrastructure/Nas/Scanner/ScanPipeline.cs
-- [ ] T021 [US8] Update `TmdbMatcher` to pass candidate results (as JSON array matching `ReviewItem.CandidatesJson` schema) to the decision record in MediaHandler.Infrastructure/Nas/Scanner/TmdbMatcher.cs
+- [x] T020 [US8] Update `ScanPipeline` to populate new `ScanItemDecision` fields (`AssignedTmdbId`, `AssignedTmdbKind`, `CandidatesJson`, `ParsedTitle`, `ParsedYear`, `ParsedSeason`, `ParsedEpisode`, `ParsedMediaType`, `LibraryRootId`) when creating decision records in MediaHandler.Infrastructure/Nas/Scanner/ScanPipeline.cs
+- [x] T021 [US8] Update `TmdbMatcher` to pass candidate results (as JSON array matching `ReviewItem.CandidatesJson` schema) to the decision record in MediaHandler.Infrastructure/Nas/Scanner/TmdbMatcher.cs
 
 **Checkpoint**: Scan pipeline now populates all new fields. Existing scans can be re-run to populate data for US1.
 
@@ -85,8 +85,8 @@
 
 ### Implementation for User Story 1
 
-- [ ] T022 [US1] Create `ListScanDecisionsQuery` record (ScanRunId, DecisionType?, MediaType?, LibraryRootId?, Page, PageSize) with `ListScanDecisionsQueryValidator` (FluentValidation: `page ≥ 1`, `pageSize` in `[1, 100]`) and `ListScanDecisionsQueryHandler` (paginated `AsNoTracking()` query with filters, joins `ScanItemDecision → MediaFile → Media` and `→ LibraryRoot` to populate `assignedTitle`, `assignedYear`, `assignedPosterPath`, and `libraryRootPath` = `LibraryRoot.Path`) in MediaHandler.Application/Features/Dashboard/Queries/ListScanDecisions/ListScanDecisionsQuery.cs
-- [ ] T023 [US1] Add `GET /api/v1/admin/scan/{scanId}/decisions` endpoint to `AdminScanController` (already has `[Authorize(Policy = "AdminOnly")]`), mapping query params to `ListScanDecisionsQuery`, returning `ApiResponse<PagedResult<ScanItemDecisionDto>>` in MediaHandler.API/Controllers/AdminScanController.cs
+- [x] T022 [US1] Create `ListScanDecisionsQuery` record (ScanRunId, DecisionType?, MediaType?, LibraryRootId?, Page, PageSize) with `ListScanDecisionsQueryValidator` (FluentValidation: `page ≥ 1`, `pageSize` in `[1, 100]`) and `ListScanDecisionsQueryHandler` (paginated `AsNoTracking()` query with filters, joins `ScanItemDecision → MediaFile → Media` and `→ LibraryRoot` to populate `assignedTitle`, `assignedYear`, `assignedPosterPath`, and `libraryRootPath` = `LibraryRoot.Path`) in MediaHandler.Application/Features/Dashboard/Queries/ListScanDecisions/ListScanDecisionsQuery.cs
+- [x] T023 [US1] Add `GET /api/v1/admin/scan/{scanId}/decisions` endpoint to `AdminScanController` (already has `[Authorize(Policy = "AdminOnly")]`), mapping query params to `ListScanDecisionsQuery`, returning `ApiResponse<PagedResult<ScanItemDecisionDto>>` in MediaHandler.API/Controllers/AdminScanController.cs
 
 **Checkpoint**: Admins can browse and filter scan decisions for any completed scan run.
 
@@ -100,8 +100,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Create `ReassignTmdbCommand` record (DecisionId, TmdbId, MediaType) with `ReassignTmdbCommandValidator` and `ReassignTmdbCommandHandler` (loads decision, verifies TMDB ID via `ITmdbService`, updates `AssignedTmdbId`/`AssignedTmdbKind`, updates linked `MediaFile.MediaId`, saves) in MediaHandler.Application/Features/Dashboard/Commands/ReassignTmdb/ReassignTmdbCommand.cs
-- [ ] T025 [US2] Create `AdminScanDecisionsController` (`[Route("api/v1/admin/scan-decisions")]`, `[Authorize(Policy = "AdminOnly")]`) with `PUT /{id}/reassign` endpoint accepting `ReassignTmdbRequest` body, returning `ApiResponse<ReassignTmdbResponse>` in MediaHandler.API/Controllers/AdminScanDecisionsController.cs
+- [x] T024 [US2] Create `ReassignTmdbCommand` record (DecisionId, TmdbId, MediaType) with `ReassignTmdbCommandValidator` and `ReassignTmdbCommandHandler` (loads decision, verifies TMDB ID via `ITmdbService`, updates `AssignedTmdbId`/`AssignedTmdbKind`, updates linked `MediaFile.MediaId`, saves) in MediaHandler.Application/Features/Dashboard/Commands/ReassignTmdb/ReassignTmdbCommand.cs
+- [x] T025 [US2] Create `AdminScanDecisionsController` (`[Route("api/v1/admin/scan-decisions")]`, `[Authorize(Policy = "AdminOnly")]`) with `PUT /{id}/reassign` endpoint accepting `ReassignTmdbRequest` body, returning `ApiResponse<ReassignTmdbResponse>` in MediaHandler.API/Controllers/AdminScanDecisionsController.cs
 
 **Checkpoint**: Admins can correct wrong TMDB matches on individual scan decisions.
 
