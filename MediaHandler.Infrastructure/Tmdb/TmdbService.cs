@@ -56,7 +56,8 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
                 (decimal?)movie.VoteAverage,
                 movie.VoteCount,
                 movie.Genres?.Select(g => g.Name).ToList(),
-                movie.OriginalLanguage ?? "en");
+                movie.OriginalLanguage ?? "en",
+                Status: movie.Status);
         }
         else
         {
@@ -77,7 +78,10 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
                 (decimal?)tv.VoteAverage,
                 tv.VoteCount,
                 tv.Genres?.Select(g => g.Name).ToList(),
-                tv.OriginalLanguage ?? "en");
+                tv.OriginalLanguage ?? "en",
+                Status: tv.Status,
+                NumberOfSeasons: tv.NumberOfSeasons,
+                NumberOfEpisodes: tv.NumberOfEpisodes);
         }
     }
 
@@ -309,7 +313,8 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
         int? VoteCount,
         [property: JsonPropertyName("genres")] List<TmdbGenreJson>? Genres,
         [property: JsonPropertyName("original_language")]
-        string? OriginalLanguage);
+        string? OriginalLanguage,
+        [property: JsonPropertyName("status")] string? Status);
 
     private record TmdbTvSeasonSummaryJson(
         [property: JsonPropertyName("season_number")]
@@ -339,7 +344,12 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
         [property: JsonPropertyName("original_language")]
         string? OriginalLanguage,
         [property: JsonPropertyName("seasons")]
-        List<TmdbTvSeasonSummaryJson>? Seasons);
+        List<TmdbTvSeasonSummaryJson>? Seasons,
+        [property: JsonPropertyName("status")] string? Status,
+        [property: JsonPropertyName("number_of_seasons")]
+        int? NumberOfSeasons,
+        [property: JsonPropertyName("number_of_episodes")]
+        int? NumberOfEpisodes);
 
     private record TmdbEpisodeJson(
         [property: JsonPropertyName("episode_number")]

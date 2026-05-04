@@ -77,6 +77,11 @@ public static class DependencyInjection
         services.AddSingleton<ScanRunCoordinator>();
         services.AddSingleton<IScanRunCoordinator>(sp => sp.GetRequiredService<ScanRunCoordinator>());
 
+        // ── Enrichment coordinator ────────────────────────────────────────────
+        // Singleton: owns background TMDB enrichment run lifecycle (mirrors ScanRunCoordinator).
+        services.AddSingleton<EnrichmentCoordinator>();
+        services.AddSingleton<IEnrichmentCoordinator>(sp => sp.GetRequiredService<EnrichmentCoordinator>());
+
         // Scoped scanner services (infrastructure-side)
         services.AddScoped<INasFileEnumerator, NasFileEnumerator>();
         services.AddScoped<IKodiNameParser, KodiNameParser>();
