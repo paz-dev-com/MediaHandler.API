@@ -17,7 +17,7 @@ public class StackGroup : BaseEntity
     /// <summary>The logical movie this stack belongs to.</summary>
     public required Guid MediaId { get; set; }
 
-    // ── Navigation ──────────────────────────────────────────────────────────
+    // Navigation
 
     public Media Media { get; set; } = null!;
 

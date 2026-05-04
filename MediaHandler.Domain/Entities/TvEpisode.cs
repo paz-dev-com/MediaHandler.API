@@ -12,7 +12,7 @@ public class TvEpisode : BaseEntity
     public string? StillPath { get; set; }
     public int? Runtime { get; set; }
 
-    // ── Scanner additions ────────────────────────────────────────────────────
+    // Scanner additions
 
     /// <summary>
     ///     All physical files that carry this episode (many-to-many via <see cref="EpisodeFileLink" />).
@@ -30,7 +30,7 @@ public class TvEpisode : BaseEntity
             .FirstOrDefault()
             ?.MediaFile;
 
-    // ── Navigation ──────────────────────────────────────────────────────────
+    // Navigation
 
     public TvSeason Season { get; set; } = null!;
     public ICollection<UserEpisode> UserEpisodes { get; set; } = new List<UserEpisode>();

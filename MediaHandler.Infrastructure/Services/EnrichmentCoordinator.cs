@@ -2,11 +2,11 @@
 // Owns the lifecycle of background TMDB batch enrichment runs.
 // Follows the same pattern as ScanRunCoordinator.
 //
-// T032a: Scaffold + DI + state transitions (Pending → Running → Completed|Failed) + stale-run guard
-// T032b: Incremental entry selection (Overview IS NULL OR UpdatedAt > lastEnrichmentFinishedAt)
-// T032c: Media field population (Title, Overview, Runtime, PosterPath, Status, genres, etc.)
-// T032d: TvSeason/TvEpisode upsert for TV shows
-// T032e: Per-entry error tracking + progress reporting every 10 entries or 5 seconds
+// Scaffold + DI + state transitions (Pending → Running → Completed|Failed) + stale-run guard
+// Incremental entry selection (Overview IS NULL OR UpdatedAt > lastEnrichmentFinishedAt)
+// Media field population (Title, Overview, Runtime, PosterPath, Status, genres, etc.)
+// TvSeason/TvEpisode upsert for TV shows
+// Per-entry error tracking + progress reporting every 10 entries or 5 seconds
 
 using System.Text.Json;
 using MediaHandler.Application.Common.DTOs;
@@ -47,7 +47,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
     }
 
     // =========================================================================
-    // T032a — IEnrichmentCoordinator.StartAsync
+    // IEnrichmentCoordinator.StartAsync
     // =========================================================================
 
     /// <inheritdoc />
@@ -63,7 +63,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
     }
 
     // =========================================================================
-    // T032a — IEnrichmentCoordinator.GetStatusAsync
+    // IEnrichmentCoordinator.GetStatusAsync
     // =========================================================================
 
     /// <inheritdoc />
@@ -109,18 +109,18 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
 
         try
         {
-            // ── T032a: Transition to Running ────────────────────────────────
+            // Transition to Running
             run.Status = EnrichmentStatus.Running;
             await db.SaveChangesAsync(CancellationToken.None);
 
-            // ── T032b: Incremental entry selection ──────────────────────────
+            // Incremental entry selection
             var lastFinishedAt = await GetLastCompletedFinishedAtAsync(db);
             var mediaItems = await GetEligibleMediaAsync(db, lastFinishedAt);
 
             _logger.LogInformation(
                 "EnrichmentCoordinator: run {RunId} → {Count} eligible media items.", runId, mediaItems.Count);
 
-            // ── T032c/d/e: Process each item ────────────────────────────────
+            // Process each item
             var errors = new List<EnrichmentErrorDetailDto>();
             var enrichedCount = 0;
             var failedCount = 0;
@@ -130,15 +130,15 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
             {
                 var media = mediaItems[i];
 
-                // T032e: Update CurrentItem for status reporting
+                // Update CurrentItem for status reporting
                 run.CurrentItem = $"{media.Title} (TMDB {media.TmdbId})";
 
                 try
                 {
-                    // T032c: Fetch and map Media fields
+                    // Fetch and map Media fields
                     await EnrichMediaFieldsAsync(db, tmdbService, media);
 
-                    // T032d: Upsert TvSeason/TvEpisode for TV shows
+                    // Upsert TvSeason/TvEpisode for TV shows
                     if (media.Type == MediaType.TvShow)
                         await UpsertTvSeasonsAsync(db, tmdbService, media);
 
@@ -149,7 +149,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
                 }
                 catch (Exception ex)
                 {
-                    // T032e: Per-entry error tracking — do NOT abort the batch
+                    // Per-entry error tracking — do NOT abort the batch
                     failedCount++;
                     errors.Add(new EnrichmentErrorDetailDto(media.Id, media.TmdbId, media.Title, ex.Message));
 
@@ -158,7 +158,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
                         media.Id, media.TmdbId);
                 }
 
-                // T032e: Persist progress every 10 entries or every 5 seconds
+                // Persist progress every 10 entries or every 5 seconds
                 var shouldSave = (i + 1) % 10 == 0
                                  || (DateTime.UtcNow - lastSave).TotalSeconds >= 5;
 
@@ -181,7 +181,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
                 }
             }
 
-            // ── T032a: Transition to Completed ──────────────────────────────
+            // Transition to Completed
             run.Status = EnrichmentStatus.Completed;
             run.FinishedAt = DateTime.UtcNow;
             run.EnrichedCount = enrichedCount;
@@ -195,7 +195,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
         }
         catch (Exception ex)
         {
-            // ── T032a: Transition to Failed ─────────────────────────────────
+            // Transition to Failed
             run.Status = EnrichmentStatus.Failed;
             run.FinishedAt = DateTime.UtcNow;
             run.FailureReason = ex.Message;
@@ -217,7 +217,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
     }
 
     // =========================================================================
-    // T032b — Incremental entry selection
+    // Incremental entry selection
     // =========================================================================
 
     private static async Task<DateTime?> GetLastCompletedFinishedAtAsync(MediaHandlerDbContext db)
@@ -246,7 +246,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
     }
 
     // =========================================================================
-    // T032c — Media field population
+    // Media field population
     // =========================================================================
 
     private static async Task EnrichMediaFieldsAsync(
@@ -320,7 +320,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
     }
 
     // =========================================================================
-    // T032d — TvSeason / TvEpisode upsert
+    // TvSeason / TvEpisode upsert
     // =========================================================================
 
     private static async Task UpsertTvSeasonsAsync(

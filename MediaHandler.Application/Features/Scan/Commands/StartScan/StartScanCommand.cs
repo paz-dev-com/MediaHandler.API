@@ -34,7 +34,7 @@ public sealed class StartScanCommandHandler(
         StartScanCommand request,
         CancellationToken cancellationToken)
     {
-        // ── Single-active-scan guard ──────────────────────────────────────────
+        // Single-active-scan guard
         var activeScan = await db.ScanRuns
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Status == ScanStatus.Running, cancellationToken);
@@ -43,7 +43,7 @@ public sealed class StartScanCommandHandler(
             return Result.Fail<ScanRunHandle>(
                 "SCAN_IN_PROGRESS: A scan is already running. Wait for it to complete or cancel it.");
 
-        // ── Resolve library roots ─────────────────────────────────────────────
+        // Resolve library roots
         Guid[] rootIds;
         if (request.LibraryRootIds.Length == 0)
         {
@@ -76,7 +76,7 @@ public sealed class StartScanCommandHandler(
         if (rootIds.Length == 0)
             return Result.Fail<ScanRunHandle>("No enabled library roots found to scan.");
 
-        // ── Delegate to coordinator ───────────────────────────────────────────
+        // Delegate to coordinator
         try
         {
             var scanRunId = Guid.NewGuid();

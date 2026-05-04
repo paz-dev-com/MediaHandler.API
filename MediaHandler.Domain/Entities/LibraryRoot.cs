@@ -38,7 +38,7 @@ public class LibraryRoot : BaseEntity
     /// </summary>
     public IReadOnlyList<string>? SearchLanguages { get; set; }
 
-    // ── Navigation ──────────────────────────────────────────────────────────
+    // Navigation
 
     /// <summary>All <c>MediaFile</c> rows whose physical location lies under this root.</summary>
     public ICollection<MediaFile> MediaFiles { get; set; } = [];

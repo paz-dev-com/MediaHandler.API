@@ -39,7 +39,7 @@ public class ScanRun : BaseEntity
     /// </summary>
     public string LibraryRootIdsJson { get; set; } = "[]";
 
-    // ── Denormalised summary counters (updated in batches by the pipeline) ──
+    // Denormalised summary counters (updated in batches by the pipeline)
 
     /// <summary>Total number of paths considered by the pipeline.</summary>
     public int TotalDiscovered { get; set; }
@@ -62,7 +62,7 @@ public class ScanRun : BaseEntity
     /// <summary>Files routed to the admin review queue.</summary>
     public int NeedsReview { get; set; }
 
-    // ── Navigation ──────────────────────────────────────────────────────────
+    // Navigation
 
     /// <summary>Per-file decision rows written by the pipeline (one per processed path).</summary>
     public ICollection<ScanItemDecision> Decisions { get; set; } = [];

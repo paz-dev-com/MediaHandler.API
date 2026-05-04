@@ -457,7 +457,7 @@ public class TmdbMatcherTests
     }
 
     // =========================================================================
-    // Multi-language TMDB search (T022)
+    // Multi-language TMDB search
     // SOURCE: contracts/internal-contracts.md — ITmdbMatcher.ResolveAsync updated chain
     // =========================================================================
 

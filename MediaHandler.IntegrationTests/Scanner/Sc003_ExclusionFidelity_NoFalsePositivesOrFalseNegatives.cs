@@ -165,7 +165,7 @@ public class Sc003_ExclusionFidelity_NoFalsePositivesOrFalseNegatives : ScannerI
             "Every expected:excluded path must produce an Excluded decision (zero false negatives)");
     }
 
-    // ── Helper methods ──────────────────────────────────────────────────────
+    // Helper methods
 
     private async Task WaitForScanCompletion(Guid scanRunId, int timeoutSeconds)
     {

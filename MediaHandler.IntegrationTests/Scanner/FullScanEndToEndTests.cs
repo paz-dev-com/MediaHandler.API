@@ -390,7 +390,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
     [Fact]
     public async Task Sc_Nfo_OverridesFilenameGuess()
     {
-        // ── Build the in-memory NAS fixture ───────────────────────────────────
+        // Build the in-memory NAS fixture
         // Movie with well-formed movie.nfo whose tmdbid=27205 (Inception)
         const string movieFolder = "/nas/Movies/Some Misnamed Movie (2010)";
         const string movieFile = movieFolder + "/Some Misnamed Movie (2010).mkv";
@@ -424,13 +424,13 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
 
         WithFakeNasService(nasEntries, ["/nas"]);
 
-        // ── Register library roots ────────────────────────────────────────────
+        // Register library roots
         var moviesRoot = new LibraryRoot { Path = "/nas/Movies", Kind = LibraryRootKind.Movies, IsEnabled = true };
         var tvRoot = new LibraryRoot { Path = "/nas/TV Shows", Kind = LibraryRootKind.TvShows, IsEnabled = true };
         DbContext.LibraryRoots.AddRange(moviesRoot, tvRoot);
         await DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        // ── Build fake ITmdbMatcher ───────────────────────────────────────────
+        // Build fake ITmdbMatcher
         // Returns a successful match when NfoTmdbId is present; otherwise needs-review.
         var fakeTmdb = Substitute.For<ITmdbMatcher>();
 
@@ -452,7 +452,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
                 Arg.Any<CancellationToken>())
             .Returns(new TmdbMatchResult(true, 99999, MediaType.Film, false, null, []));
 
-        // ── Build fake INfoParser ─────────────────────────────────────────────
+        // Build fake INfoParser
         // Returns predefined results by path (no actual files on disk needed).
         var fakeNfoParser = Substitute.For<INfoParser>();
 
@@ -482,7 +482,7 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
         fakeNfoParser.ParseAsync(badNfo, Arg.Any<CancellationToken>())
             .Returns(NfoParseResult.Malformed("Invalid XML"));
 
-        // ── Execute the scan ──────────────────────────────────────────────────
+        // Execute the scan
         var coordinator = BuildCoordinatorWithNfoParser(fakeTmdb, fakeNfoParser);
         var handle = await coordinator.StartAsync(
             new ScanStartParameters(Guid.NewGuid(), [moviesRoot.Id, tvRoot.Id], ScanMode.Full),
@@ -490,21 +490,21 @@ public class FullScanEndToEndTests : ScannerIntegrationTestBase
 
         await WaitForScanCompletion(handle.ScanRunId, 120);
 
-        // ── Acceptance scenario 1: NFO TMDB id was used for movie match ───────
+        // Acceptance scenario 1: NFO TMDB id was used for movie match
         await fakeNfoParser.Received().ParseAsync(movieNfo, Arg.Any<CancellationToken>());
 
         await fakeTmdb.Received().ResolveAsync(
             Arg.Is<MatchQuery>(q => q.NfoTmdbId == 27205),
             Arg.Any<CancellationToken>());
 
-        // ── Acceptance scenario 2: NFO TMDB id was used for TV show match ────
+        // Acceptance scenario 2: NFO TMDB id was used for TV show match
         await fakeNfoParser.Received().ParseAsync(tvNfo, Arg.Any<CancellationToken>());
 
         await fakeTmdb.Received().ResolveAsync(
             Arg.Is<MatchQuery>(q => q.NfoTmdbId == 1396),
             Arg.Any<CancellationToken>());
 
-        // ── Acceptance scenario 3: malformed NFO fell back gracefully ─────────
+        // Acceptance scenario 3: malformed NFO fell back gracefully
         // Scan must NOT be in a failed state (malformed NFO did not abort the run).
         var scanRun = await DbContext.ScanRuns
             .AsNoTracking()

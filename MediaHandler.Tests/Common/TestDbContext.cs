@@ -20,7 +20,7 @@ public class TestDbContext : DbContext, IApplicationDbContext
     public DbSet<TvEpisode> TvEpisodes => Set<TvEpisode>();
     public DbSet<UserEpisode> UserEpisodes => Set<UserEpisode>();
 
-    // ── Scanner entities ─────────────────────────────────────────────────────
+    // Scanner entities
     public DbSet<LibraryRoot> LibraryRoots => Set<LibraryRoot>();
     public DbSet<ScanRun> ScanRuns => Set<ScanRun>();
     public DbSet<ScanItemDecision> ScanItemDecisions => Set<ScanItemDecision>();

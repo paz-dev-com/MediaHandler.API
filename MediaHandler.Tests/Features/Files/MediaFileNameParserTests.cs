@@ -7,7 +7,7 @@ public class MediaFileNameParserTests
 {
     private readonly MediaFileNameParser _parser = new();
 
-    // ── Standard movie filename ───────────────────────────────────────────
+    // Standard movie filename
 
     [Fact]
     public void Parse_MovieWithYearAndQuality_ExtractsTitleAndYear()
@@ -31,7 +31,7 @@ public class MediaFileNameParserTests
         result.MediaTypeHint.Should().BeNull();
     }
 
-    // ── Media type hint from path segments ───────────────────────────────
+    // Media type hint from path segments
 
     [Fact]
     public void Parse_PathWithMoviesSegment_SetsMovieHint()
@@ -64,7 +64,7 @@ public class MediaFileNameParserTests
         result!.MediaTypeHint.Should().Be("tv");
     }
 
-    // ── TV episode pattern in filename ───────────────────────────────────
+    // TV episode pattern in filename
 
     [Fact]
     public void Parse_TvEpisodePatternInFilename_SetsTvHintAndExtractsTitle()
@@ -88,7 +88,7 @@ public class MediaFileNameParserTests
         result.Title.Should().Be("The Wire");
     }
 
-    // ── Year in parent folder ─────────────────────────────────────────────
+    // Year in parent folder
 
     [Fact]
     public void Parse_MovieInNamedFolder_ExtractsTitleFromFolder()
@@ -102,7 +102,7 @@ public class MediaFileNameParserTests
         result.MediaTypeHint.Should().Be("movie");
     }
 
-    // ── Quality / group tag stripping ─────────────────────────────────────
+    // Quality / group tag stripping
 
     [Fact]
     public void Parse_FilenameWithGroupTag_StripsTagFromTitle()
@@ -115,7 +115,7 @@ public class MediaFileNameParserTests
         result.Year.Should().Be(2010);
     }
 
-    // ── Edge cases ────────────────────────────────────────────────────────
+    // Edge cases
 
     [Fact]
     public void Parse_EmptyPath_ReturnsNull()

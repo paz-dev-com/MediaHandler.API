@@ -13,7 +13,7 @@ public class ListScanHistoryQueryHandlerTests
 {
     private readonly IApplicationDbContext _context = TestDbContext.Create();
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // Helpers
 
     private static ScanRun MakeScanRun(DateTime startedAt) => new()
     {
@@ -23,7 +23,7 @@ public class ListScanHistoryQueryHandlerTests
         StartedAt = startedAt
     };
 
-    // ── Tests ─────────────────────────────────────────────────────────────────
+    // Tests
 
     /// <summary>
     ///     Returns a paginated page of scan runs ordered by StartedAt descending.

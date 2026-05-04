@@ -29,7 +29,7 @@ public class KodiNameParserTests
     /// </summary>
     public static TheoryData<string, string, int?> MovieData => new()
     {
-        // ── Per-folder layout (folder name is authoritative) ─────────────────
+        // Per-folder layout (folder name is authoritative)
         // SOURCE: Kodi wiki — "The recommended naming scheme is 'Movie Title (Year)'"
         { "/nas/Movies/The Matrix (1999)/The Matrix (1999).mkv", "The Matrix", 1999 },
         { "/nas/Movies/Inception (2010)/Inception (2010).mkv", "Inception", 2010 },
@@ -51,7 +51,7 @@ public class KodiNameParserTests
         { "/nas/Movies/Mad Max Fury Road (2015)/movie.mkv", "Mad Max Fury Road", 2015 },
         { "/nas/Movies/Interstellar (2014)/Interstellar.2014.mkv", "Interstellar", 2014 },
 
-        // ── Flat layout (filename must be parsed) ────────────────────────────
+        // Flat layout (filename must be parsed)
         // SOURCE: Kodi wiki — "Movies can also be placed in a single folder"
         { "/nas/Movies/Inception.2010.1080p.BluRay.x264-GROUP.mkv", "Inception", 2010 },
         { "/nas/Movies/The.Dark.Knight.2008.BluRay.1080p.mkv", "The Dark Knight", 2008 },
@@ -70,7 +70,7 @@ public class KodiNameParserTests
         { "/nas/Movies/Us.2019.1080p.BluRay.mkv", "Us", 2019 },
         { "/nas/Movies/Parasite.2019.1080p.mkv", "Parasite", 2019 },
 
-        // ── Bracket-year in flat filename variant ────────────────────────────
+        // Bracket-year in flat filename variant
         // SOURCE: Kodi wiki — accepts "(YEAR)" in filename too
         { "/nas/Movies/The Prestige (2006).mkv", "The Prestige", 2006 },
         { "/nas/Movies/No Country for Old Men (2007).mkv", "No Country for Old Men", 2007 },
@@ -79,7 +79,7 @@ public class KodiNameParserTests
         { "/nas/Movies/Whiplash (2014).mkv", "Whiplash", 2014 },
         { "/nas/Movies/Birdman (2014).mkv", "Birdman", 2014 },
 
-        // ── Release-tag noise after year ─────────────────────────────────────
+        // Release-tag noise after year
         // SOURCE: Kodi wiki advancedsettings — moviecleanDatestamp, moviecleanString
         { "/nas/Movies/Dunkirk.2017.BluRay.1080p.DTS.x264-CHD.mkv", "Dunkirk", 2017 },
         { "/nas/Movies/La.La.Land.2016.PROPER.BluRay.1080p.mkv", "La La Land", 2016 },
@@ -91,12 +91,12 @@ public class KodiNameParserTests
         { "/nas/Movies/Dune.2021.HDR.2160p.WEB-DL.mkv", "Dune", 2021 },
         { "/nas/Movies/The.Batman.2022.1080p.WEB.H264-NAISU.mkv", "The Batman", 2022 },
 
-        // ── No year available ─────────────────────────────────────────────────
+        // No year available
         // SOURCE: Kodi wiki — scanner still extracts a title even without year
         { "/nas/Movies/Untitled Movie/movie.mkv", "Untitled Movie", null },
         { "/nas/Movies/film.mkv", "film", null },
 
-        // ── Numbers-only folder ───────────────────────────────────────────────
+        // Numbers-only folder
         // SOURCE: Observed Kodi default behaviour — folder beats filename heuristic
         { "/nas/Movies/1917 (2019)/1917.2019.mkv", "1917", 2019 },
         { "/nas/Movies/2001 (1968)/2001.mkv", "2001", 1968 },
@@ -114,7 +114,7 @@ public class KodiNameParserTests
     /// </summary>
     public static TheoryData<string, EpisodeNumberingHint, int, int> EpisodeData => new()
     {
-        // ── SxxExx (canonical) ────────────────────────────────────────────────
+        // SxxExx (canonical)
         // SOURCE: Kodi wiki — "The most common format is SxxExx"
         { "/nas/TV/Breaking Bad/Season 01/Breaking.Bad.S01E01.mkv", new EpisodeNumberingHint(), 1, 1 },
         { "/nas/TV/Breaking Bad/Season 02/Breaking.Bad.S02E05.mkv", new EpisodeNumberingHint(), 2, 5 },
@@ -126,52 +126,52 @@ public class KodiNameParserTests
         { "/nas/TV/Sopranos/Season 06/Sopranos.S06E21.mkv", new EpisodeNumberingHint(), 6, 21 },
         { "/nas/TV/Show/Season 01/show.s01e01.mkv", new EpisodeNumberingHint(), 1, 1 }, // lowercase
 
-        // ── 1x05 style ────────────────────────────────────────────────────────
+        // 1x05 style
         // SOURCE: Kodi wiki — "1x05 (season x episode) format is an alternate format"
         { "/nas/TV/Seinfeld/Season 01/Seinfeld.1x05.mkv", new EpisodeNumberingHint(), 1, 5 },
         { "/nas/TV/Show/Season 02/show.2x12.mkv", new EpisodeNumberingHint(), 2, 12 },
         { "/nas/TV/Show/Season 03/show.3x01.mkv", new EpisodeNumberingHint(), 3, 1 },
         { "/nas/TV/Show/Season 10/show.10x24.mkv", new EpisodeNumberingHint(), 10, 24 },
 
-        // ── xXy style (uppercase X separator) ────────────────────────────────
+        // xXy style (uppercase X separator)
         // SOURCE: Observed Kodi default behaviour — xXy matches the same episode pattern
         { "/nas/TV/Show/Season 01/Show.1X03.mkv", new EpisodeNumberingHint(), 1, 3 },
         { "/nas/TV/Show/Season 02/Show.2X07.mkv", new EpisodeNumberingHint(), 2, 7 },
 
-        // ── Date-based YYYY.MM.DD ─────────────────────────────────────────────
+        // Date-based YYYY.MM.DD
         // SOURCE: Kodi wiki — "Date-based shows use YYYY-MM-DD or YYYY.MM.DD format"
         {
             "/nas/TV/The Daily Show/2024/The.Daily.Show.2024.03.19.mkv", new EpisodeNumberingHint(), 2024, 78
         }, // 78 = day of year
         { "/nas/TV/Late Night/2023/Late.Night.2023.11.04.mkv", new EpisodeNumberingHint(), 2023, 308 },
 
-        // ── Folder-hint override (season from folder, no SxxExx in filename) ──
+        // Folder-hint override (season from folder, no SxxExx in filename)
         // SOURCE: Observed Kodi behaviour — parent folder "Season 03" sets season context
         { "/nas/TV/Show/Season 03/episode_title.mkv", new EpisodeNumberingHint(3), 3, -1 },
 
-        // ── Absolute episode numbering (no season) ────────────────────────────
+        // Absolute episode numbering (no season)
         // SOURCE: Kodi wiki — absolute episode numbering used for anime
         { "/nas/TV/Anime/Season 01/Anime.E042.mkv", new EpisodeNumberingHint(), 0, 42 },
         { "/nas/TV/Anime/Anime.042.mkv", new EpisodeNumberingHint(), 0, 42 },
 
-        // ── Additional SxxExx variants ────────────────────────────────────────
+        // Additional SxxExx variants
         // SOURCE: Kodi wiki — various observed patterns
         { "/nas/TV/Show/S03/Show.S03E07.WEB.mkv", new EpisodeNumberingHint(), 3, 7 },
         { "/nas/TV/Show/Season 05/Show - S05E02 - Title.mkv", new EpisodeNumberingHint(), 5, 2 },
         { "/nas/TV/Show/S01/Show_S01E11_720p.mkv", new EpisodeNumberingHint(), 1, 11 },
         { "/nas/TV/Show/S02/Show.S02E04.PROPER.mkv", new EpisodeNumberingHint(), 2, 4 },
 
-        // ── Mini-season / double-digit episodes ───────────────────────────────
+        // Mini-season / double-digit episodes
         // SOURCE: Observed Kodi default behaviour
         { "/nas/TV/Show/Season 01/Show.S01E100.mkv", new EpisodeNumberingHint(), 1, 100 },
         { "/nas/TV/Show/Season 12/Show.S12E01.mkv", new EpisodeNumberingHint(), 12, 1 },
 
-        // ── Mixed path naming ─────────────────────────────────────────────────
+        // Mixed path naming
         // SOURCE: Observed Kodi default behaviour — file path analysed as a whole
         { "/nas/TV/Silicon.Valley/Season 04/Silicon.Valley.S04E03.mkv", new EpisodeNumberingHint(), 4, 3 },
         { "/nas/TV/Mr.Robot/Season 02/Mr.Robot.S02E01.REPACK.mkv", new EpisodeNumberingHint(), 2, 1 },
 
-        // ── Specials Season 0 ─────────────────────────────────────────────────
+        // Specials Season 0
         // SOURCE: Kodi wiki — "Specials are placed in Season 00 or Specials folder"
         { "/nas/TV/Breaking Bad/Specials/Breaking.Bad.S00E01.mkv", new EpisodeNumberingHint(0), 0, 1 },
         { "/nas/TV/Breaking Bad/Season 00/Breaking.Bad.S00E02.mkv", new EpisodeNumberingHint(), 0, 2 }
@@ -431,7 +431,7 @@ public class KodiNameParserTests
     /// </summary>
     public static TheoryData<string, string?> FolderTitleData => new()
     {
-        // ── Behavioral contract table (from contracts/internal-contracts.md) ───
+        // Behavioral contract table (from contracts/internal-contracts.md)
         // SOURCE: contracts/internal-contracts.md — "Slow Horses"
         // Season S03 is skipped; parent "Slow Horses" is the show folder.
         {
@@ -463,25 +463,25 @@ public class KodiNameParserTests
             "The Killing US"
         },
 
-        // ── Season folder patterns to skip ───────────────────────────────────
+        // Season folder patterns to skip
         // SOURCE: Kodi wiki — Season XX and Saison XX are standard season folder names.
         { "/TV Shows/Breaking Bad/Season 03/Breaking.Bad.S03E01.mkv", "Breaking Bad" },
         { "/Séries/Some Show/Saison 05/Show.S05E01.mkv", "Some Show" },
         { "/Séries/Some Show/Specials/Show.S00E01.mkv", "Some Show" },
 
-        // ── TV-root folder names to skip ─────────────────────────────────────
+        // TV-root folder names to skip
         // SOURCE: Observed NAS folder naming — top-level TV containers must not become show title.
         { "/Series/The Sopranos/Season 01/Sopranos.S01E01.mkv", "The Sopranos" },
         { "/TV/Show Name/S01/Show.Name.S01E01.mkv", "Show Name" },
         { "/Shows/Sherlock/S02/Sherlock.S02E01.mkv", "Sherlock" },
 
-        // ── Generic folder names to skip ─────────────────────────────────────
+        // Generic folder names to skip
         // SOURCE: Observed NAS folder naming — generic containers must not become show title.
         { "/Videos/My Show/S01/Show.S01E01.mkv", "My Show" },
         { "/Media/My Show/Season 01/Show.S01E01.mkv", "My Show" },
         { "/Downloads/My Show/S02/Show.S02E01.mkv", "My Show" },
 
-        // ── No usable folder available ────────────────────────────────────────
+        // No usable folder available
         // No show-level folder can be found above season or root-only paths.
         { "/Séries/S03/Show.S03E01.mkv", null },
     };
@@ -558,47 +558,47 @@ public class KodiNameParserTests
     /// </summary>
     public static TheoryData<string, string> ReleaseTagStrippingData => new()
     {
-        // ── Quality tags before SxxExx ────────────────────────────────────────
+        // Quality tags before SxxExx
         // SOURCE: observed scene filenames — quality identifiers sometimes precede SxxExx
         { "/nas/TV/My Show/S01/My.Show.1080p.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.720p.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.2160p.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.4K.S01E01.mkv", "My Show" },
 
-        // ── Codec tags before SxxExx ──────────────────────────────────────────
+        // Codec tags before SxxExx
         { "/nas/TV/My Show/S01/My.Show.x264.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.x265.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.XviD.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.HEVC.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.H264.S01E01.mkv", "My Show" },
 
-        // ── Source tags before SxxExx ─────────────────────────────────────────
+        // Source tags before SxxExx
         { "/nas/TV/My Show/S01/My.Show.DVDRip.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.WEBRip.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.BluRay.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.HDTV.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.BDRip.S01E01.mkv", "My Show" },
 
-        // ── Language tags before SxxExx ───────────────────────────────────────
+        // Language tags before SxxExx
         { "/nas/TV/My Show/S01/My.Show.FRENCH.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.MULTi.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.VOSTFR.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.TRUEFRENCH.S01E01.mkv", "My Show" },
 
-        // ── Release group suffix attached to last word before SxxExx ─────────
+        // Release group suffix attached to last word before SxxExx
         { "/nas/TV/Show Name/S01/Show.Name-ETAY.S01E01.mkv", "Show Name" },
         { "/nas/TV/Show Name/S01/Show.Name-AvALoN.S01E01.mkv", "Show Name" },
 
-        // ── Multiple tags before SxxExx ───────────────────────────────────────
+        // Multiple tags before SxxExx
         { "/nas/TV/My Show/S01/My.Show.MULTi.1080p.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.FRENCH.DVDRip.S01E01.mkv", "My Show" },
         { "/nas/TV/My Show/S01/My.Show.720p.x264.WEBRip.S01E01.mkv", "My Show" },
 
-        // ── Accented characters MUST be preserved ─────────────────────────────
+        // Accented characters MUST be preserved
         // SOURCE: contracts/internal-contracts.md — Unicode preservation rule.
         { "/nas/TV/Ma Série/S01/Ma.Serie.FRENCH.S01E01.mkv", "Ma Serie" },
 
-        // ── Apostrophe in title MUST be preserved ─────────────────────────────
+        // Apostrophe in title MUST be preserved
         // SOURCE: contracts/internal-contracts.md — apostrophe preservation rule.
         { "/Séries/The Nanny/S04/Une.Nounou.D'enfer.FRENCH.S04E10.mkv", "Une Nounou D'enfer" },
     };

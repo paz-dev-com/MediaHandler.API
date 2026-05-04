@@ -29,7 +29,7 @@ public class ReviewItem : BaseEntity
     /// <summary>Current resolution state.</summary>
     public required ReviewStatus Status { get; set; }
 
-    // ── Parsed metadata (populated from the filename / NFO) ─────────────────
+    // Parsed metadata (populated from the filename / NFO)
 
     /// <summary>Title extracted from the filename or NFO; may be <c>null</c> if unparseable.</summary>
     public string? ParsedTitle { get; set; }
@@ -43,7 +43,7 @@ public class ReviewItem : BaseEntity
     /// <summary>Episode number extracted from the filename (TV shows only).</summary>
     public int? ParsedEpisode { get; set; }
 
-    // ── TMDB candidates ─────────────────────────────────────────────────────
+    // TMDB candidates
 
     /// <summary>
     ///     JSON-serialised array of TMDB candidates:
@@ -51,7 +51,7 @@ public class ReviewItem : BaseEntity
     /// </summary>
     public string CandidatesJson { get; set; } = "[]";
 
-    // ── Resolution fields ────────────────────────────────────────────────────
+    // Resolution fields
 
     /// <summary>TMDB id chosen by the administrator when <see cref="ReviewResolutionAction.Assign" />.</summary>
     public int? ResolvedTmdbId { get; set; }

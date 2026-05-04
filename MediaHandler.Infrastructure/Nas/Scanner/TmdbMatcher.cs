@@ -89,7 +89,7 @@ public sealed class TmdbMatcher : ITmdbMatcher
 
     private async Task<TmdbMatchResult> ResolveInternalAsync(MatchQuery query, CancellationToken ct)
     {
-        // ── Step 1: NfoTmdbId (highest precedence) ────────────────────────────
+        // Step 1: NfoTmdbId (highest precedence)
         if (query.NfoTmdbId.HasValue)
         {
             _logger.LogDebug("TMDB: resolving by NfoTmdbId={Id}", query.NfoTmdbId.Value);
@@ -99,7 +99,7 @@ public sealed class TmdbMatcher : ITmdbMatcher
             return NeedsReview(ReviewReason.NoTmdbResult, []);
         }
 
-        // ── Step 2: ExplicitTokenId (second precedence) ───────────────────────
+        // Step 2: ExplicitTokenId (second precedence)
         if (query.ExplicitTokenId.HasValue)
         {
             _logger.LogDebug("TMDB: resolving by ExplicitTokenId={Id}", query.ExplicitTokenId.Value);
@@ -109,7 +109,7 @@ public sealed class TmdbMatcher : ITmdbMatcher
             return NeedsReview(ReviewReason.NoTmdbResult, []);
         }
 
-        // ── Steps 3+4: Multi-language title search ───────────────────────────
+        // Steps 3+4: Multi-language title search
         // When SearchLanguages is set, iterate the full list. Otherwise fall back to the
         // legacy Language field (defaults to "en-US") for backward compatibility.
         var languages = query.SearchLanguages ?? [query.Language];
@@ -137,7 +137,7 @@ public sealed class TmdbMatcher : ITmdbMatcher
             lastFailResult = result;
         }
 
-        // ── Step 5: FallbackTitle retry ───────────────────────────────────────
+        // Step 5: FallbackTitle retry
         // Only when FallbackTitle is set AND differs from the primary title.
         // Callers must ensure FallbackTitle != Title to avoid a duplicate API call (F2 guard).
         if (query.FallbackTitle is not null && query.FallbackTitle != query.Title)

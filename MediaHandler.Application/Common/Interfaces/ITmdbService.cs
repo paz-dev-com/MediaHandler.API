@@ -27,7 +27,7 @@ public record TmdbSearchCandidate(
 
 public interface ITmdbService
 {
-    // ── Legacy search (used by existing TMDB import features) ─────────────────
+    // Legacy search (used by existing TMDB import features)
     Task<TmdbMediaDto?> SearchMediaAsync(string query, string language, CancellationToken cancellationToken = default);
 
     Task<TmdbMediaDetailsDto?> GetMediaDetailsAsync(int tmdbId, string mediaType, string language,
@@ -36,7 +36,7 @@ public interface ITmdbService
     Task<IEnumerable<TmdbSeasonDto>> GetTvShowSeasonsAsync(int tmdbId, string language,
         CancellationToken cancellationToken = default);
 
-    // ── Scanner: id-based lookups ──────────────────────────────────────────────
+    // Scanner: id-based lookups
     /// <summary>Looks up a movie by its TMDB id. Returns null when the id does not exist.</summary>
     Task<TmdbIdLookupResult?> GetMovieByIdAsync(int tmdbId, string language = "en-US",
         CancellationToken cancellationToken = default);
@@ -45,7 +45,7 @@ public interface ITmdbService
     Task<TmdbIdLookupResult?> GetTvShowByIdAsync(int tmdbId, string language = "en-US",
         CancellationToken cancellationToken = default);
 
-    // ── Scanner: multi-candidate search ───────────────────────────────────────
+    // Scanner: multi-candidate search
     /// <summary>
     ///     Searches TMDB and returns up to 5 candidates with popularity scores.
     ///     When <paramref name="year" /> is specified, filters to items within ±2 years of that value.

@@ -43,10 +43,10 @@ public class MediaConfiguration : IEntityTypeConfiguration<Media>
         builder.HasIndex(m => m.Title);
         builder.HasIndex(m => m.Type);
 
-        // ── Scanner additions ────────────────────────────────────────────────
+        // Scanner additions
         builder.Property(m => m.Year);
 
-        // ── Dashboard API / Enrichment additions ─────────────────────────────
+        // Dashboard API / Enrichment additions
         builder.Property(m => m.Status)
             .HasMaxLength(100);
 

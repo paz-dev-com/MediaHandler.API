@@ -71,16 +71,20 @@ public static class DependencyInjection
         services.AddScoped<IMediaImportService, MediaImportService>();
         services.AddScoped<IMediaAutoMatchService, MediaAutoMatchService>();
 
-        // ── Scanner services ─────────────────────────────────────────────────
+        // Scanner services
         // Singleton: owns in-memory scan state across requests.
         // Uses IServiceScopeFactory internally to resolve scoped dependencies per scan run.
         services.AddSingleton<ScanRunCoordinator>();
         services.AddSingleton<IScanRunCoordinator>(sp => sp.GetRequiredService<ScanRunCoordinator>());
 
-        // ── Enrichment coordinator ────────────────────────────────────────────
+        // Enrichment coordinator
         // Singleton: owns background TMDB enrichment run lifecycle (mirrors ScanRunCoordinator).
         services.AddSingleton<EnrichmentCoordinator>();
         services.AddSingleton<IEnrichmentCoordinator>(sp => sp.GetRequiredService<EnrichmentCoordinator>());
+
+        // File rename service
+        // Scoped: uses IApplicationDbContext (also scoped) for DB updates.
+        services.AddScoped<IFileRenameService, FileRenameService>();
 
         // Scoped scanner services (infrastructure-side)
         services.AddScoped<INasFileEnumerator, NasFileEnumerator>();

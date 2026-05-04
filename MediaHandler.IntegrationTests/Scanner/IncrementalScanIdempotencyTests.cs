@@ -48,7 +48,7 @@ public class IncrementalScanIdempotencyTests : ScannerIntegrationTestBase
 
         var coordinator = BuildCoordinator();
 
-        // ── Full scan ────────────────────────────────────────────────────────
+        // Full scan
         var fullStart = DateTime.UtcNow;
         var fullHandle = await coordinator.StartAsync(
             new ScanStartParameters(Guid.NewGuid(), [moviesRoot.Id], ScanMode.Full),
@@ -56,7 +56,7 @@ public class IncrementalScanIdempotencyTests : ScannerIntegrationTestBase
         await WaitForScanCompletion(fullHandle.ScanRunId, coordinator, 60);
         var fullDuration = (DateTime.UtcNow - fullStart).TotalSeconds;
 
-        // ── Incremental scan (same tree, unchanged) ──────────────────────────
+        // Incremental scan (same tree, unchanged)
         var incrStart = DateTime.UtcNow;
         var incrHandle = await coordinator.StartAsync(
             new ScanStartParameters(Guid.NewGuid(), [moviesRoot.Id], ScanMode.Incremental),
