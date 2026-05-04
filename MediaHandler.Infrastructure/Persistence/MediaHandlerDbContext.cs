@@ -30,6 +30,9 @@ public class MediaHandlerDbContext : DbContext, IApplicationDbContext
     public DbSet<NfoMetadata> NfoMetadata => Set<NfoMetadata>();
     public DbSet<EpisodeFileLink> EpisodeFileLinks => Set<EpisodeFileLink>();
 
+    // ── Dashboard API entities ────────────────────────────────────────────────
+    public DbSet<EnrichmentRun> EnrichmentRuns => Set<EnrichmentRun>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

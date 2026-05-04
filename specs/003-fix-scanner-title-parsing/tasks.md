@@ -138,13 +138,13 @@
 
 **Purpose**: Integration tests, backward compatibility verification, and end-to-end validation
 
-- [ ] T028 [P] Create end-to-end integration test `Sc008_TitleParsingFix` covering the **6** confirmed spec acceptance scenarios (Slow Horses, Law and Order SVU, The Nanny, The Killing US, The Wire, Sur écoute) plus release-tag-only filename edge case in `MediaHandler.IntegrationTests/Scanner/Sc008_TitleParsingFix.cs`
+- [x] T028 [P] Create end-to-end integration test `Sc008_TitleParsingFix` covering the **6** confirmed spec acceptance scenarios (Slow Horses, Law and Order SVU, The Nanny, The Killing US, The Wire, Sur écoute) plus release-tag-only filename edge case in `MediaHandler.IntegrationTests/Scanner/Sc008_TitleParsingFix.cs`
   > ℹ️ **A1 fix**: SC-001 originally stated "7 specific failures" but only 6 shows are confirmed in the spec. Count corrected to 6 (see spec.md SC-001 note).
-- [ ] T032 [P] Add regression test for FR-016 (re-scan suppression): verify that a file with a previously `Resolved` ReviewItem is **not** re-flagged on re-scan when the path is unchanged — guards against T023's cache refactoring accidentally breaking the resolved-path short-circuit in `ScanPipeline.cs` — in `MediaHandler.IntegrationTests/Scanner/Sc008_TitleParsingFix.cs` or dedicated `Fr016_RescanSuppressionTests.cs`
-- [ ] T029 Verify all existing scanner unit tests pass without modification (backward compatibility SC-005) — run `dotnet test MediaHandler.Tests --filter "KodiNameParser|TmdbMatcher"`
+- [x] T032 [P] Add regression test for FR-016 (re-scan suppression): verify that a file with a previously `Resolved` ReviewItem is **not** re-flagged on re-scan when the path is unchanged — guards against T023's cache refactoring accidentally breaking the resolved-path short-circuit in `ScanPipeline.cs` — in `MediaHandler.IntegrationTests/Scanner/Sc008_TitleParsingFix.cs` or dedicated `Fr016_RescanSuppressionTests.cs`
+- [x] T029 Verify all existing scanner unit tests pass without modification (backward compatibility SC-005) — run `dotnet test MediaHandler.Tests --filter "KodiNameParser|TmdbMatcher"`
   > ⚠️ **C2 note**: T011 changes the semantic meaning of `EpisodeNameParseResult.Title` from *episode title* to *show title*. Existing tests happen to NOT assert on `result.Title` value (confirmed at `KodiNameParserTests.cs:L214–222`), so they survive — but this is a near-miss. If any test in this suite starts asserting `result.Title == "<episode title text>"`, it will fail by design. Document this in PR description.
-- [ ] T030 Verify all existing integration tests pass without modification — run `dotnet test MediaHandler.IntegrationTests`
-- [ ] T031 Run quickstart.md verification checklist: confirm all 8 verification items pass (title extraction for known files, French title TMDB match, FallbackTitle match, existing tests green, scan duration ≤ 15% increase)
+- [x] T030 Verify all existing integration tests pass without modification — run `dotnet test MediaHandler.IntegrationTests`
+- [x] T031 Run quickstart.md verification checklist: confirm all 8 verification items pass (title extraction for known files, French title TMDB match, FallbackTitle match, existing tests green, scan duration ≤ 15% increase)
 
 
 ## Dependencies & Execution Order

@@ -44,9 +44,42 @@ public class ScanItemDecision : BaseEntity
     /// </summary>
     public Guid? ReviewItemId { get; set; }
 
+    // ── Dashboard API additions ─────────────────────────────────────────────
+
+    /// <summary>TMDB ID of the matched media entry, populated by the scanner pipeline.</summary>
+    public int? AssignedTmdbId { get; set; }
+
+    /// <summary>Media type of the TMDB assignment (Film or TvShow).</summary>
+    public MediaType? AssignedTmdbKind { get; set; }
+
+    /// <summary>
+    ///     JSON array of TMDB candidates considered during matching.
+    ///     Defaults to <c>"[]"</c>. Stored as <c>nvarchar(max)</c>.
+    /// </summary>
+    public string? CandidatesJson { get; set; }
+
+    /// <summary>Title parsed from the filename.</summary>
+    public string? ParsedTitle { get; set; }
+
+    /// <summary>Year parsed from the filename.</summary>
+    public int? ParsedYear { get; set; }
+
+    /// <summary>Season number parsed from the filename (TV only).</summary>
+    public int? ParsedSeason { get; set; }
+
+    /// <summary>Episode number parsed from the filename (TV only).</summary>
+    public int? ParsedEpisode { get; set; }
+
+    /// <summary>Media type determined by the scanner (Film or TvShow).</summary>
+    public MediaType? ParsedMediaType { get; set; }
+
+    /// <summary>FK to the <see cref="LibraryRoot" /> under which this file resides.</summary>
+    public Guid? LibraryRootId { get; set; }
+
     // ── Navigation ──────────────────────────────────────────────────────────
 
     public ScanRun ScanRun { get; set; } = null!;
     public MediaFile? MediaFile { get; set; }
     public ReviewItem? ReviewItem { get; set; }
+    public LibraryRoot? LibraryRoot { get; set; }
 }

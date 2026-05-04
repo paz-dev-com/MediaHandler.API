@@ -25,5 +25,8 @@ public interface IApplicationDbContext
     DbSet<NfoMetadata> NfoMetadata { get; }
     DbSet<EpisodeFileLink> EpisodeFileLinks { get; }
 
+    // ── Dashboard API entities ────────────────────────────────────────────────
+    DbSet<EnrichmentRun> EnrichmentRuns { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
