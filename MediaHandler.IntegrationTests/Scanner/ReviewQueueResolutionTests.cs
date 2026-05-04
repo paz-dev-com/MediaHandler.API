@@ -51,7 +51,7 @@ public class ReviewQueueResolutionTests : ScannerIntegrationTestBase
     {
         var ct = TestContext.Current.CancellationToken;
 
-        // ── Step 1: Run scan with a TMDB service that returns multiple candidates
+        // Step 1: Run scan with TMDB service returning multiple candidates
         //            (forces MultipleCandidates → ReviewItem)
         var fakeTmdbFirstScan = Substitute.For<ITmdbService>();
         fakeTmdbFirstScan.SearchCandidatesAsync(
@@ -87,7 +87,7 @@ public class ReviewQueueResolutionTests : ScannerIntegrationTestBase
             "the ambiguous-candidate file should produce a ReviewItem after the first scan");
         reviewItem!.Reason.Should().Be(ReviewReason.MultipleCandidates);
 
-        // ── Step 2: Resolve the review item via the command handler
+        // Step 2: Resolve the review item
         var resolveHandler = new ResolveReviewItemCommandHandler(
             DbContext,
             Substitute.For<ITmdbService>(),
@@ -121,7 +121,7 @@ public class ReviewQueueResolutionTests : ScannerIntegrationTestBase
         reviewItem.Status.Should().Be(ReviewStatus.Resolved);
         reviewItem.ResolvedTmdbId.Should().Be(ResolvedTmdbId);
 
-        // ── Step 3: Re-scan — the pipeline should read the saved resolution and NOT create a new ReviewItem
+        // Step 3: Re-scan — resolved path must not produce a new ReviewItem
         var fakeTmdbSecondScan = Substitute.For<ITmdbService>();
 
         // This time, still returns multiple candidates — but the pipeline should skip title-search

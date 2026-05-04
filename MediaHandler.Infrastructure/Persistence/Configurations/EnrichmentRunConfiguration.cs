@@ -26,7 +26,7 @@ public class EnrichmentRunConfiguration : IEntityTypeConfiguration<EnrichmentRun
         // ErrorDetailsJson stored as nvarchar(max) — no max length constraint
         builder.Property(r => r.ErrorDetailsJson);
 
-        // ── Indexes ─────────────────────────────────────────────────────────
+        // Indexes
 
         builder.HasIndex(r => r.Status)
             .HasDatabaseName("IX_EnrichmentRuns_Status");

@@ -44,7 +44,7 @@ public class ScanItemDecision : BaseEntity
     /// </summary>
     public Guid? ReviewItemId { get; set; }
 
-    // ── Dashboard API additions ─────────────────────────────────────────────
+    // Dashboard API additions
 
     /// <summary>TMDB ID of the matched media entry, populated by the scanner pipeline.</summary>
     public int? AssignedTmdbId { get; set; }
@@ -76,7 +76,7 @@ public class ScanItemDecision : BaseEntity
     /// <summary>FK to the <see cref="LibraryRoot" /> under which this file resides.</summary>
     public Guid? LibraryRootId { get; set; }
 
-    // ── Navigation ──────────────────────────────────────────────────────────
+    // Navigation
 
     public ScanRun ScanRun { get; set; } = null!;
     public MediaFile? MediaFile { get; set; }

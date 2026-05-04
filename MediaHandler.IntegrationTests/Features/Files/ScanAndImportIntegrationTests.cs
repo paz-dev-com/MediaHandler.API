@@ -19,7 +19,7 @@ namespace MediaHandler.IntegrationTests.Features.Files;
 /// </summary>
 public class ScanAndImportIntegrationTests : IntegrationTestBase
 {
-    // ── Shared test data ──────────────────────────────────────────────────
+    // Shared test data
 
     // Two movie files that the mocked NAS will "return"
     private static readonly List<NasFileInfo> TestNasFiles =
@@ -50,7 +50,7 @@ public class ScanAndImportIntegrationTests : IntegrationTestBase
         new DateTime(2010, 7, 16), 148, null, null, 8.8m, 34000,
         ["Action", "Science Fiction", "Adventure"], "en");
 
-    // ── Helpers ───────────────────────────────────────────────────────────
+    // Helpers
 
     private (INasService nas, ITmdbService tmdb, ScanAndImportNasCommandHandler handler) BuildHandler()
     {
@@ -83,7 +83,7 @@ public class ScanAndImportIntegrationTests : IntegrationTestBase
         return (nas, tmdb, handler);
     }
 
-    // ── Tests ─────────────────────────────────────────────────────────────
+    // Tests
 
     [Fact]
     public async Task ScanAndImport_NewFiles_CreatesMediaAndLinks()

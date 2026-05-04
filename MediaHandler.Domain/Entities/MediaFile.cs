@@ -11,7 +11,7 @@ public class MediaFile : BaseEntity
     public string? Format { get; set; }
     public string? Resolution { get; set; }
 
-    // ── Scanner additions ────────────────────────────────────────────────────
+    // Scanner additions
 
     /// <summary>
     ///     SHA-256 hex digest of <c>absPath|size|mtimeUnix</c> used for fast incremental
@@ -57,7 +57,7 @@ public class MediaFile : BaseEntity
     /// </summary>
     public DateTime? MissingSince { get; set; }
 
-    // ── Navigation ──────────────────────────────────────────────────────────
+    // Navigation
 
     public Media? Media { get; set; }
 

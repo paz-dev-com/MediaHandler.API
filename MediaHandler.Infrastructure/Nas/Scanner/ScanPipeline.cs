@@ -152,7 +152,7 @@ public sealed class ScanPipeline(
 
         var exclusionCtx = new ExclusionContext(root, KodiRegexCatalog.DefaultExclusionRules, nomediaFolders);
 
-        // ── Build NFO lookup from enumerated entries ─────────────────────────
+        // Build NFO lookup from enumerated entries
         // NFO files are discovered during enumeration and looked up when each video
         // file is processed. Two lookup levels:
         //   • Per-file: "<videoBasename>.nfo" in the same folder (e.g., "Inception (2010).nfo")
@@ -165,7 +165,7 @@ public sealed class ScanPipeline(
                 .ToDictionary(e => e.AbsolutePath, StringComparer.OrdinalIgnoreCase)
             : [];
 
-        // ── Exclusion stage ─────────────────────────────────────────────────
+        // Exclusion stage
         logger.LogDebug("Stage transition: exclusion evaluation for root {RootId}", root.Id);
         var videoFiles = new List<NasFileEntry>();
         foreach (var entry in allEntries)
@@ -199,7 +199,7 @@ public sealed class ScanPipeline(
             videoFiles.Add(entry);
         }
 
-        // ── Pre-load resolved ReviewItems for this batch of paths ──
+        // Pre-load resolved ReviewItems for this batch of paths
         var videoPaths = videoFiles.Select(f => f.AbsolutePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var videoPathsList = videoPaths.ToList(); // List<string> is reliably translated to SQL IN clause
 
@@ -222,7 +222,7 @@ public sealed class ScanPipeline(
             .Where(mf => mf.LibraryRootId == root.Id)
             .ToDictionaryAsync(mf => mf.FilePath, mf => mf, StringComparer.OrdinalIgnoreCase, ct);
 
-        // ── Group by folder for stacking detection ──────────────────────────
+        // Group by folder for stacking detection
         logger.LogDebug("Stage transition: stacking detection for root {RootId}", root.Id);
         var byFolder = videoFiles
             .GroupBy(f => Path.GetDirectoryName(f.AbsolutePath) ?? string.Empty);
@@ -246,7 +246,7 @@ public sealed class ScanPipeline(
             }
         }
 
-        // ── Classification & persistence stage ──────────────────────────────
+        // Classification & persistence stage
         logger.LogDebug("Stage transition: classification and persistence for root {RootId}", root.Id);
         await EmitProgressAsync(scanRun.Id, "Classifying", 0, videoFiles.Count, null, progress, ct);
 
@@ -358,7 +358,7 @@ public sealed class ScanPipeline(
             return;
         }
 
-        // ── Determine classification (movie vs episode) ──────────────────────
+        // Determine classification (movie vs episode)
         var isFromTvRoot = root.Kind is LibraryRootKind.TvShows;
         var hint = BuildEpisodeHint(file.AbsolutePath);
         var episodeNumbers = !isFromTvRoot
@@ -370,7 +370,7 @@ public sealed class ScanPipeline(
         else if (root.Kind == LibraryRootKind.Movies || episodeNumbers.Count == 0)
             role = role == MediaFileRole.StackedPart ? MediaFileRole.StackedPart : MediaFileRole.Main;
 
-        // ── NFO lookup and parsing ────────────────────────────────────────────
+        // NFO lookup and parsing
         // Discover the most authoritative NFO sidecar for this file:
         //   1. Per-file NFO: "<videoBasename>.nfo" in the same folder (highest precedence)
         //   2. Per-folder NFO: "movie.nfo" or "tvshow.nfo" in the same folder
@@ -456,7 +456,7 @@ public sealed class ScanPipeline(
         // Done here (before the resolved-review check) so all downstream branches have access.
         var matchQuery = BuildMatchQuery(file, root, episodeNumbers, role, nfoResult);
 
-        // ── TMDB resolution stage ─────────────────────────────────────────────
+        // TMDB resolution stage
         // Check for a previously resolved ReviewItem for this path first.
         // If found, skip the TMDB title search and re-use the administrator's saved mapping.
         if (resolvedReviewItems.TryGetValue(file.AbsolutePath, out var resolvedItem)

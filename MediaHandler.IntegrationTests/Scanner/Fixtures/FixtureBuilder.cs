@@ -66,7 +66,7 @@ public sealed class FixtureBuilder
     // SOURCE: https://kodi.wiki/view/Naming_video_files/Movies
     private void BuildMovies()
     {
-        // ── Per-folder layout (160+ movies) ────────────────────────────────
+        // Per-folder layout (160+ movies)
         // All entries use the canonical "Title (Year)" folder naming so the parser
         // takes the folder name as authoritative (Kodi wiki per-folder precedence).
         var perFolderMovies = new[]
@@ -138,7 +138,7 @@ public sealed class FixtureBuilder
 
         foreach (var (title, year) in perFolderMovies) AddPerFolderMovie(title, year);
 
-        // ── NFO sidecars (5 movies with NFO files) ──────────────────────────
+        // NFO sidecars (5 movies with NFO files)
         // SOURCE: Kodi wiki — NFO files override filename/folder-based detection
         // SOURCE: https://kodi.wiki/view/NFO_files/Movies
         AddPerFolderMovieWithNfo("Pan's Labyrinth", 2006, 1905);
@@ -147,7 +147,7 @@ public sealed class FixtureBuilder
         AddPerFolderMovieWithNfo("Your Name", 2016, 372058);
         AddPerFolderMovieWithNfo("In the Mood for Love", 2000, 10674);
 
-        // ── Flat layout (20 movies, no sub-folder) ──────────────────────────
+        // Flat layout (20 movies, no sub-folder)
         // SOURCE: Kodi wiki — flat libraries supported; filename must carry title+year
         var flatMovies = new[]
         {
@@ -175,7 +175,7 @@ public sealed class FixtureBuilder
 
         foreach (var (filename, _, _) in flatMovies) AddFlatMovie(filename);
 
-        // ── Stacked movies (5 pairs) ─────────────────────────────────────────
+        // Stacked movies (5 pairs)
         // SOURCE: Kodi wiki — stacking suffixes cd1/cd2/disc1/disc2/part1/part2
         // SOURCE: https://kodi.wiki/view/Advancedsettings.xml#stackingregex
         AddStackedMovie("Kill Bill Vol 1", 2003, "cd");

@@ -31,7 +31,7 @@ public class MediaFileConfiguration : IEntityTypeConfiguration<MediaFile>
 
         builder.HasIndex(mf => mf.MediaId);
 
-        // ── Scanner additions ────────────────────────────────────────────────
+        // Scanner additions
 
         builder.Property(mf => mf.Fingerprint)
             .IsRequired()

@@ -166,9 +166,9 @@
 
 ### Implementation for User Story 6
 
-- [ ] T034 [US6] Implement `FileRenameService` (implements `IFileRenameService`) — generates names per convention ("Movie Title (Year)" for films, "Show Name - SXXEXX - Episode Title" for TV); performs case-insensitive conflict check (`StringComparison.OrdinalIgnoreCase` against `Directory.GetFiles()`); executes atomic `File.Move`; updates `MediaFile.FilePath` in DB; compensates (moves file back) if DB save fails in MediaHandler.Infrastructure/Services/FileRenameService.cs
-- [ ] T035 [US6] Create `RenameFileCommand` record (MediaFileId, Preview) with `RenameFileCommandValidator` and `RenameFileCommandHandler`: loads `MediaFile` + associated `Media`; **for TV episodes, also loads `TvEpisode` matching `ScanItemDecision.ParsedSeason` + `ParsedSeason.ParsedEpisode` to get episode title (`TvEpisode.Name`) — return 422 validation error "Episode title not available — run TMDB enrichment first" if no `TvEpisode` record found**; validates TMDB assignment exists; delegates to `IFileRenameService`; returns `FileRenameResultDto` in MediaHandler.Application/Features/Dashboard/Commands/RenameFile/RenameFileCommand.cs
-- [ ] T036 [US6] Create `AdminFilesController` (`[Route("api/v1/admin/files")]`, `[Authorize(Policy = "AdminOnly")]`) with `POST /{id}/rename` endpoint accepting `preview` query param (default `true`), returning `ApiResponse<FileRenameResultDto>` in MediaHandler.API/Controllers/AdminFilesController.cs
+- [x] T034 [US6] Implement `FileRenameService` (implements `IFileRenameService`) — generates names per convention ("Movie Title (Year)" for films, "Show Name - SXXEXX - Episode Title" for TV); performs case-insensitive conflict check (`StringComparison.OrdinalIgnoreCase` against `Directory.GetFiles()`); executes atomic `File.Move`; updates `MediaFile.FilePath` in DB; compensates (moves file back) if DB save fails in MediaHandler.Infrastructure/Services/FileRenameService.cs
+- [x] T035 [US6] Create `RenameFileCommand` record (MediaFileId, Preview) with `RenameFileCommandValidator` and `RenameFileCommandHandler`: loads `MediaFile` + associated `Media`; **for TV episodes, also loads `TvEpisode` matching `ScanItemDecision.ParsedSeason` + `ParsedSeason.ParsedEpisode` to get episode title (`TvEpisode.Name`) — return 422 validation error "Episode title not available — run TMDB enrichment first" if no `TvEpisode` record found**; validates TMDB assignment exists; delegates to `IFileRenameService`; returns `FileRenameResultDto` in MediaHandler.Application/Features/Dashboard/Commands/RenameFile/RenameFileCommand.cs
+- [x] T036 [US6] Create `AdminFilesController` (`[Route("api/v1/admin/files")]`, `[Authorize(Policy = "AdminOnly")]`) with `POST /{id}/rename` endpoint accepting `preview` query param (default `true`), returning `ApiResponse<FileRenameResultDto>` in MediaHandler.API/Controllers/AdminFilesController.cs
 
 **Checkpoint**: Admins can preview and execute single-file renames with TMDB naming conventions.
 
@@ -182,8 +182,8 @@
 
 ### Implementation for User Story 7
 
-- [ ] T037 [US7] Create `BatchRenameTvGroupCommand` record (GroupId, ScanId, Preview) with `BatchRenameTvGroupCommandValidator` and `BatchRenameTvGroupCommandHandler` (resolves group members, validates TMDB assignment on group, loads `TvEpisode` records for all episodes in group — return 422 if any missing, validates ALL rename targets before executing ANY — rejects entire batch on conflict, delegates per-file rename to `IFileRenameService`, returns list of `FileRenameResultDto`) in MediaHandler.Application/Features/Dashboard/Commands/BatchRenameTvGroup/BatchRenameTvGroupCommand.cs
-- [ ] T038 [US7] Add `POST /api/v1/admin/tv-groups/{groupId}/rename` endpoint to **`AdminScanDecisionsController`** (consistent with T029 TV group assign, per research.md R7 decision), accepting `scanId` and `preview` query params, returning `ApiResponse<BatchRenameResponse>`. Use `[HttpPost("~/api/v1/admin/tv-groups/{groupId}/rename")]` route override since the controller base route is `/api/v1/admin/scan-decisions` in MediaHandler.API/Controllers/AdminScanDecisionsController.cs
+- [x] T037 [US7] Create `BatchRenameTvGroupCommand` record (GroupId, ScanId, Preview) with `BatchRenameTvGroupCommandValidator` and `BatchRenameTvGroupCommandHandler` (resolves group members, validates TMDB assignment on group, loads `TvEpisode` records for all episodes in group — return 422 if any missing, validates ALL rename targets before executing ANY — rejects entire batch on conflict, delegates per-file rename to `IFileRenameService`, returns list of `FileRenameResultDto`) in MediaHandler.Application/Features/Dashboard/Commands/BatchRenameTvGroup/BatchRenameTvGroupCommand.cs
+- [x] T038 [US7] Add `POST /api/v1/admin/tv-groups/{groupId}/rename` endpoint to **`AdminScanDecisionsController`** (consistent with T029 TV group assign, per research.md R7 decision), accepting `scanId` and `preview` query params, returning `ApiResponse<BatchRenameResponse>`. Use `[HttpPost("~/api/v1/admin/tv-groups/{groupId}/rename")]` route override since the controller base route is `/api/v1/admin/scan-decisions` in MediaHandler.API/Controllers/AdminScanDecisionsController.cs
 
 **Checkpoint**: Admins can preview and execute batch renames for entire TV shows.
 
@@ -193,12 +193,12 @@
 
 **Purpose**: Final validation, cleanup, and cross-cutting improvements
 
-- [ ] T039 [P] Register `FileRenameService` and `EnrichmentCoordinator` in DI container in MediaHandler.Infrastructure/DependencyInjection.cs
-- [ ] T040 [P] ~~Auth verification~~ — **Superseded**: `[Authorize(Policy = "AdminOnly")]` is already applied at controller level during T023 (AdminScanController), T025 (AdminScanDecisionsController), T033 (AdminEnrichmentController), T036 (AdminFilesController). Verify coverage in T044 quickstart checklist.
-- [ ] T041 [P] Verify all responses use `ApiResponse<T>` envelope and Result pattern — no unhandled exceptions for expected error cases
-- [ ] T042 Run `dotnet build MediaHandler.slnx` and fix any compilation errors across all projects
-- [ ] T043 Run `dotnet format --verify-no-changes` and fix any formatting violations
-- [ ] T044 Run quickstart.md verification checklist — apply migration, start API, verify all 8 endpoint contracts respond correctly
+- [x] T039 [P] Register `FileRenameService` and `EnrichmentCoordinator` in DI container in MediaHandler.Infrastructure/DependencyInjection.cs
+- [x] T040 [P] ~~Auth verification~~ — **Superseded**: `[Authorize(Policy = "AdminOnly")]` is already applied at controller level during T023 (AdminScanController), T025 (AdminScanDecisionsController), T033 (AdminEnrichmentController), T036 (AdminFilesController). Verify coverage in T044 quickstart checklist.
+- [x] T041 [P] Verify all responses use `ApiResponse<T>` envelope and Result pattern — no unhandled exceptions for expected error cases
+- [x] T042 Run `dotnet build MediaHandler.slnx` and fix any compilation errors across all projects
+- [x] T043 Run `dotnet format --verify-no-changes` and fix any formatting violations
+- [x] T044 Run quickstart.md verification checklist — apply migration, start API, verify all 8 endpoint contracts respond correctly
 
 ---
 

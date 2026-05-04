@@ -18,7 +18,7 @@ public class Media : BaseEntity
     public int? VoteCount { get; set; }
     public string? Language { get; set; }
 
-    // ── Scanner additions ────────────────────────────────────────────────────
+    // Scanner additions
 
     /// <summary>
     ///     Release year parsed from the filename or NFO, distinct from
@@ -40,7 +40,7 @@ public class Media : BaseEntity
     /// </summary>
     public StackGroup? StackGroup { get; set; }
 
-    // ── Dashboard API / Enrichment additions ────────────────────────────────
+    // Dashboard API / Enrichment additions
 
     /// <summary>
     ///     TMDB release or series status (e.g., "Released", "Returning Series", "Ended").
@@ -54,7 +54,7 @@ public class Media : BaseEntity
     /// <summary>Total number of episodes. TV shows only; <c>null</c> for films.</summary>
     public int? NumberOfEpisodes { get; set; }
 
-    // ── Navigation ──────────────────────────────────────────────────────────
+    // Navigation
 
     public ICollection<MediaGenre> Genres { get; set; } = new List<MediaGenre>();
     public ICollection<MediaFile> MediaFiles { get; set; } = new List<MediaFile>();

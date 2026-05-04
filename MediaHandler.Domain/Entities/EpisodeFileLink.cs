@@ -32,7 +32,7 @@ public class EpisodeFileLink : BaseEntity
     /// </summary>
     public int OrderInFile { get; set; } = 1;
 
-    // ── Navigation ──────────────────────────────────────────────────────────
+    // Navigation
 
     public TvEpisode TvEpisode { get; set; } = null!;
     public MediaFile MediaFile { get; set; } = null!;

@@ -24,7 +24,7 @@ public class ScanItemDecisionConfiguration : IEntityTypeConfiguration<ScanItemDe
         builder.Property(d => d.RuleId)
             .HasMaxLength(100);
 
-        // ── Dashboard API additions ─────────────────────────────────────────
+        // Dashboard API additions
 
         builder.Property(d => d.AssignedTmdbKind)
             .HasConversion<string>();
@@ -38,7 +38,7 @@ public class ScanItemDecisionConfiguration : IEntityTypeConfiguration<ScanItemDe
         builder.Property(d => d.ParsedMediaType)
             .HasConversion<string>();
 
-        // ── Indexes ─────────────────────────────────────────────────────────
+        // Indexes
 
         // Composite index for per-run path lookups
         builder.HasIndex(d => new { d.ScanRunId, d.FilePath });
@@ -57,7 +57,7 @@ public class ScanItemDecisionConfiguration : IEntityTypeConfiguration<ScanItemDe
         builder.HasIndex(d => new { d.ScanRunId, d.ParsedTitle })
             .HasDatabaseName("IX_ScanItemDecisions_ScanRunId_ParsedTitle");
 
-        // ── Relationships ────────────────────────────────────────────────────
+        // Relationships
 
         builder.HasOne(d => d.MediaFile)
             .WithMany()

@@ -1,6 +1,7 @@
 using MediaHandler.API.Contracts.Admin;
 using MediaHandler.API.Models;
 using MediaHandler.Application.Features.Dashboard.Commands.AssignTvGroup;
+using MediaHandler.Application.Features.Dashboard.Commands.BatchRenameTvGroup;
 using MediaHandler.Application.Features.Dashboard.Commands.ReassignTmdb;
 using MediaHandler.Application.Features.Dashboard.DTOs;
 using MediaHandler.Application.Features.Dashboard.Queries.ListTvShowGroups;
@@ -142,6 +143,79 @@ public class AdminScanDecisionsController(ISender sender) : ControllerBase
             r.AssignedPosterPath);
 
         return Ok(ApiResponse<AssignTvGroupResponse>.Success(response));
+    }
+
+    /// <summary>
+    ///     Preview or execute a batch TMDB-convention rename for all episode files in a TV show group.
+    ///     When <paramref name="preview" /> is <c>true</c> (default), returns proposed filenames
+    ///     without touching the filesystem or database.
+    ///     Validates ALL targets before executing ANY — rejects entire batch on any conflict.
+    ///     Uses a route override because the TV-groups resource lives at a different prefix
+    ///     (<c>/api/v1/admin/tv-groups</c>) than this controller's base route.
+    /// </summary>
+    [HttpPost("~/api/v1/admin/tv-groups/{groupId:guid}/rename")]
+    [ProducesResponseType<ApiResponse<BatchRenameResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> BatchRenameTvGroup(
+        Guid groupId,
+        [FromQuery] Guid scanId,
+        [FromQuery] bool preview = true,
+        CancellationToken ct = default)
+    {
+        var result = await sender.Send(
+            new BatchRenameTvGroupCommand(groupId, scanId, preview), ct);
+
+        if (!result.IsSuccess)
+        {
+            var error = result.Errors.FirstOrDefault() ?? "Unknown error";
+
+            if (error.StartsWith("GROUP_NOT_FOUND", StringComparison.OrdinalIgnoreCase))
+                return NotFound(ApiResponse.Fail(new ApiError("GROUP_NOT_FOUND",
+                    $"TV show group '{groupId}' was not found in scan '{scanId}'.")));
+
+            if (error.StartsWith("TMDB_ASSIGNMENT_REQUIRED", StringComparison.OrdinalIgnoreCase))
+                return UnprocessableEntity(ApiResponse.Fail(new ApiError("TMDB_ASSIGNMENT_REQUIRED",
+                    "One or more episodes in this group have no TMDB assignment. " +
+                    "Run group assignment first.")));
+
+            if (error.StartsWith("EPISODE_TITLE_NOT_AVAILABLE", StringComparison.OrdinalIgnoreCase))
+                return UnprocessableEntity(ApiResponse.Fail(new ApiError("EPISODE_TITLE_NOT_AVAILABLE",
+                    "Episode title not available for one or more episodes — " +
+                    "run TMDB enrichment first.")));
+
+            if (error.StartsWith("FILE_CONFLICT", StringComparison.OrdinalIgnoreCase))
+                return UnprocessableEntity(ApiResponse.Fail(new ApiError("FILE_CONFLICT",
+                    ExtractMessage(error))));
+
+            if (error.StartsWith("FILE_NOT_FOUND", StringComparison.OrdinalIgnoreCase))
+                return NotFound(ApiResponse.Fail(new ApiError("FILE_NOT_FOUND",
+                    ExtractMessage(error))));
+
+            return BadRequest(ApiResponse.Fail(new ApiError("VALIDATION_ERROR", error)));
+        }
+
+        var r = result.Value;
+        var executedCount = r.Episodes.Count(e => e.Executed);
+        var response = new BatchRenameResponse(
+            r.GroupId,
+            r.ParsedShowName,
+            r.Episodes,
+            r.Episodes.Count,
+            executedCount);
+
+        return Ok(ApiResponse<BatchRenameResponse>.Success(response));
+    }
+
+    private static string ExtractMessage(string error)
+    {
+        var colonIdx = error.IndexOf(':');
+        return colonIdx >= 0 && colonIdx < error.Length - 2
+            ? error[(colonIdx + 2)..]
+            : error;
     }
 }
 

@@ -215,7 +215,7 @@ public class Sc008_TitleParsingFix : ScannerIntegrationTestBase
         DbContext.LibraryRoots.Add(tvRoot);
         await DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        // ── First scan: all TMDB searches return NeedsReview → ReviewItem created ─
+        // First scan: TMDB searches return NeedsReview, ReviewItem created
         var matcher1 = Substitute.For<ITmdbMatcher>();
         matcher1.ResolveAsync(Arg.Any<MatchQuery>(), Arg.Any<CancellationToken>())
             .Returns(new TmdbMatchResult(false, null, null, true, ReviewReason.NoTmdbResult, []));
@@ -231,7 +231,7 @@ public class Sc008_TitleParsingFix : ScannerIntegrationTestBase
                 TestContext.Current.CancellationToken);
         reviewItem.Should().NotBeNull("first scan should create a ReviewItem");
 
-        // ── Resolve the ReviewItem ────────────────────────────────────────────
+        // Resolve the ReviewItem
         var currentUser = Substitute.For<ICurrentUserService>();
         currentUser.OktaId.Returns("test-admin");
         var resolveTmdb = Substitute.For<ITmdbService>();
@@ -247,7 +247,7 @@ public class Sc008_TitleParsingFix : ScannerIntegrationTestBase
         await DbContext.Entry(reviewItem).ReloadAsync(TestContext.Current.CancellationToken);
         reviewItem.Status.Should().Be(ReviewStatus.Resolved);
 
-        // ── Second scan: resolved path must NOT produce a new Open ReviewItem ─
+        // Second scan: resolved path must not produce a new open ReviewItem
         var coordinatorDb2 = new MediaHandlerDbContext(DbContextOptions);
         WithFakeNasService(entries, ["/nas"]);
 

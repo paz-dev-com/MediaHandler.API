@@ -59,7 +59,7 @@ public sealed class ScanRunCoordinator : IScanRunCoordinator, IDisposable
             await using var scope = _scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<MediaHandlerDbContext>();
 
-            // ── Single-active-scan guard ──────────────────────────────────────
+            // Single-active-scan guard
             var activeRun = await db.ScanRuns
                 .AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Status == ScanStatus.Running, ct);
@@ -67,7 +67,7 @@ public sealed class ScanRunCoordinator : IScanRunCoordinator, IDisposable
             if (activeRun is not null)
                 throw new InvalidOperationException("SCAN_IN_PROGRESS");
 
-            // ── Create the ScanRun row ────────────────────────────────────────
+            // Create the ScanRun row
             var rootIds = parameters.LibraryRootIds;
             var scanRun = new ScanRun
             {
@@ -80,7 +80,7 @@ public sealed class ScanRunCoordinator : IScanRunCoordinator, IDisposable
             db.ScanRuns.Add(scanRun);
             await db.SaveChangesAsync(ct);
 
-            // ── Create progress channel ───────────────────────────────────────
+            // Create progress channel
             var channel = Channel.CreateUnbounded<ScanProgressDto>(new UnboundedChannelOptions
             {
                 SingleWriter = true,
@@ -90,7 +90,7 @@ public sealed class ScanRunCoordinator : IScanRunCoordinator, IDisposable
             var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             _runs[parameters.ScanRunId] = (cts, channel);
 
-            // ── Fire and forget background scan (owns its own DI scope) ───────
+            // Fire and forget background scan (owns its own DI scope)
             _ = ExecuteScanAsync(parameters.ScanRunId, parameters, cts, channel);
 
             _logger.LogInformation("ScanRunCoordinator: started scan run {ScanRunId} (mode={Mode})",

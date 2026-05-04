@@ -15,7 +15,7 @@ public interface IApplicationDbContext
     DbSet<TvEpisode> TvEpisodes { get; }
     DbSet<UserEpisode> UserEpisodes { get; }
 
-    // ── Scanner entities ─────────────────────────────────────────────────────
+    // Scanner entities
     DbSet<LibraryRoot> LibraryRoots { get; }
     DbSet<ScanRun> ScanRuns { get; }
     DbSet<ScanItemDecision> ScanItemDecisions { get; }
@@ -25,7 +25,7 @@ public interface IApplicationDbContext
     DbSet<NfoMetadata> NfoMetadata { get; }
     DbSet<EpisodeFileLink> EpisodeFileLinks { get; }
 
-    // ── Dashboard API entities ────────────────────────────────────────────────
+    // Dashboard API entities
     DbSet<EnrichmentRun> EnrichmentRuns { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

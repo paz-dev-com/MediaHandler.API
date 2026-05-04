@@ -1,7 +1,6 @@
 // KodiRegexCatalog — clean-room re-derived regex tables for the NAS scanner pipeline.
 //
 // R-001 CLEAN-ROOM DECLARATION
-// ─────────────────────────────────────────────────────────────────────────────
 // Every pattern in this file is derived EXCLUSIVELY from:
 //   1. Kodi wiki — File naming conventions:
 //      https://kodi.wiki/view/Naming_video_files
@@ -13,7 +12,6 @@
 //
 // NO string in this file is copied verbatim from
 // /home/tpfeifer/Repos/xbmc-master/ or any other GPL-licensed Kodi source.
-// ─────────────────────────────────────────────────────────────────────────────
 
 using System.Text.RegularExpressions;
 using MediaHandler.Domain.Entities;
@@ -265,7 +263,7 @@ public sealed class KodiRegexCatalog
     {
         var rules = new List<ExclusionRule>
         {
-            // ── Directories are not media files ──────────────────────────────
+            // Directories are not media files
             new()
             {
                 Name = "not-a-file",
@@ -276,7 +274,7 @@ public sealed class KodiRegexCatalog
                 Priority = 0
             },
 
-            // ── Extension allow-list (implicit: anything not in VideoExtensions) ──
+            // Extension allow-list (implicit: anything not in VideoExtensions)
             new()
             {
                 Name = "non-video-extension",
@@ -287,7 +285,7 @@ public sealed class KodiRegexCatalog
                 Priority = 10
             },
 
-            // ── Sample filename pattern ───────────────────────────────────────
+            // Sample filename pattern
             // SOURCE: Kodi wiki — "Files with '-sample' suffix are excluded"
             new()
             {
@@ -299,7 +297,7 @@ public sealed class KodiRegexCatalog
                 Priority = 20
             },
 
-            // ── Trailer filename pattern ─────────────────────────────────────
+            // Trailer filename pattern
             // SOURCE: Kodi advancedsettings <trailerextensions> and observed behaviour
             new()
             {
@@ -311,7 +309,7 @@ public sealed class KodiRegexCatalog
                 Priority = 21
             },
 
-            // ── Excluded subfolders ──────────────────────────────────────────
+            // Excluded subfolders
             // SOURCE: Kodi wiki — "Sample, Extras, Featurettes, Trailers folders excluded"
             new()
             {
@@ -395,7 +393,7 @@ public sealed class KodiRegexCatalog
                 Priority = 38
             },
 
-            // ── Hidden folder (Unix dot-prefix) ─────────────────────────────
+            // Hidden folder (Unix dot-prefix)
             // SOURCE: Observed Kodi behaviour — dot-prefix directories skipped
             new()
             {
@@ -407,7 +405,7 @@ public sealed class KodiRegexCatalog
                 Priority = 40
             },
 
-            // ── .nomedia marker ──────────────────────────────────────────────
+            // .nomedia marker
             // SOURCE: Kodi advancedsettings — ".nomedia" file suppresses scanning
             new()
             {
@@ -419,7 +417,7 @@ public sealed class KodiRegexCatalog
                 Priority = 50
             },
 
-            // ── .nomedia subtree ─────────────────────────────────────────────
+            // .nomedia subtree
             new()
             {
                 Name = "nomedia-subtree",

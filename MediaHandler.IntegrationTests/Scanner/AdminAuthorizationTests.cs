@@ -14,7 +14,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace MediaHandler.IntegrationTests.Scanner;
 
-// ─── Shared factory fixture ───────────────────────────────────────────────────
 
 /// <summary>
 ///     Class-level fixture for <see cref="AdminAuthorizationTests" />.
@@ -45,7 +44,7 @@ public sealed class AdminAuthorizationFixture : IAsyncLifetime
 
                 builder.ConfigureServices(services =>
                 {
-                    // ── Replace SQL Server DbContext with EF Core InMemory ─────────────
+                    // Replace SQL Server DbContext with EF Core InMemory
                     // Authorization middleware fires before any controller/DB code, so
                     // InMemory is sufficient for 401/403 checks AND for the ScanRun-row
                     // assertion test.
@@ -93,7 +92,6 @@ public sealed class AdminAuthorizationFixture : IAsyncLifetime
     }
 }
 
-// ─── Test class ───────────────────────────────────────────────────────────────
 
 /// <summary>
 ///     SC-008: authorization coverage for every scanner-related admin endpoint.

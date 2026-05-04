@@ -39,7 +39,7 @@ public sealed class TvEpisodeMatcher : ITvEpisodeMatcher
             return [new EpisodeNumber(season, episode)];
         }
 
-        // ── 2. SeasonXEpisode (1x05 / 1X05 / 2x12 style) ────────────────────
+        // 2. SeasonXEpisode (1x05 / 1X05 / 2x12 style)
         // SOURCE: Kodi wiki — "1x05 is an alternate naming format"
         var sxEpMatch = KodiRegexCatalog.SeasonXEpisode.Match(nameNoExt);
         if (sxEpMatch.Success)
@@ -49,7 +49,7 @@ public sealed class TvEpisodeMatcher : ITvEpisodeMatcher
             return [new EpisodeNumber(season, episode)];
         }
 
-        // ── 3. Date-based YYYY.MM.DD or YYYY-MM-DD ───────────────────────────
+        // 3. Date-based YYYY.MM.DD or YYYY-MM-DD
         // SOURCE: Kodi wiki — "YYYY-MM-DD date-based episode naming"
         var dateMatch = KodiRegexCatalog.DateBased.Match(nameNoExt);
         if (dateMatch.Success)
@@ -64,7 +64,7 @@ public sealed class TvEpisodeMatcher : ITvEpisodeMatcher
             }
         }
 
-        // ── 4. Absolute episode "E042" (anime) ───────────────────────────────
+        // 4. Absolute episode "E042" (anime)
         // SOURCE: Kodi wiki — absolute episode numbers for anime (season=0)
         var absEMatch = KodiRegexCatalog.AbsoluteEpisode.Match(nameNoExt);
         if (absEMatch.Success)
@@ -75,13 +75,13 @@ public sealed class TvEpisodeMatcher : ITvEpisodeMatcher
             return [new EpisodeNumber(season, episodeNum)];
         }
 
-        // ── 5. Three-digit absolute number (anime fallback) ──────────────────
+        // 5. Three-digit absolute number (anime fallback)
         // SOURCE: Observed Kodi behaviour — zero-padded 3-digit number
         var absNumMatch = KodiRegexCatalog.AbsoluteNumber.Match(nameNoExt);
         if (absNumMatch.Success && int.TryParse(absNumMatch.Groups[1].Value, out var absNum))
             return [new EpisodeNumber(0, absNum)];
 
-        // ── 6. No pattern found ───────────────────────────────────────────────
+        // 6. No pattern found
         return [];
     }
 

@@ -19,17 +19,17 @@ public sealed class ExclusionEvaluator : IExclusionEvaluator
 {
     public ExclusionVerdict Evaluate(NasFileEntry entry, ExclusionContext ctx)
     {
-        // ── Directories are never media files ────────────────────────────────
+        // Directories are never media files
         // SOURCE: Observed Kodi behaviour — pipeline treats directories as containers
         if (entry.IsDirectory)
             return new ExclusionVerdict(true, "Not a media file (directory)", "not-a-file");
 
-        // ── .nomedia file itself ──────────────────────────────────────────────
+        // .nomedia file itself
         // SOURCE: Kodi advancedsettings — ".nomedia" file presence suppresses the folder
         if (string.Equals(entry.FileName, ".nomedia", StringComparison.OrdinalIgnoreCase))
             return new ExclusionVerdict(true, ".nomedia marker file", "nomedia-marker");
 
-        // ── .nomedia subtree ─────────────────────────────────────────────────
+        // .nomedia subtree
         // SOURCE: Kodi advancedsettings — any file under a .nomedia-marked folder is excluded
         if (ctx.NomediaFolders is { Count: > 0 })
             foreach (var markedFolder in ctx.NomediaFolders)
@@ -37,7 +37,7 @@ public sealed class ExclusionEvaluator : IExclusionEvaluator
                     && entry.AbsolutePath.Length > markedFolder.Length)
                     return new ExclusionVerdict(true, $"Under .nomedia folder: {markedFolder}", "nomedia-subtree");
 
-        // ── Hidden folder (Unix dot-prefix) ──────────────────────────────────
+        // Hidden folder (Unix dot-prefix)
         // SOURCE: Observed Kodi behaviour — directories whose names start with '.' are skipped
         var normalised = entry.AbsolutePath.Replace('\\', '/');
         var pathSegments = normalised.Split('/');
@@ -45,7 +45,7 @@ public sealed class ExclusionEvaluator : IExclusionEvaluator
             if (segment.StartsWith('.') && segment.Length > 1)
                 return new ExclusionVerdict(true, $"Hidden folder: {segment}", "hidden-folder");
 
-        // ── Excluded folder names (Extras, Sample, Featurettes, etc.) ────────
+        // Excluded folder names (Extras, Sample, Featurettes, etc.)
         // SOURCE: Kodi wiki — these subfolder names are excluded from media scanning
         foreach (var segment in pathSegments[..^1])
         {
@@ -65,14 +65,14 @@ public sealed class ExclusionEvaluator : IExclusionEvaluator
                 return new ExclusionVerdict(true, $"Excluded subfolder: {segment}", "deleted-scenes-folder");
         }
 
-        // ── Video extension allow-list ────────────────────────────────────────
+        // Video extension allow-list
         // SOURCE: Kodi wiki advancedsettings <videoextensions>
         if (string.IsNullOrEmpty(entry.Extension)
             || !KodiRegexCatalog.VideoExtensions.Contains(entry.Extension))
             return new ExclusionVerdict(true, $"Non-video extension: .{entry.Extension ?? "(none)"}",
                 "non-video-extension");
 
-        // ── Sample filename pattern ───────────────────────────────────────────
+        // Sample filename pattern
         // SOURCE: Kodi wiki — "Files with '-sample' suffix are excluded"
         var nameNoExt = Path.GetFileNameWithoutExtension(entry.FileName);
         if (KodiRegexCatalog.SampleFilenamePattern.IsMatch(nameNoExt))
@@ -82,7 +82,7 @@ public sealed class ExclusionEvaluator : IExclusionEvaluator
         if (KodiRegexCatalog.TrailerFilenamePattern.IsMatch(nameNoExt))
             return new ExclusionVerdict(true, "Trailer file", "trailer-filename");
 
-        // ── Passed all checks ─────────────────────────────────────────────────
+        // Passed all checks
         return new ExclusionVerdict(false);
     }
 

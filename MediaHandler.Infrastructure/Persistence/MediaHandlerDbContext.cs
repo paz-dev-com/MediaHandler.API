@@ -20,7 +20,7 @@ public class MediaHandlerDbContext : DbContext, IApplicationDbContext
     public DbSet<TvEpisode> TvEpisodes => Set<TvEpisode>();
     public DbSet<UserEpisode> UserEpisodes => Set<UserEpisode>();
 
-    // ── Scanner entities ─────────────────────────────────────────────────────
+    // Scanner entities
     public DbSet<LibraryRoot> LibraryRoots => Set<LibraryRoot>();
     public DbSet<ScanRun> ScanRuns => Set<ScanRun>();
     public DbSet<ScanItemDecision> ScanItemDecisions => Set<ScanItemDecision>();
@@ -30,7 +30,7 @@ public class MediaHandlerDbContext : DbContext, IApplicationDbContext
     public DbSet<NfoMetadata> NfoMetadata => Set<NfoMetadata>();
     public DbSet<EpisodeFileLink> EpisodeFileLinks => Set<EpisodeFileLink>();
 
-    // ── Dashboard API entities ────────────────────────────────────────────────
+    // Dashboard API entities
     public DbSet<EnrichmentRun> EnrichmentRuns => Set<EnrichmentRun>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
