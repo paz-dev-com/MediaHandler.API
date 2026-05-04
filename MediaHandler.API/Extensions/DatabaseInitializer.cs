@@ -1,3 +1,4 @@
+using MediaHandler.Domain.Enums;
 using MediaHandler.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -34,5 +35,33 @@ public static class DatabaseInitializer
             if (pending.Any())
                 await db.Database.MigrateAsync();
         }
+
+        await CleanUpStaleEnrichmentRunsAsync(db);
+    }
+
+    /// <summary>
+    ///     Transitions any <c>EnrichmentRun</c> rows stuck in the <c>Running</c> state to
+    ///     <c>Failed</c> with a crash-recovery reason.  This guards against runs that were
+    ///     interrupted by a process restart and would otherwise block future enrichment jobs
+    ///     (the filtered unique index permits at most one <c>Running</c> row at a time).
+    /// </summary>
+    private static async Task CleanUpStaleEnrichmentRunsAsync(MediaHandlerDbContext db)
+    {
+        var staleRuns = await db.EnrichmentRuns
+            .Where(r => r.Status == EnrichmentStatus.Running)
+            .ToListAsync();
+
+        if (staleRuns.Count == 0)
+            return;
+
+        var now = DateTime.UtcNow;
+        foreach (var run in staleRuns)
+        {
+            run.Status = EnrichmentStatus.Failed;
+            run.FailureReason = "Process restarted unexpectedly";
+            run.FinishedAt = now;
+        }
+
+        await db.SaveChangesAsync();
     }
 }
