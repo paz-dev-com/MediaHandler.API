@@ -24,7 +24,10 @@ public record TmdbMediaDetailsDto(
     decimal? VoteAverage,
     int? VoteCount,
     IReadOnlyList<string>? Genres,
-    string Language);
+    string Language,
+    string? Status = null,
+    int? NumberOfSeasons = null,
+    int? NumberOfEpisodes = null);
 
 public record TmdbSeasonDto(
     int SeasonNumber,
