@@ -40,6 +40,20 @@ public class Media : BaseEntity
     /// </summary>
     public StackGroup? StackGroup { get; set; }
 
+    // ── Dashboard API / Enrichment additions ────────────────────────────────
+
+    /// <summary>
+    ///     TMDB release or series status (e.g., "Released", "Returning Series", "Ended").
+    ///     Populated during TMDB enrichment.
+    /// </summary>
+    public string? Status { get; set; }
+
+    /// <summary>Total number of seasons. TV shows only; <c>null</c> for films.</summary>
+    public int? NumberOfSeasons { get; set; }
+
+    /// <summary>Total number of episodes. TV shows only; <c>null</c> for films.</summary>
+    public int? NumberOfEpisodes { get; set; }
+
     // ── Navigation ──────────────────────────────────────────────────────────
 
     public ICollection<MediaGenre> Genres { get; set; } = new List<MediaGenre>();

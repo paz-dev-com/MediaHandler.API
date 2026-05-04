@@ -46,6 +46,14 @@ public class MediaConfiguration : IEntityTypeConfiguration<Media>
         // ── Scanner additions ────────────────────────────────────────────────
         builder.Property(m => m.Year);
 
+        // ── Dashboard API / Enrichment additions ─────────────────────────────
+        builder.Property(m => m.Status)
+            .HasMaxLength(100);
+
+        builder.Property(m => m.NumberOfSeasons);
+
+        builder.Property(m => m.NumberOfEpisodes);
+
         builder.HasOne(m => m.NfoMetadata)
             .WithOne()
             .HasForeignKey<Media>(m => m.NfoMetadataId)

@@ -29,6 +29,7 @@ public class TestDbContext : DbContext, IApplicationDbContext
     public DbSet<StackGroup> StackGroups => Set<StackGroup>();
     public DbSet<NfoMetadata> NfoMetadata => Set<NfoMetadata>();
     public DbSet<EpisodeFileLink> EpisodeFileLinks => Set<EpisodeFileLink>();
+    public DbSet<EnrichmentRun> EnrichmentRuns => Set<EnrichmentRun>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

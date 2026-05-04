@@ -6,12 +6,12 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/003-fix-scanner-title-parsing/plan.md
+at specs/004-admin-dashboard-api/plan.md
 <!-- SPECKIT END -->
 
 ## Active Technologies
-- C# / .NET 10 + MediatR, FluentValidation, EF Core (Npgsql), ASP.NET Core (develop)
-- PostgreSQL (via EF Core with Npgsql provider) (develop)
+- C# / .NET 10 + MediatR, FluentValidation, EF Core (SQL Server), ASP.NET Core (develop)
+- SQL Server (via EF Core with Microsoft.EntityFrameworkCore.SqlServer provider) (develop)
 
 ## Recent Changes
-- develop: Added C# / .NET 10 + MediatR, FluentValidation, EF Core (Npgsql), ASP.NET Core
+- develop: Added C# / .NET 10 + MediatR, FluentValidation, EF Core (SQL Server), ASP.NET Core
