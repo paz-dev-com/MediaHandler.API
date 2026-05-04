@@ -1,6 +1,9 @@
 using MediaHandler.API.Contracts.Admin;
 using MediaHandler.API.Models;
 using MediaHandler.Application.Common.DTOs;
+using MediaHandler.Application.Common.Models;
+using MediaHandler.Application.Features.Dashboard.DTOs;
+using MediaHandler.Application.Features.Dashboard.Queries.ListScanDecisions;
 using MediaHandler.Application.Features.Scan.Commands.CancelScan;
 using MediaHandler.Application.Features.Scan.Commands.StartScan;
 using MediaHandler.Application.Features.Scan.Queries.GetActiveScan;
@@ -172,5 +175,40 @@ public class AdminScanController(ISender sender) : ControllerBase
             pagedResult.TotalPages);
 
         return Ok(ApiResponse<IReadOnlyList<ScanRunDto>>.Success(pagedResult.Items, meta));
+    }
+
+    /// <summary>
+    ///     Browse all <c>ScanItemDecision</c> records for a scan run with optional filters.
+    ///     Paginated with <c>page</c> and <c>pageSize</c> (max 100).
+    /// </summary>
+    [HttpGet("{scanId:guid}/decisions")]
+    [ProducesResponseType<ApiResponse<PagedResult<ScanItemDecisionDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListDecisions(
+        Guid scanId,
+        [FromQuery] ScanDecisionKind? decisionType = null,
+        [FromQuery] MediaType? mediaType = null,
+        [FromQuery] Guid? libraryRootId = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        CancellationToken ct = default)
+    {
+        var result = await sender.Send(
+            new ListScanDecisionsQuery(scanId, decisionType, mediaType, libraryRootId, page, pageSize), ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse.Fail(new ApiError("VALIDATION_ERROR",
+                result.Errors.FirstOrDefault() ?? "Invalid query parameters.")));
+
+        var pagedResult = result.Value;
+        var meta = new ApiResponseMeta(
+            pagedResult.Page,
+            pagedResult.PageSize,
+            pagedResult.TotalCount,
+            pagedResult.TotalPages);
+
+        return Ok(ApiResponse<PagedResult<ScanItemDecisionDto>>.Success(pagedResult, meta));
     }
 }
