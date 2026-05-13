@@ -60,10 +60,10 @@ public class ScanAndImportIntegrationTests : IntegrationTestBase
         // Configure TMDB mock — search by query
         tmdb.SearchMediaAsync(Arg.Is<string>(q => q.Contains("Matrix")), Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
-            .Returns(MatrixSearchResult);
+            .Returns(new List<TmdbMediaDto> { MatrixSearchResult });
         tmdb.SearchMediaAsync(Arg.Is<string>(q => q.Contains("Inception")), Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
-            .Returns(InceptionSearchResult);
+            .Returns(new List<TmdbMediaDto> { InceptionSearchResult });
 
         // Configure TMDB details mock
         tmdb.GetMediaDetailsAsync(603, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())

@@ -4,6 +4,7 @@
 using MediaHandler.API.Contracts.Admin;
 using MediaHandler.API.Models;
 using MediaHandler.Application.Common.DTOs;
+using MediaHandler.Application.Features.Review.Commands.BulkResolveReviewItems;
 using MediaHandler.Application.Features.Review.Commands.ResolveReviewItem;
 using MediaHandler.Application.Features.Review.Queries.ListReviewItems;
 using MediaHandler.Domain.Enums;
@@ -107,5 +108,41 @@ public class AdminReviewController(ISender sender) : ControllerBase
         }
 
         return Ok(ApiResponse<ReviewItemDto>.Success(result.Value));
+    }
+
+    /// <summary>
+    ///     Resolve all Open review items whose file path is inside <paramref name="request" />'s
+    ///     <c>ParentFolderPath</c>, applying the same action to every matched item in one call.
+    /// </summary>
+    [HttpPost("bulk-resolve")]
+    [ProducesResponseType<ApiResponse<BulkResolveResult>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> BulkResolveReviewItems(
+        [FromBody] BulkResolveReviewRequest request,
+        CancellationToken ct = default)
+    {
+        var command = new BulkResolveReviewItemsCommand(
+            request.ParentFolderPath,
+            request.Action,
+            request.TmdbId,
+            request.Kind);
+
+        var result = await sender.Send(command, ct);
+
+        if (!result.IsSuccess)
+        {
+            var error = result.Errors.FirstOrDefault() ?? "Unknown error";
+
+            if (error.Contains("TMDB_ID_NOT_FOUND", StringComparison.OrdinalIgnoreCase))
+                return UnprocessableEntity(ApiResponse.Fail(new ApiError("TMDB_ID_NOT_FOUND",
+                    $"The TMDB id {request.TmdbId} does not correspond to a known movie or TV show.")));
+
+            return BadRequest(ApiResponse.Fail(new ApiError("VALIDATION_ERROR", error)));
+        }
+
+        return Ok(ApiResponse<BulkResolveResult>.Success(result.Value));
     }
 }

@@ -62,7 +62,7 @@
 
 ---
 
-## Phase 3: User Story 8 — ScanItemDecision Entity Enhancement (Priority: P1) 🎯 MVP
+## Phase 3: User Story 8 — ScanItemDecision Entity Enhancement (Priority: P1)  MVP
 
 **Goal**: Ensure the scan pipeline populates the new `ScanItemDecision` fields so downstream features have data to work with
 
@@ -202,122 +202,116 @@
 
 ---
 
-## Dependencies & Execution Order
+---
+
+## Phase 12: User Story 13 — Bulk Review Item Resolution by Parent Folder (Priority: P1)
+
+**Goal**: Resolve all open review items sharing the same parent folder path in a single operation
+
+**Independent Test**: Call `POST /api/v1/admin/review-items/bulk-resolve` with `{ parentFolderPath, action, tmdbId, kind }`, verify all Open ReviewItems under that folder path are resolved and `resolvedCount` is returned
+
+### Implementation for User Story 13
+
+- [x] T045 [US13] Create `BulkResolveReviewItemsCommand` record (`ParentFolderPath`, `Action`, `TmdbId?`, `Kind?`) with `BulkResolveReviewItemsCommandValidator` and `BulkResolveReviewItemsCommandHandler` (loads all Open `ReviewItem` rows where `FilePath` starts with `parentFolderPath`, applies same resolution action to each — mirrors single-item logic (Assign verifies TMDB via `ITmdbService`, Dismiss/Delete supported), returns `resolvedCount`) in MediaHandler.Application/Features/Review/Commands/BulkResolveReviewItems/BulkResolveReviewItemsCommand.cs
+- [x] T046 [US13] Add `POST /api/v1/admin/review-items/bulk-resolve` endpoint to `AdminReviewController`, accepting `BulkResolveReviewRequest` body (`ParentFolderPath`, `Action`, `TmdbId?`, `Kind?`), returning `ApiResponse<BulkResolveResult>` (`ResolvedCount`) in MediaHandler.API/Controllers/AdminReviewController.cs
+
+**Checkpoint**: Admins can resolve all sibling review items in a folder in one call.
+
+---
+
+## Phase 13: User Story 14 — Parent Folder TMDB Validation Endpoints (Priority: P2)
+
+**Goal**: Provide a paginated view of unique NAS parent folders aggregated from `MediaFile.FilePath`, with per-folder TMDB assignment status and an assign endpoint
+
+**Independent Test**: Call `GET /api/v1/admin/parent-folders`, verify folders are grouped by parent directory with correct `status` (`NotAssigned`/`Assigned`/`InCollection`), `episodeCount`, and `detectedShowName`. Call `PUT /api/v1/admin/parent-folders/{folderId}/assign` with a TMDB TV show ID, verify all `ScanItemDecision` records linked to media files in that folder get updated.
+
+### Implementation for User Story 14
+
+- [x] T047 [US14] [P] Create `ParentFolderGroupDto` record (`Id`, `FolderPath`, `DetectedShowName`, `EpisodeCount`, `Status` [enum string: `NotAssigned`/`Assigned`/`InCollection`], `TmdbId?`, `TmdbTitle?`) in MediaHandler.Application/Features/Dashboard/DTOs/ParentFolderGroupDto.cs
+- [x] T048 [US14] Create `ListParentFoldersQuery` record (`Status?`, `Page`, `PageSize`) with `ListParentFoldersQueryValidator` and `ListParentFoldersQueryHandler`: groups `MediaFile.FilePath` by parent directory (using `Path.GetDirectoryName`-equivalent string slicing on SQL), computes deterministic `Id = SHA256(folderPath.ToLowerInvariant())`, derives `DetectedShowName` from last path segment, counts `EpisodeCount`, determines `Status` from TMDB coverage (`InCollection` if any linked `Media.TmdbId` is non-null AND overview is populated; `Assigned` if `ScanItemDecision.AssignedTmdbId` is set; otherwise `NotAssigned`), returns paginated `ParentFolderGroupDto` list in MediaHandler.Application/Features/Dashboard/Queries/ListParentFolders/ListParentFoldersQuery.cs
+- [x] T049 [US14] Create `AssignParentFolderCommand` record (`FolderId`, `FolderPath`, `TmdbId`, `Kind`) with `AssignParentFolderCommandValidator` and `AssignParentFolderCommandHandler`: verifies TMDB via `ITmdbService`, finds all `MediaFile` rows whose `FilePath` starts with `FolderPath`, bulk-updates linked `ScanItemDecision.AssignedTmdbId`/`AssignedTmdbKind`, upserts `Media` row via `MediaImportService`, updates `MediaFile.MediaId`, returns updated `ParentFolderGroupDto` in MediaHandler.Application/Features/Dashboard/Commands/AssignParentFolder/AssignParentFolderCommand.cs
+- [x] T050 [US14] Create `AdminParentFoldersController` (`[Route("api/v1/admin/parent-folders")]`, `[Authorize(Policy = "AdminOnly")]`) with `GET /` (query params: `status?`, `page`, `pageSize`, returning `ApiResponse<PagedResult<ParentFolderGroupDto>>`) and `PUT /{folderId}/assign` (body: `AssignParentFolderRequest` with `FolderPath`, `TmdbId`, `Kind`, returning `ApiResponse<ParentFolderGroupDto>`) in MediaHandler.API/Controllers/AdminParentFoldersController.cs
+
+**Checkpoint**: Admins can view all TV show parent folders, filter by assignment status, and bulk-assign TMDB entries at the folder level.
+
+---
+
+## Phase 14: Frontend Support — Grouped Scan Decisions Endpoint (Priority: P2)
+
+**Goal**: Server-side TV show episode deduplication and grouping for the scan results browser. Eliminates need for client-side deduplication.
+
+### Implementation
+
+- [x] T051 [P] Create `ScanDecisionShowGroupDto` record (`ShowName`, `EpisodeCount`, `AssignedTmdbId`, `AssignedKind`, `AssignedTitle`, `AssignedYear`, `AssignedPosterPath`, `Episodes` list of `ScanItemDecisionDto`) in MediaHandler.Application/Features/Dashboard/DTOs/ScanDecisionShowGroupDto.cs
+- [x] T052 Create `ListGroupedScanDecisionsQuery` with handler — deduplicates by file path, groups TV episodes by normalized `ParsedTitle` (strips language suffixes), movies stay as single-item groups, majority TMDB assignment per group — in MediaHandler.Application/Features/Dashboard/Queries/ListGroupedScanDecisions/ListGroupedScanDecisionsQuery.cs
+- [x] T053 Add `GET /api/v1/admin/scan/{scanId}/decisions/grouped` endpoint to `AdminScanController`, accepting same filters as flat decisions endpoint, returning `ApiResponse<List<ScanDecisionShowGroupDto>>` in MediaHandler.API/Controllers/AdminScanController.cs
+
+**Checkpoint**: Frontend can call grouped endpoint instead of doing client-side deduplication.
+
+---
+
+## Phase 15: Frontend Support — Enrichment History Endpoint (Priority: P2)
+
+**Goal**: Paginated history of past enrichment runs for the enrichment page
+
+### Implementation
+
+- [x] T054 Create `ListEnrichmentHistoryQuery` with handler — paginated, ordered by `StartedAt` descending, deserializes `ErrorDetailsJson` into typed `EnrichmentErrorDetailDto` list — in MediaHandler.Application/Features/Dashboard/Queries/ListEnrichmentHistory/ListEnrichmentHistoryQuery.cs
+- [x] T055 Add `GET /api/v1/admin/enrichment/history` endpoint to `AdminEnrichmentController`, accepting `page` and `pageSize` query params, returning `ApiResponse<IReadOnlyList<EnrichmentRunDto>>` with pagination meta in MediaHandler.API/Controllers/AdminEnrichmentController.cs
+
+**Checkpoint**: Frontend can display paginated enrichment run history with error details.
+
+---
+
+## Phase 16: Issue Fix — Reassign TMDB for Already-Enriched Media (Priority: P1)
+
+**Goal**: Fix the reassign endpoint to correctly handle media entries that have already been enriched with full TMDB metadata. Currently reassigning an already-enriched media to a new TMDB ID may fail or leave stale data.
+
+**Independent Test**: Assign a media file to TMDB ID X, run enrichment (populating overview, genres, seasons, etc.), then call `PUT /api/v1/admin/scan-decisions/{id}/reassign` with TMDB ID Y — verify the decision's `AssignedTmdbId` is updated, the linked `MediaFile.MediaId` points to the new `Media` row (created or existing), and the old enrichment data is cleared or a re-enrichment is flagged.
+
+**Depends on**: Phase 5 (US2 - Reassignment Endpoint)
+
+### Implementation for Reassign Fix
+
+- [x] T056 [P] Investigate `ReassignTmdbCommandHandler` in MediaHandler.Application/Features/Dashboard/Commands/ReassignTmdb/ReassignTmdbCommand.cs — verify it handles the case where `MediaFile.MediaId` already points to an enriched `Media` entity. Check if: (a) the handler creates a new `Media` row or reuses an existing one for the new TMDB ID, (b) old `Media` row orphans are cleaned up if no other files reference it, (c) `Media.Overview` and related enrichment fields are cleared when TMDB ID changes to flag re-enrichment
+- [x] T057 Fix `ReassignTmdbCommandHandler` to correctly handle already-enriched media: (1) look up existing `Media` row for the new `tmdbId` — reuse if found, create new if not, (2) update `MediaFile.MediaId` to the new/existing `Media` row, (3) if the old `Media` row has no remaining `MediaFile` references, optionally mark it for cleanup, (4) update `ScanItemDecision` fields (`AssignedTmdbId`, `AssignedTmdbKind`, assigned title/year/poster from TMDB lookup) — modify MediaHandler.Application/Features/Dashboard/Commands/ReassignTmdb/ReassignTmdbCommand.cs
+- [x] T058 [P] Fix `AssignTvGroupCommandHandler` to apply the same enriched-media handling as T057 — when re-assigning a TV show group to a different TMDB ID, ensure all member `MediaFile` rows are updated and old orphan `Media` rows are handled — modify MediaHandler.Application/Features/Dashboard/Commands/AssignTvGroup/AssignTvGroupCommand.cs
+
+**Checkpoint**: Reassigning TMDB for already-enriched media works correctly; no orphan or stale data
+
+---
+
+## Phase 17: Issue Fix — Enrichment Per-Media Details Endpoint (Priority: P2)
+
+**Goal**: Provide a detailed breakdown of each enrichment run showing which media entries were enriched/failed/skipped, with their file names and counts
+
+**Independent Test**: Run an enrichment, call `GET /api/v1/admin/enrichment/{runId}/details` — verify response contains a list of per-media entries with `mediaId`, `tmdbId`, `title`, `type`, `status` (Enriched/Failed/Skipped), `fileCount`, `fileNames`, and `error` (for failed entries)
+
+**Depends on**: Phase 8 (US5 — Enrichment), Phase 15 (Enrichment History)
+
+### Implementation for Enrichment Per-Media Details
+
+- [x] T059 [P] Create `EnrichmentMediaDetailDto` record (`MediaId`, `TmdbId`, `Title`, `Type` [Film/TvShow], `Status` [Enriched/Failed/Skipped], `FileCount`, `FileNames` [list of string], `Error` [nullable]) in MediaHandler.Application/Features/Dashboard/DTOs/EnrichmentMediaDetailDto.cs
+- [x] T060 [P] Add `EnrichedMediaIdsJson` column to `EnrichmentRun` entity to track which media IDs were processed and their status during enrichment — modify MediaHandler.Domain/Entities/EnrichmentRun.cs. Add column mapping in MediaHandler.Infrastructure/Persistence/Configurations/EnrichmentRunConfiguration.cs. Generate migration.
+- [x] T061 Update `EnrichmentCoordinator` to record per-media processing results in `EnrichedMediaIdsJson` — for each media entry processed, append `{ mediaId, status }` to the JSON field. This enables the details endpoint to reconstruct what happened per media — modify MediaHandler.Infrastructure/Services/EnrichmentCoordinator.cs
+- [x] T062 Create `GetEnrichmentRunDetailsQuery` record (`RunId`) with handler: (1) load `EnrichmentRun` by ID, (2) parse `EnrichedMediaIdsJson` to get list of processed media IDs and statuses, (3) for each media ID, join to `Media` table (get title, tmdbId, type) and `MediaFile` table (get file count and file names), (4) merge with `ErrorDetailsJson` for failed entries, (5) return `List<EnrichmentMediaDetailDto>` — in MediaHandler.Application/Features/Dashboard/Queries/GetEnrichmentRunDetails/GetEnrichmentRunDetailsQuery.cs
+- [x] T063 Add `GET /api/v1/admin/enrichment/{runId}/details` endpoint to `AdminEnrichmentController`, returning `ApiResponse<List<EnrichmentMediaDetailDto>>` — modify MediaHandler.API/Controllers/AdminEnrichmentController.cs
+
+**Checkpoint**: Frontend can fetch detailed per-media breakdown for any enrichment run
+
+---
+
+## Dependencies & Execution Order (Issue Fixes — Phases 16–17)
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: No dependencies — can start immediately
-- **Foundational (Phase 2)**: Depends on Setup completion — BLOCKS all user stories
-- **US8 (Phase 3)**: Depends on Foundational — must complete before US1 (provides data for scan decisions browser)
-- **US1 (Phase 4)**: Depends on US8 (needs populated `ScanItemDecision` fields)
-- **US2 (Phase 5)**: Depends on Foundational — can run in parallel with US1
-- **US3 (Phase 6)**: Depends on Foundational — can run in parallel with US1/US2
-- **US4 (Phase 7)**: Depends on US3 (needs TV group computation logic)
-- **US5 (Phase 8)**: Depends on Foundational — can run in parallel with US1-US4
-- **US6 (Phase 9)**: Depends on Foundational — can run in parallel with US1-US5
-- **US7 (Phase 10)**: Depends on US3 (TV group resolution) and US6 (single-file rename service)
-- **Polish (Phase 11)**: Depends on all user stories being complete
-
-### User Story Dependencies
-
-- **US8 (P1)**: Foundational only — MUST complete first (provides data for all other stories)
-- **US1 (P1)**: Depends on US8 — scan decisions must have new fields populated
-- **US2 (P1)**: Foundational only — independently testable
-- **US3 (P2)**: Foundational only — independently testable
-- **US4 (P2)**: Depends on US3 — needs TV group computation
-- **US5 (P2)**: Foundational only — independently testable
-- **US6 (P3)**: Foundational only — independently testable
-- **US7 (P3)**: Depends on US3 + US6 — needs group resolution and rename service
-
-### Within Each User Story
-
-- Models/DTOs before services
-- Services before handlers
-- Handlers before controller endpoints
-- Core implementation before integration
+- **Phase 16 (Reassign Fix)**: Depends on Phase 5 (US2 — Reassignment endpoint must exist). Independent of Phase 17.
+- **Phase 17 (Enrichment Details)**: Depends on Phase 8 (US5 — Enrichment must exist) and Phase 15 (History endpoint). Independent of Phase 16.
 
 ### Parallel Opportunities
 
-- All Setup tasks marked [P] can run in parallel (T002, T003, T004 — entity changes in different files; T005, T006, T007 — configurations in different files)
-- All Foundational DTOs marked [P] can run in parallel (T010–T018)
-- After Foundational: US2, US3, US5, US6 can all start in parallel (no inter-story dependencies)
-- Within US5: T030 and T031 can be developed in parallel (command vs query)
+- **Phases 16 and 17 can run fully in parallel** — they touch different subsystems
+- T056, T058 (Phase 16 investigation + TV group fix) — parallel after T057
+- T059, T060 (Phase 17 DTO + entity change) — parallel
 
----
-
-## Parallel Example: After Foundational Phase
-
-```
-# These user stories can be worked on simultaneously by different developers:
-Developer A: US8 → US1 (scan pipeline + browser — critical path)
-Developer B: US2 + US5 (reassignment + enrichment — independent)
-Developer C: US3 → US4 (TV groups + group assignment — dependent pair)
-Developer D: US6 → US7 (single rename + batch rename — dependent pair)
-```
-
-## Parallel Example: Setup Phase
-
-```
-# Launch all entity changes together:
-Task T002: Add fields to ScanItemDecision entity
-Task T003: Add fields to Media entity
-Task T004: Create EnrichmentRun entity
-
-# Launch all EF configurations together (after entities):
-Task T005: Update ScanItemDecisionConfiguration
-Task T006: Create EnrichmentRunConfiguration
-Task T007: Update MediaConfiguration
-```
-
----
-
-## Implementation Strategy
-
-### MVP First (US8 + US1 + US2)
-
-1. Complete Phase 1: Setup (entity + migration changes)
-2. Complete Phase 2: Foundational (DTOs, interfaces, startup cleanup)
-3. Complete Phase 3: US8 (scan pipeline populates new fields)
-4. Complete Phase 4: US1 (scan results browser)
-5. Complete Phase 5: US2 (TMDB reassignment)
-6. **STOP and VALIDATE**: Test scan browser + reassignment end-to-end
-
-### Incremental Delivery
-
-1. Setup + Foundational → Data layer ready
-2. US8 → Scan pipeline enhanced → Re-scan to populate data
-3. US1 → Admins can browse scan decisions → Deploy/Demo (MVP!)
-4. US2 → Admins can fix wrong matches → Deploy/Demo
-5. US3 + US4 → TV show grouping + assignment → Deploy/Demo
-6. US5 → Batch enrichment → Deploy/Demo
-7. US6 + US7 → File renaming → Deploy/Demo
-8. Polish → Final validation → Release
-
-### Parallel Team Strategy
-
-With multiple developers:
-
-1. Team completes Setup + Foundational together
-2. Once Foundational is done:
-   - Developer A: US8 → US1 (critical path — data pipeline)
-   - Developer B: US2 (reassignment — independent)
-   - Developer C: US3 → US4 (TV groups — dependent pair)
-3. After US8 + US1 validated:
-   - Developer A: US5 (enrichment)
-   - Developer D: US6 → US7 (rename — dependent pair)
-4. Stories integrate independently via separate controllers (`AdminScanController`, `AdminScanDecisionsController`, `AdminEnrichmentController`, `AdminFilesController`)
-
----
-
-## Notes
-
-- [P] tasks = different files, no dependencies
-- [Story] label maps task to specific user story for traceability
-- Each user story should be independently completable and testable
-- New endpoints are spread across 3 new controllers + 1 modified (`AdminScanController`, `AdminScanDecisionsController`, `AdminEnrichmentController`, `AdminFilesController`) following SRP
-- Follow existing patterns: `ListScanHistoryQuery` for paginated queries, `ResolveReviewItemCommand` for commands, `ScanRunCoordinator` for background services
-- `TvShowGroup` is transient (computed at query time) — NO database table
-- `EnrichmentRun` IS persisted — dedicated table with concurrency lock
-- Commit after each task or logical group
-- Stop at any checkpoint to validate story independently
-
+````

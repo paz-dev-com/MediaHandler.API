@@ -49,5 +49,11 @@ public class EnrichmentRun : BaseEntity
     ///     Stored as <c>nvarchar(max)</c>; deserialized only when needed for reporting.
     /// </summary>
     public string? ErrorDetailsJson { get; set; }
-}
 
+    /// <summary>
+    ///     JSON array tracking per-media processing results for this run.
+    ///     Each element is <c>{ "MediaId": "guid", "Status": "Enriched|Failed|Skipped" }</c>.
+    ///     Stored as <c>nvarchar(max)</c>; used by the enrichment details endpoint.
+    /// </summary>
+    public string? EnrichedMediaIdsJson { get; set; }
+}

@@ -11,25 +11,29 @@ namespace MediaHandler.Infrastructure.Tmdb;
 public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logger)
     : ITmdbService
 {
-    public async Task<TmdbMediaDto?> SearchMediaAsync(string query, string language,
+    public async Task<IReadOnlyList<TmdbMediaDto>> SearchMediaAsync(string query, string language,
         CancellationToken cancellationToken = default)
     {
         var url = $"/3/search/multi?query={Uri.EscapeDataString(query)}&language={language}";
         var response =
             await httpClient.GetFromJsonAsync<TmdbPagedResponse<TmdbSearchResultJson>>(url, cancellationToken);
-        var first = response?.Results?.FirstOrDefault(r => r.MediaType is "movie" or "tv");
-        if (first is null) return null;
 
-        return new TmdbMediaDto(
-            first.Id,
-            first.Title ?? first.Name ?? string.Empty,
-            first.OriginalTitle ?? first.OriginalName,
-            first.Overview,
-            first.MediaType ?? "unknown",
-            ParseDate(first.ReleaseDate ?? first.FirstAirDate),
-            first.PosterPath,
-            first.BackdropPath,
-            (decimal?)first.VoteAverage);
+        if (response?.Results is null) return [];
+
+        return response.Results
+            .Where(r => r.MediaType is "movie" or "tv")
+            .Take(10)
+            .Select(r => new TmdbMediaDto(
+                r.Id,
+                r.Title ?? r.Name ?? string.Empty,
+                r.OriginalTitle ?? r.OriginalName,
+                r.Overview,
+                r.MediaType ?? "unknown",
+                ParseDate(r.ReleaseDate ?? r.FirstAirDate),
+                r.PosterPath,
+                r.BackdropPath,
+                (decimal?)r.VoteAverage))
+            .ToList();
     }
 
     public async Task<TmdbMediaDetailsDto?> GetMediaDetailsAsync(int tmdbId, string mediaType, string language,
@@ -234,11 +238,17 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
         if (response?.Results is null) return [];
 
         // Convert to TmdbSearchCandidate, apply type filter, then take top 5 by popularity
+        // IMPORTANT: /search/movie and /search/tv endpoints do NOT return a mediaType field in results.
+        // r.MediaType is only populated by /search/multi. When a kindHint is given we used a typed
+        // endpoint, so we must force the Kind from the hint rather than reading r.MediaType (which
+        // would be null, causing all TV-show results to be wrongly stored as MediaType.Film).
         var candidates = response.Results
-            .Where(r => r.MediaType is null or "movie" or "tv") // filter out "person"
+            .Where(r => r.MediaType is null or "movie" or "tv") // filter out "person" from multi-search
             .Select(r => new TmdbSearchCandidate(
                 r.Id,
-                r.MediaType == "tv" ? MediaType.TvShow : MediaType.Film,
+                kindHint.HasValue
+                    ? kindHint.Value                                         // typed endpoint → trust hint
+                    : (r.MediaType == "tv" ? MediaType.TvShow : MediaType.Film), // multi → read field
                 r.Title ?? r.Name ?? string.Empty,
                 ParseDate(r.ReleaseDate ?? r.FirstAirDate)?.Year,
                 (decimal)(r.Popularity ?? r.VoteAverage ?? 0),

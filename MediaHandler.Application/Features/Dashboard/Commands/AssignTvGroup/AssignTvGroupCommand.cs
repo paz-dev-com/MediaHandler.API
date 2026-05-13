@@ -3,6 +3,7 @@
 // Resolves group members by recomputing the deterministic GroupId for every ParsedTitle group,
 // verifies the TMDB ID via ITmdbService, bulk-updates AssignedTmdbId/Kind on all member
 // decisions, and updates the linked MediaFile.MediaId for each.
+// T058 fix: tracks old MediaIds and removes orphaned Media rows when no files remain.
 
 using FluentValidation;
 using MediaHandler.Application.Common.Interfaces;
@@ -60,8 +61,10 @@ public class AssignTvGroupCommandValidator : AbstractValidator<AssignTvGroupComm
 ///         <item>Resolves group members by recomputing <c>GroupId = SHA256(scanId|parsedTitle.ToLower())</c>.</item>
 ///         <item>Returns failure if no decisions match the requested <paramref name="GroupId" />.</item>
 ///         <item>Verifies the TMDB id via <see cref="ITmdbService" />.</item>
-///         <item>Upserts the <c>Media</c> row and updates <c>AssignedTmdbId</c>/<c>AssignedTmdbKind</c> on all decisions.</item>
+///         <item>Looks up an existing <c>Media</c> row for the new TMDB ID, or creates one.</item>
+///         <item>Updates <c>AssignedTmdbId</c>/<c>AssignedTmdbKind</c> on all decisions.</item>
 ///         <item>Updates <c>MediaFile.MediaId</c> for every linked media file.</item>
+///         <item>Removes old <c>Media</c> rows that become orphaned (no remaining <c>MediaFile</c> references).</item>
 ///         <item>Saves all changes atomically.</item>
 ///     </list>
 /// </summary>
@@ -93,6 +96,13 @@ public sealed class AssignTvGroupCommandHandler(
 
         var parsedShowName = matchingDecisions[0].ParsedTitle!;
 
+        // Track old MediaIds (distinct) for orphan cleanup after the assignment
+        var oldMediaIds = matchingDecisions
+            .Where(d => d.MediaFile?.MediaId.HasValue == true)
+            .Select(d => d.MediaFile!.MediaId!.Value)
+            .Distinct()
+            .ToList();
+
         // Verify the TMDB id exists as a TV show
         var lookup = await tmdbService.GetTvShowByIdAsync(request.TmdbId, cancellationToken: cancellationToken);
 
@@ -121,6 +131,8 @@ public sealed class AssignTvGroupCommandHandler(
             await db.SaveChangesAsync(cancellationToken);
         }
 
+        var newMediaId = media.Id;
+
         // Bulk-update all member decisions
         foreach (var decision in matchingDecisions)
         {
@@ -128,10 +140,33 @@ public sealed class AssignTvGroupCommandHandler(
             decision.AssignedTmdbKind = lookup.Kind;
 
             if (decision.MediaFile is not null)
-                decision.MediaFile.MediaId = media.Id;
+                decision.MediaFile.MediaId = newMediaId;
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Orphan cleanup: for each old Media row that is now no longer the new target,
+        // check if any MediaFile still references it; if not, remove the orphaned row.
+        var hadOrphans = false;
+        foreach (var oldMediaId in oldMediaIds.Where(id => id != newMediaId))
+        {
+            var hasRemainingFiles = await db.MediaFiles
+                .AnyAsync(f => f.MediaId == oldMediaId, cancellationToken);
+
+            if (!hasRemainingFiles)
+            {
+                var oldMedia = await db.Medias.FindAsync([oldMediaId], cancellationToken);
+                if (oldMedia is not null)
+                {
+                    db.Medias.Remove(oldMedia);
+                    hadOrphans = true;
+                }
+            }
+        }
+
+        // Persist orphan deletions in a single final save (if any)
+        if (hadOrphans)
+            await db.SaveChangesAsync(cancellationToken);
 
         return Result.Success(new AssignTvGroupResult(
             request.GroupId,

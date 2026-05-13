@@ -4,6 +4,7 @@ using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Models;
 using MediaHandler.Application.Features.Dashboard.DTOs;
 using MediaHandler.Application.Features.Dashboard.Queries.ListScanDecisions;
+using MediaHandler.Application.Features.Dashboard.Queries.ListGroupedScanDecisions;
 using MediaHandler.Application.Features.Scan.Commands.CancelScan;
 using MediaHandler.Application.Features.Scan.Commands.StartScan;
 using MediaHandler.Application.Features.Scan.Queries.GetActiveScan;
@@ -209,6 +210,36 @@ public class AdminScanController(ISender sender) : ControllerBase
             pagedResult.TotalCount,
             pagedResult.TotalPages);
 
-        return Ok(ApiResponse<PagedResult<ScanItemDecisionDto>>.Success(pagedResult, meta));
+        // Return the items array directly in `data` (matching the frontend contract),
+        // pagination info is carried by `meta`.
+        return Ok(ApiResponse<IReadOnlyList<ScanItemDecisionDto>>.Success(pagedResult.Items, meta));
+    }
+
+    /// <summary>
+    ///     Browse all <c>ScanItemDecision</c> records for a scan run, grouped by TV show.
+    ///     TV show episodes are deduplicated by file path and collapsed under a show-level header.
+    ///     Movie decisions remain as single-item groups.
+    ///     Supports the same filters as the flat <c>decisions</c> endpoint.
+    /// </summary>
+    [HttpGet("{scanId:guid}/decisions/grouped")]
+    [ProducesResponseType<ApiResponse<List<ScanDecisionShowGroupDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListGroupedDecisions(
+        Guid scanId,
+        [FromQuery] ScanDecisionKind? decisionType = null,
+        [FromQuery] MediaType? mediaType = null,
+        [FromQuery] Guid? libraryRootId = null,
+        CancellationToken ct = default)
+    {
+        var result = await sender.Send(
+            new ListGroupedScanDecisionsQuery(scanId, decisionType, mediaType, libraryRootId), ct);
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse.Fail(new ApiError("VALIDATION_ERROR",
+                result.Errors.FirstOrDefault() ?? "Invalid query parameters.")));
+
+        return Ok(ApiResponse<List<ScanDecisionShowGroupDto>>.Success(result.Value));
     }
 }

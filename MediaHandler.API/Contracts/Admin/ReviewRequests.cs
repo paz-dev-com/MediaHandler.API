@@ -19,3 +19,16 @@ public record ResolveReviewRequest(
     int? TmdbId,
     /// <summary>Required when <see cref="Action"/> is <see cref="ReviewResolutionAction.Assign"/>.</summary>
     MediaType? Kind);
+
+/// <summary>
+///     Request body for <c>POST /api/v1/admin/review-items/bulk-resolve</c>.
+/// </summary>
+public record BulkResolveReviewRequest(
+    /// <summary>Absolute parent folder path — all Open review items under this path will be resolved.</summary>
+    string ParentFolderPath,
+    /// <summary>Resolution action to apply to every matched item.</summary>
+    ReviewResolutionAction Action,
+    /// <summary>Required when <see cref="Action"/> is <see cref="ReviewResolutionAction.Assign"/>.</summary>
+    int? TmdbId,
+    /// <summary>Required when <see cref="Action"/> is <see cref="ReviewResolutionAction.Assign"/>.</summary>
+    MediaType? Kind);

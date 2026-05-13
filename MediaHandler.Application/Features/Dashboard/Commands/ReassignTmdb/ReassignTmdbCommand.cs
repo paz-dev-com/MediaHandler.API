@@ -1,6 +1,7 @@
 // ReassignTmdb — command, validator, and handler for correcting a TMDB match on a ScanItemDecision.
 // Loads the decision, verifies the TMDB id via ITmdbService, updates AssignedTmdbId/Kind,
 // updates the linked MediaFile.MediaId to point to the correct Media row, and saves.
+// T057 fix: tracks old MediaId and removes orphaned Media rows when no files remain.
 
 using FluentValidation;
 using MediaHandler.Application.Common.Interfaces;
@@ -56,7 +57,9 @@ public class ReassignTmdbCommandValidator : AbstractValidator<ReassignTmdbComman
 ///         <item>Loads the <c>ScanItemDecision</c>; returns failure if not found.</item>
 ///         <item>Verifies the TMDB id exists via <see cref="ITmdbService" />.</item>
 ///         <item>Updates <c>AssignedTmdbId</c> and <c>AssignedTmdbKind</c> on the decision.</item>
-///         <item>Upserts the linked <c>Media</c> row (TmdbId + Type) and points <c>MediaFile.MediaId</c> at it.</item>
+///         <item>Looks up an existing <c>Media</c> row for the new TMDB ID, or creates one.</item>
+///         <item>Updates <c>MediaFile.MediaId</c> to point at the new/existing <c>Media</c> row.</item>
+///         <item>Removes the old <c>Media</c> row if it becomes orphaned (no remaining <c>MediaFile</c> references).</item>
 ///         <item>Saves all changes atomically.</item>
 ///     </list>
 /// </summary>
@@ -78,21 +81,22 @@ public sealed class ReassignTmdbCommandHandler(
             return Result.Fail<ReassignTmdbResult>(
                 $"DECISION_NOT_FOUND: ScanItemDecision '{request.DecisionId}' was not found.");
 
-        // Verify the TMDB id actually exists — try hinted kind first, then the other
+        // Track the old MediaId before making any changes, for orphan cleanup later
+        var oldMediaId = decision.MediaFile?.MediaId;
+
+        // Verify the TMDB id exists for the EXACT requested media type.
+        // IMPORTANT: TMDB movie IDs and TV show IDs are independent namespaces — the same numeric
+        // ID can point to completely different entries in each namespace. Never fall back to the
+        // other type: doing so would silently assign a wrong film when the TV endpoint returns null.
         var lookup = request.MediaType == MediaType.Film
             ? await tmdbService.GetMovieByIdAsync(request.TmdbId, cancellationToken: cancellationToken)
             : await tmdbService.GetTvShowByIdAsync(request.TmdbId, cancellationToken: cancellationToken);
 
         if (lookup is null)
-            lookup = request.MediaType == MediaType.Film
-                ? await tmdbService.GetTvShowByIdAsync(request.TmdbId, cancellationToken: cancellationToken)
-                : await tmdbService.GetMovieByIdAsync(request.TmdbId, cancellationToken: cancellationToken);
-
-        if (lookup is null)
             return Result.Fail<ReassignTmdbResult>(
-                $"TMDB_ID_NOT_FOUND: The TMDB id {request.TmdbId} does not correspond to a known movie or TV show.");
+                $"TMDB_ID_NOT_FOUND: The TMDB id {request.TmdbId} does not correspond to a known {request.MediaType}.");
 
-        // Update the decision
+        // Update the decision assignment fields
         decision.AssignedTmdbId = lookup.TmdbId;
         decision.AssignedTmdbKind = lookup.Kind;
 
@@ -100,6 +104,7 @@ public sealed class ReassignTmdbCommandHandler(
         Guid? linkedMediaId = null;
         if (decision.MediaFile is not null)
         {
+            // Look up existing Media row for the new TMDB ID — reuse if found, create new if not
             var media = await db.Medias
                 .FirstOrDefaultAsync(
                     m => m.TmdbId == lookup.TmdbId && m.Type == lookup.Kind,
@@ -116,21 +121,35 @@ public sealed class ReassignTmdbCommandHandler(
                     PosterPath = lookup.PosterPath
                 };
                 db.Medias.Add(media);
-            }
-            else
-            {
-                linkedMediaId = media.Id;
+                // Save immediately so the Media.Id is persisted before linking MediaFile.
+                // This also reduces the race-condition window when multiple reassign calls
+                // arrive concurrently for the same TmdbId (though TV groups should use
+                // the AssignTvGroup batch endpoint instead to avoid N parallel inserts).
+                await db.SaveChangesAsync(cancellationToken);
             }
 
-            // For newly added Media, EF resolves the Id after SaveChanges
-            decision.MediaFile.MediaId = media.Id == Guid.Empty ? null : media.Id;
+            linkedMediaId = media.Id;
+            decision.MediaFile.MediaId = media.Id;
         }
 
         await db.SaveChangesAsync(cancellationToken);
 
-        // After save, the Media id is fully resolved (handles newly inserted rows)
-        if (decision.MediaFile?.MediaId is not null)
-            linkedMediaId = decision.MediaFile.MediaId;
+        // Orphan cleanup: if the old Media row has no remaining MediaFile references, remove it.
+        // This prevents stale enrichment data from accumulating when files are reassigned.
+        if (oldMediaId.HasValue && oldMediaId != linkedMediaId)
+        {
+            var hasRemainingFiles = await db.MediaFiles
+                .AnyAsync(f => f.MediaId == oldMediaId.Value, cancellationToken);
+
+            if (!hasRemainingFiles)
+            {
+                var oldMedia = await db.Medias.FindAsync([oldMediaId.Value], cancellationToken);
+                if (oldMedia is not null)
+                    db.Medias.Remove(oldMedia);
+
+                await db.SaveChangesAsync(cancellationToken);
+            }
+        }
 
         return Result.Success(new ReassignTmdbResult(
             decision.Id,
