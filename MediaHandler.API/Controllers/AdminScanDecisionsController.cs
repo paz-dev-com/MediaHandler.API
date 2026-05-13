@@ -39,7 +39,7 @@ public class AdminScanDecisionsController(ISender sender) : ControllerBase
         CancellationToken ct)
     {
         var result = await sender.Send(
-            new ReassignTmdbCommand(id, request.TmdbId, request.MediaType), ct);
+            new ReassignTmdbCommand(id, request.TmdbId, request.Kind), ct);
 
         if (!result.IsSuccess)
         {

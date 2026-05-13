@@ -26,6 +26,9 @@ public class EnrichmentRunConfiguration : IEntityTypeConfiguration<EnrichmentRun
         // ErrorDetailsJson stored as nvarchar(max) — no max length constraint
         builder.Property(r => r.ErrorDetailsJson);
 
+        // EnrichedMediaIdsJson stored as nvarchar(max) — no max length constraint
+        builder.Property(r => r.EnrichedMediaIdsJson);
+
         // Indexes
 
         builder.HasIndex(r => r.Status)
@@ -39,4 +42,3 @@ public class EnrichmentRunConfiguration : IEntityTypeConfiguration<EnrichmentRun
             .HasDatabaseName("UX_EnrichmentRuns_Running");
     }
 }
-

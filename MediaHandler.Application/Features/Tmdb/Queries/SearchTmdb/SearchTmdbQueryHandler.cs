@@ -13,10 +13,7 @@ public class SearchTmdbQueryHandler(ITmdbService tmdb)
     public async Task<Result<IReadOnlyList<TmdbMediaDto>>> Handle(SearchTmdbQuery request,
         CancellationToken cancellationToken)
     {
-        var result = await tmdb.SearchMediaAsync(request.Query, request.Language ?? "en", cancellationToken);
-
-        return result is null
-            ? Result.Success<IReadOnlyList<TmdbMediaDto>>(Array.Empty<TmdbMediaDto>())
-            : Result.Success<IReadOnlyList<TmdbMediaDto>>(new[] { result });
+        var results = await tmdb.SearchMediaAsync(request.Query, request.Language ?? "en", cancellationToken);
+        return Result.Success<IReadOnlyList<TmdbMediaDto>>(results);
     }
 }

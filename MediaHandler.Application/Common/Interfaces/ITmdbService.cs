@@ -28,7 +28,7 @@ public record TmdbSearchCandidate(
 public interface ITmdbService
 {
     // Legacy search (used by existing TMDB import features)
-    Task<TmdbMediaDto?> SearchMediaAsync(string query, string language, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<TmdbMediaDto>> SearchMediaAsync(string query, string language, CancellationToken cancellationToken = default);
 
     Task<TmdbMediaDetailsDto?> GetMediaDetailsAsync(int tmdbId, string mediaType, string language,
         CancellationToken cancellationToken = default);

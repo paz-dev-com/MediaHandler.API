@@ -54,7 +54,7 @@ public class MediaAutoMatchServiceTests
             .Returns(new ParsedMediaInfo("The Matrix", 1999, "movie"));
 
         _tmdb.SearchMediaAsync("The Matrix 1999", "en", Arg.Any<CancellationToken>())
-            .Returns(MatrixSearchResult);
+            .Returns(new List<TmdbMediaDto> { MatrixSearchResult });
 
         _importer.ImportOrGetExistingAsync(603, "movie", "en", Arg.Any<CancellationToken>())
             .Returns(Result.Success(mediaId));
@@ -105,10 +105,10 @@ public class MediaAutoMatchServiceTests
             .Returns(new ParsedMediaInfo("Unknown Movie", 2099, null));
 
         _tmdb.SearchMediaAsync("Unknown Movie 2099", "en", Arg.Any<CancellationToken>())
-            .Returns((TmdbMediaDto?)null);
+            .Returns(new List<TmdbMediaDto>());
         // Fallback search without year also returns nothing
         _tmdb.SearchMediaAsync("Unknown Movie", "en", Arg.Any<CancellationToken>())
-            .Returns((TmdbMediaDto?)null);
+            .Returns(new List<TmdbMediaDto>());
 
         // Act
         var result = await _service.MatchAndLinkUnlinkedFilesAsync([file], "en", CancellationToken.None);
@@ -135,7 +135,7 @@ public class MediaAutoMatchServiceTests
             .Returns(new ParsedMediaInfo("The Matrix", 1999, "movie"));
 
         _tmdb.SearchMediaAsync("The Matrix 1999", "en", Arg.Any<CancellationToken>())
-            .Returns(MatrixSearchResult);
+            .Returns(new List<TmdbMediaDto> { MatrixSearchResult });
 
         _importer.ImportOrGetExistingAsync(603, "movie", "en", Arg.Any<CancellationToken>())
             .Returns(Result.Fail<Guid>("TMDB returned no details."));

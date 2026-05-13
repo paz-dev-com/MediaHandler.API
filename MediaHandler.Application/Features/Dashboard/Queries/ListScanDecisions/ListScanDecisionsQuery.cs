@@ -3,7 +3,10 @@
 // joining MediaFile → Media to populate assignedTitle/Year/PosterPath,
 // and LibraryRoot to populate libraryRootPath.
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluentValidation;
+using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models;
 using MediaHandler.Application.Features.Dashboard.DTOs;
@@ -51,6 +54,7 @@ public class ListScanDecisionsQueryValidator : AbstractValidator<ListScanDecisio
 ///     Returns a paginated list of <see cref="ScanItemDecisionDto" />s for the requested scan run.
 ///     Joins <c>ScanItemDecision → MediaFile → Media</c> to resolve TMDB title/year/poster,
 ///     and <c>→ LibraryRoot</c> to resolve the library root path.
+///     Parses <c>CandidatesJson</c> into a typed <c>IReadOnlyList&lt;TmdbCandidateDto&gt;</c>.
 /// </summary>
 public sealed class ListScanDecisionsQueryHandler(IApplicationDbContext db)
     : IRequestHandler<ListScanDecisionsQuery, Result<PagedResult<ScanItemDecisionDto>>>
@@ -93,7 +97,6 @@ public sealed class ListScanDecisionsQueryHandler(IApplicationDbContext db)
                 MediaPosterPath = d.MediaFile != null && d.MediaFile.Media != null
                     ? d.MediaFile.Media.PosterPath
                     : null,
-                LibraryRootPath = d.LibraryRoot != null ? d.LibraryRoot.Path : null
             })
             .ToListAsync(cancellationToken);
 
@@ -101,22 +104,22 @@ public sealed class ListScanDecisionsQueryHandler(IApplicationDbContext db)
             x.Decision.Id,
             x.Decision.ScanRunId,
             x.Decision.FilePath,
-            x.Decision.Kind,
+            x.Decision.Kind,                 // → decisionType in JSON
             x.Decision.Reason,
             x.Decision.AssignedTmdbId,
-            x.Decision.AssignedTmdbKind,
+            x.Decision.AssignedTmdbKind,     // → assignedKind in JSON
             x.MediaTitle,
             x.MediaYear,
             x.MediaPosterPath,
-            x.Decision.CandidatesJson,
+            ParseCandidates(x.Decision.CandidatesJson),
             x.Decision.ParsedTitle,
             x.Decision.ParsedYear,
             x.Decision.ParsedSeason,
             x.Decision.ParsedEpisode,
-            x.Decision.ParsedMediaType,
+            x.Decision.ParsedMediaType,      // → mediaType in JSON
             x.Decision.LibraryRootId,
-            x.LibraryRootPath,
-            x.Decision.MediaFileId
+            x.Decision.MediaFileId,
+            x.Decision.CreatedAt             // → decidedAt in JSON
         )).ToList();
 
         return Result.Success(new PagedResult<ScanItemDecisionDto>(
@@ -125,5 +128,40 @@ public sealed class ListScanDecisionsQueryHandler(IApplicationDbContext db)
             request.Page,
             request.PageSize));
     }
-}
 
+    /// <summary>
+    ///     Deserialises the stored <c>CandidatesJson</c> string into a typed list.
+    ///     Returns an empty list on any parse failure so the API never crashes on malformed data.
+    /// </summary>
+    private static IReadOnlyList<TmdbCandidateDto> ParseCandidates(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json) || json == "[]")
+            return [];
+
+        try
+        {
+            var raw = JsonSerializer.Deserialize<List<CandidateJson>>(json);
+            return raw?.Select(c => new TmdbCandidateDto(
+                    c.TmdbId,
+                    Enum.Parse<MediaType>(c.Kind, ignoreCase: true),
+                    c.Title,
+                    c.Year,
+                    c.Score,
+                    c.PosterPath))
+                .ToList() ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    // Private record used only for JSON deserialisation of CandidatesJson
+    private record CandidateJson(
+        [property: JsonPropertyName("tmdbId")] int TmdbId,
+        [property: JsonPropertyName("kind")] string Kind,
+        [property: JsonPropertyName("title")] string Title,
+        [property: JsonPropertyName("year")] int? Year,
+        [property: JsonPropertyName("score")] decimal Score,
+        [property: JsonPropertyName("posterPath")] string? PosterPath);
+}

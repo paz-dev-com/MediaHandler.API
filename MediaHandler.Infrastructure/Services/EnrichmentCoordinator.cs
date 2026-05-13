@@ -7,6 +7,7 @@
 // Media field population (Title, Overview, Runtime, PosterPath, Status, genres, etc.)
 // TvSeason/TvEpisode upsert for TV shows
 // Per-entry error tracking + progress reporting every 10 entries or 5 seconds
+// T061: records per-media processing results in EnrichedMediaIdsJson
 
 using System.Text.Json;
 using MediaHandler.Application.Common.DTOs;
@@ -20,6 +21,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace MediaHandler.Infrastructure.Services;
+
+/// <summary>Lightweight record used to track per-media enrichment outcome in <c>EnrichedMediaIdsJson</c>.</summary>
+/// <param name="MediaId">The <c>Media</c> row identifier.</param>
+/// <param name="Status">Processing outcome: <c>Enriched</c>, <c>Failed</c>, or <c>Skipped</c>.</param>
+internal record EnrichmentMediaResult(Guid MediaId, string Status);
 
 /// <summary>
 ///     Singleton coordinator that owns the lifecycle of background batch TMDB enrichment runs.
@@ -122,6 +128,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
 
             // Process each item
             var errors = new List<EnrichmentErrorDetailDto>();
+            var mediaResults = new List<EnrichmentMediaResult>();
             var enrichedCount = 0;
             var failedCount = 0;
             var lastSave = DateTime.UtcNow;
@@ -143,6 +150,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
                         await UpsertTvSeasonsAsync(db, tmdbService, media);
 
                     enrichedCount++;
+                    mediaResults.Add(new EnrichmentMediaResult(media.Id, "Enriched"));
 
                     _logger.LogDebug(
                         "EnrichmentCoordinator: enriched media {MediaId} ({Title}).", media.Id, media.Title);
@@ -152,6 +160,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
                     // Per-entry error tracking — do NOT abort the batch
                     failedCount++;
                     errors.Add(new EnrichmentErrorDetailDto(media.Id, media.TmdbId, media.Title, ex.Message));
+                    mediaResults.Add(new EnrichmentMediaResult(media.Id, "Failed"));
 
                     _logger.LogWarning(ex,
                         "EnrichmentCoordinator: failed to enrich media {MediaId} (TMDB {TmdbId}).",
@@ -167,6 +176,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
                     run.EnrichedCount = enrichedCount;
                     run.FailedCount = failedCount;
                     run.ErrorDetailsJson = JsonSerializer.Serialize(errors);
+                    run.EnrichedMediaIdsJson = JsonSerializer.Serialize(mediaResults);
 
                     try
                     {
@@ -188,6 +198,7 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
             run.FailedCount = failedCount;
             run.CurrentItem = null;
             run.ErrorDetailsJson = JsonSerializer.Serialize(errors);
+            run.EnrichedMediaIdsJson = JsonSerializer.Serialize(mediaResults);
 
             _logger.LogInformation(
                 "EnrichmentCoordinator: run {RunId} completed. Enriched={Enriched}, Failed={Failed}.",

@@ -119,14 +119,14 @@ public sealed class MediaAutoMatchService(
                     ? $"{parsed.Title} {parsed.Year}"
                     : parsed.Title;
 
-                var searchResult = await tmdb.SearchMediaAsync(query, language, ct);
+                var searchResult = (await tmdb.SearchMediaAsync(query, language, ct)).FirstOrDefault();
                 await Task.Delay(TmdbDelayMs, ct); // respect rate limit after every call
 
                 if (searchResult is null && parsed.Year.HasValue)
                 {
                     logger.LogInformation(
                         "TMDB search with year found nothing for '{Query}'. Retrying without year.", query);
-                    searchResult = await tmdb.SearchMediaAsync(parsed.Title, language, ct);
+                    searchResult = (await tmdb.SearchMediaAsync(parsed.Title, language, ct)).FirstOrDefault();
                     await Task.Delay(TmdbDelayMs, ct);
                 }
 
