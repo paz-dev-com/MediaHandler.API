@@ -64,17 +64,22 @@ public sealed class BulkResolveReviewItemsCommandHandler(
         BulkResolveReviewItemsCommand request,
         CancellationToken cancellationToken)
     {
-        // Normalize folder path — ensure trailing separator so prefix match is safe
+        // Normalize folder path — strip trailing separator so prefix match is safe
         var folder = request.ParentFolderPath.TrimEnd('/', '\\');
+
+        // Pre-compute prefixes outside the LINQ expression tree so EF Core
+        var prefixUnix = folder + "/";
+        var prefixWin = folder + "\\";
 
         // Load all Open ReviewItems under the folder (prefix match via EF Core)
         var items = await db.ReviewItems
             .Where(r => r.Status == ReviewStatus.Open
-                        && (r.FilePath.StartsWith(folder + "/") || r.FilePath.StartsWith(folder + "\\")))
+                        && (r.FilePath.StartsWith(prefixUnix) || r.FilePath.StartsWith(prefixWin)))
             .ToListAsync(cancellationToken);
 
         if (items.Count == 0)
-            return Result.Success(new BulkResolveResult(0));
+            return Result.Fail<BulkResolveResult>(
+                $"NO_ITEMS_FOUND: No open review items were found under '{request.ParentFolderPath}'.");
 
         // For Assign — verify the TMDB id once before touching any rows
         if (request.Action == ReviewResolutionAction.Assign)

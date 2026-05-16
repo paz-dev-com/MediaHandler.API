@@ -52,7 +52,13 @@ public class AuthController(ISender sender) : ControllerBase
         // Accept both "Admin" and "Administrator" as admin role names to be resilient
         // to differences in how the role is named in the identity provider.
         // RoleClaimType is configured to "https://mediahandler.com/roles" in JwtBearer options.
-        var isAdmin = User.IsInRole("Admin") || User.IsInRole("Administrator");
+        // Fallback: if no Auth0 Action injects roles into the access token, use the roles sent
+        // from the frontend (sourced from the Auth0 ID token via auth0.user$).
+        var jwtIsAdmin = User.IsInRole("Admin") || User.IsInRole("Administrator");
+        var bodyIsAdmin = body?.Roles?.Any(r =>
+            string.Equals(r, "Admin", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(r, "Administrator", StringComparison.OrdinalIgnoreCase)) ?? false;
+        var isAdmin = jwtIsAdmin || bodyIsAdmin;
 
         var result = await sender.Send(new SyncUserCommand(oktaId, email, name, isAdmin), ct);
         return result.IsSuccess

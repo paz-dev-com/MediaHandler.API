@@ -106,6 +106,7 @@ public sealed class ListReviewItemsQueryHandler(IApplicationDbContext db)
         return new ReviewItemDto(
             item.Id,
             item.FilePath,
+            Path.GetDirectoryName(item.FilePath),
             item.Reason,
             item.Status,
             item.ParsedTitle,

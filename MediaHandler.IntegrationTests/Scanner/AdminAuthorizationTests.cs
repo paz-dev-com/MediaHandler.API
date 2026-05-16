@@ -6,6 +6,8 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using MediaHandler.Application.Common.Interfaces;
+using MediaHandler.Domain.Entities;
+using MediaHandler.Domain.Enums;
 using MediaHandler.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -82,6 +84,22 @@ public sealed class AdminAuthorizationFixture : IAsyncLifetime
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MediaHandlerDbContext>();
         db.Database.EnsureCreated();
+
+        // Seed the default dev admin user so that AdminAuthorizationHandler
+        // (which queries the DB, NOT the JWT claims) can resolve the "AdminOnly" policy.
+        // OktaId must match DevAuthenticationHandler's default sub: "auth0|devuser1".
+        if (!db.Users.Any(u => u.OktaId == "auth0|devuser1"))
+        {
+            db.Users.Add(new User
+            {
+                OktaId = "auth0|devuser1",
+                Email = "dev@local.com",
+                DisplayName = "Dev Admin",
+                Role = UserRole.Admin,
+                IsActive = true
+            });
+            db.SaveChanges();
+        }
 
         return ValueTask.CompletedTask;
     }

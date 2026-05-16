@@ -5,6 +5,7 @@ using MediaHandler.Infrastructure.Options;
 using MediaHandler.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -45,8 +46,10 @@ public static class ServiceExtensions
                 });
         }
 
+        services.AddScoped<IAuthorizationHandler, AdminAuthorizationHandler>();
+
         services.AddAuthorizationBuilder()
-            .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+            .AddPolicy("AdminOnly", policy => policy.AddRequirements(new AdminRequirement()));
 
         return services;
     }

@@ -4,6 +4,7 @@ using MediaHandler.Application.Common.DTOs;
 using MediaHandler.Application.Features.LibraryRoots.Commands.AddLibraryRoot;
 using MediaHandler.Application.Features.LibraryRoots.Commands.RemoveLibraryRoot;
 using MediaHandler.Application.Features.LibraryRoots.Commands.ToggleLibraryRootEnabled;
+using MediaHandler.Application.Features.LibraryRoots.Commands.UpdateLibraryRoot;
 using MediaHandler.Application.Features.LibraryRoots.Queries.ListLibraryRoots;
 using MediaHandler.Domain.Enums;
 using MediatR;
@@ -112,6 +113,28 @@ public class AdminLibraryRootsController(ISender sender) : ControllerBase
         }
 
         return NoContent();
+    }
+
+    /// <summary>
+    ///     Update the kind and label of an existing library root.
+    /// </summary>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType<ApiResponse<LibraryRootDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateLibraryRootRequest request, CancellationToken ct)
+    {
+        var result = await sender.Send(new UpdateLibraryRootCommand(id, request.Kind, request.Label), ct);
+
+        if (!result.IsSuccess)
+        {
+            var error = result.Errors.FirstOrDefault() ?? "Unknown error";
+            if (error.Contains("NOT_FOUND", StringComparison.OrdinalIgnoreCase))
+                return NotFound(ApiResponse.Fail(new ApiError("NOT_FOUND", $"Library root '{id}' was not found.")));
+            return BadRequest(ApiResponse.Fail(new ApiError("VALIDATION_ERROR", error)));
+        }
+
+        return Ok(ApiResponse<LibraryRootDto>.Success(result.Value));
     }
 
     /// <summary>
