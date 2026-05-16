@@ -11,6 +11,11 @@ public record AddLibraryRootRequest(
     string? Label);
 
 /// <summary>
+///     Request body for <c>PUT /api/v1/admin/library-roots/{id}</c>.
+/// </summary>
+public record UpdateLibraryRootRequest(LibraryRootKind Kind, string? Label);
+
+/// <summary>
 ///     Request body for <c>PUT /api/v1/admin/library-roots/{id}/enabled</c>.
 /// </summary>
 public record ToggleLibraryRootEnabledRequest(bool IsEnabled);

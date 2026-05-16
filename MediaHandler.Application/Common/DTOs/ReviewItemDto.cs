@@ -19,6 +19,7 @@ public record TmdbCandidateDto(
 public record ReviewItemDto(
     Guid Id,
     string FilePath,
+    string? ParentFolderPath,
     ReviewReason Reason,
     ReviewStatus Status,
     string? ParsedTitle,

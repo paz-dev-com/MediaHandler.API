@@ -119,6 +119,7 @@ public class AdminReviewController(ISender sender) : ControllerBase
     [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ApiResponse>(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> BulkResolveReviewItems(
         [FromBody] BulkResolveReviewRequest request,
@@ -135,6 +136,10 @@ public class AdminReviewController(ISender sender) : ControllerBase
         if (!result.IsSuccess)
         {
             var error = result.Errors.FirstOrDefault() ?? "Unknown error";
+
+            if (error.Contains("NO_ITEMS_FOUND", StringComparison.OrdinalIgnoreCase))
+                return NotFound(ApiResponse.Fail(new ApiError("NO_ITEMS_FOUND",
+                    $"No open review items found under '{request.ParentFolderPath}'.")));
 
             if (error.Contains("TMDB_ID_NOT_FOUND", StringComparison.OrdinalIgnoreCase))
                 return UnprocessableEntity(ApiResponse.Fail(new ApiError("TMDB_ID_NOT_FOUND",

@@ -34,14 +34,19 @@ public sealed class GetScanRunQueryHandler(IApplicationDbContext db)
 
         IReadOnlyList<ReviewItemDto>? reviewItems = null;
         if (request.IncludeReview)
-            reviewItems = await db.ReviewItems
+        {
+            var rawItems = await db.ReviewItems
                 .AsNoTracking()
                 .Where(ri => ri.FirstSeenScanRunId == request.Id && ri.Status == ReviewStatus.Open)
                 .OrderByDescending(ri => ri.CreatedAt)
                 .Take(100)
+                .ToListAsync(cancellationToken);
+
+            reviewItems = rawItems
                 .Select(ri => new ReviewItemDto(
                     ri.Id,
                     ri.FilePath,
+                    Path.GetDirectoryName(ri.FilePath),
                     ri.Reason,
                     ri.Status,
                     ri.ParsedTitle,
@@ -53,7 +58,8 @@ public sealed class GetScanRunQueryHandler(IApplicationDbContext db)
                     ri.ResolvedKind,
                     ri.ResolvedAt,
                     ri.CreatedAt))
-                .ToListAsync(cancellationToken);
+                .ToList();
+        }
 
         return Result.Success(new ScanRunDetailDto(
             run.Id,
