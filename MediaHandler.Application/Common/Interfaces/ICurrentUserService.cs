@@ -1,0 +1,8 @@
+namespace MediaHandler.Application.Common.Interfaces;
+
+public interface ICurrentUserService
+{
+    string? Email { get; }
+    string? OktaId { get; }
+    bool IsAdmin { get; }
+}

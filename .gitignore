@@ -8,10 +8,22 @@ obj/
 *.userprefs
 packages/
 *.nuget.props
+
+# Serilog rolling log files
+logs/
+*.log
 *.nuget.targets
 project.lock.json
 project.fragment.lock.json
 artifacts/
+
+# Secrets - NEVER commit these
+appsettings.Development.json
+appsettings.Production.json
+appsettings.*.json
+!appsettings.json
+secrets.json
+**/secrets/**
 
 # Visual Studio
 .vs/

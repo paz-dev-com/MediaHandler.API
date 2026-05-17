@@ -17,10 +17,208 @@ namespace MediaHandler.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.1")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.EnrichmentRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CurrentItem")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("EnrichedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EnrichedMediaIdsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ErrorDetailsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("FailedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SkippedCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("TotalItems")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status")
+                        .IsUnique()
+                        .HasDatabaseName("UX_EnrichmentRuns_Running")
+                        .HasFilter("[Status] = 'Running'");
+
+                    b.ToTable("EnrichmentRuns");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.EpisodeFileLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("MediaFileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("OrderInFile")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TvEpisodeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MediaFileId");
+
+                    b.HasIndex("TvEpisodeId", "MediaFileId", "OrderInFile")
+                        .IsUnique();
+
+                    b.ToTable("EpisodeFileLinks");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.ExclusionRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Pattern")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RuleId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RuleId")
+                        .IsUnique();
+
+                    b.ToTable("ExclusionRules");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.LibraryRoot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<string>("SearchLanguages")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Path")
+                        .IsUnique();
+
+                    b.ToTable("LibraryRoots");
+                });
 
             modelBuilder.Entity("MediaHandler.Domain.Entities.Media", b =>
                 {
@@ -38,13 +236,18 @@ namespace MediaHandler.Infrastructure.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Genres")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("Language")
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
+
+                    b.Property<Guid?>("NfoMetadataId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("NumberOfEpisodes")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NumberOfSeasons")
+                        .HasColumnType("int");
 
                     b.Property<string>("OriginalTitle")
                         .HasMaxLength(500)
@@ -63,6 +266,10 @@ namespace MediaHandler.Infrastructure.Migrations
 
                     b.Property<int?>("Runtime")
                         .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -89,7 +296,14 @@ namespace MediaHandler.Infrastructure.Migrations
                     b.Property<int?>("VoteCount")
                         .HasColumnType("int");
 
+                    b.Property<int?>("Year")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("NfoMetadataId")
+                        .IsUnique()
+                        .HasFilter("[NfoMetadataId] IS NOT NULL");
 
                     b.HasIndex("Title");
 
@@ -120,16 +334,43 @@ namespace MediaHandler.Infrastructure.Migrations
                     b.Property<long?>("FileSizeBytes")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid>("FirstSeenScanRunId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Format")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<Guid>("MediaId")
+                    b.Property<Guid?>("LastSeenScanRunId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("LibraryRootId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("MediaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("MissingSince")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("MtimeUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Resolution")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("StackGroupId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -142,9 +383,384 @@ namespace MediaHandler.Infrastructure.Migrations
                     b.HasIndex("FilePath")
                         .IsUnique();
 
+                    b.HasIndex("LibraryRootId");
+
                     b.HasIndex("MediaId");
 
+                    b.HasIndex("MissingSince");
+
+                    b.HasIndex("StackGroupId");
+
+                    b.HasIndex("LibraryRootId", "Fingerprint");
+
                     b.ToTable("MediaFiles");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.MediaGenre", b =>
+                {
+                    b.Property<Guid>("MediaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("MediaId", "Name");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("MediaGenres");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.NfoMetadata", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Episode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ImdbId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ParseError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("ParseFailed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("RawContent")
+                        .IsRequired()
+                        .HasMaxLength(32768)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Season")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourcePath")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("TmdbId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourcePath")
+                        .IsUnique();
+
+                    b.ToTable("NfoMetadata");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.ReviewItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CandidatesJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("[]");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<Guid?>("FirstSeenScanRunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("ParsedEpisode")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ParsedSeason")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ParsedTitle")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ParsedYear")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ResolvedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ResolvedKind")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ResolvedTmdbId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FilePath");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("FilePath", "Status")
+                        .IsUnique()
+                        .HasFilter("[Status] = 'Open'");
+
+                    b.ToTable("ReviewItems");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.ScanItemDecision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("AssignedTmdbId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AssignedTmdbKind")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CandidatesJson")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("[]");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid?>("LibraryRootId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("MediaFileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("ParsedEpisode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ParsedMediaType")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("ParsedSeason")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ParsedTitle")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ParsedYear")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("ReviewItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RuleId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("ScanRunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FilePath");
+
+                    b.HasIndex("LibraryRootId")
+                        .HasDatabaseName("IX_ScanItemDecisions_LibraryRootId");
+
+                    b.HasIndex("MediaFileId");
+
+                    b.HasIndex("ReviewItemId");
+
+                    b.HasIndex("ScanRunId", "FilePath");
+
+                    b.HasIndex("ScanRunId", "Kind")
+                        .HasDatabaseName("IX_ScanItemDecisions_ScanRunId_Kind");
+
+                    b.HasIndex("ScanRunId", "ParsedMediaType")
+                        .HasDatabaseName("IX_ScanItemDecisions_ScanRunId_ParsedMediaType");
+
+                    b.HasIndex("ScanRunId", "ParsedTitle")
+                        .HasDatabaseName("IX_ScanItemDecisions_ScanRunId_ParsedTitle");
+
+                    b.ToTable("ScanItemDecisions");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.ScanRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Added")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Excluded")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LibraryRootIdsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("[]");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("NeedsReview")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Removed")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("TotalDiscovered")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Unchanged")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Updated")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartedAt");
+
+                    b.HasIndex("Status")
+                        .IsUnique()
+                        .HasFilter("[Status] = 'Running'");
+
+                    b.ToTable("ScanRuns");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.StackGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("MediaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("MediaId1")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MediaId")
+                        .IsUnique();
+
+                    b.HasIndex("MediaId1")
+                        .IsUnique()
+                        .HasFilter("[MediaId1] IS NOT NULL");
+
+                    b.ToTable("StackGroups");
                 });
 
             modelBuilder.Entity("MediaHandler.Domain.Entities.TvEpisode", b =>
@@ -284,6 +900,10 @@ namespace MediaHandler.Infrastructure.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)")
                         .HasDefaultValue("en");
+
+                    b.Property<string>("ProfilePicturePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -442,18 +1062,118 @@ namespace MediaHandler.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "TmdbId");
+                    b.HasIndex("UserId", "TmdbId")
+                        .IsUnique();
 
                     b.ToTable("WishlistItems");
                 });
 
+            modelBuilder.Entity("MediaHandler.Domain.Entities.EpisodeFileLink", b =>
+                {
+                    b.HasOne("MediaHandler.Domain.Entities.MediaFile", "MediaFile")
+                        .WithMany("EpisodeLinks")
+                        .HasForeignKey("MediaFileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MediaHandler.Domain.Entities.TvEpisode", "TvEpisode")
+                        .WithMany("EpisodeFileLinks")
+                        .HasForeignKey("TvEpisodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MediaFile");
+
+                    b.Navigation("TvEpisode");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.Media", b =>
+                {
+                    b.HasOne("MediaHandler.Domain.Entities.NfoMetadata", "NfoMetadata")
+                        .WithOne()
+                        .HasForeignKey("MediaHandler.Domain.Entities.Media", "NfoMetadataId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("NfoMetadata");
+                });
+
             modelBuilder.Entity("MediaHandler.Domain.Entities.MediaFile", b =>
                 {
+                    b.HasOne("MediaHandler.Domain.Entities.LibraryRoot", "LibraryRoot")
+                        .WithMany("MediaFiles")
+                        .HasForeignKey("LibraryRootId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MediaHandler.Domain.Entities.Media", "Media")
                         .WithMany("MediaFiles")
                         .HasForeignKey("MediaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MediaHandler.Domain.Entities.StackGroup", "StackGroup")
+                        .WithMany("Parts")
+                        .HasForeignKey("StackGroupId");
+
+                    b.Navigation("LibraryRoot");
+
+                    b.Navigation("Media");
+
+                    b.Navigation("StackGroup");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.MediaGenre", b =>
+                {
+                    b.HasOne("MediaHandler.Domain.Entities.Media", "Media")
+                        .WithMany("Genres")
+                        .HasForeignKey("MediaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Media");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.ScanItemDecision", b =>
+                {
+                    b.HasOne("MediaHandler.Domain.Entities.LibraryRoot", "LibraryRoot")
+                        .WithMany()
+                        .HasForeignKey("LibraryRootId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MediaHandler.Domain.Entities.MediaFile", "MediaFile")
+                        .WithMany()
+                        .HasForeignKey("MediaFileId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MediaHandler.Domain.Entities.ReviewItem", "ReviewItem")
+                        .WithMany()
+                        .HasForeignKey("ReviewItemId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MediaHandler.Domain.Entities.ScanRun", "ScanRun")
+                        .WithMany("Decisions")
+                        .HasForeignKey("ScanRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LibraryRoot");
+
+                    b.Navigation("MediaFile");
+
+                    b.Navigation("ReviewItem");
+
+                    b.Navigation("ScanRun");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.StackGroup", b =>
+                {
+                    b.HasOne("MediaHandler.Domain.Entities.Media", "Media")
+                        .WithOne()
+                        .HasForeignKey("MediaHandler.Domain.Entities.StackGroup", "MediaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MediaHandler.Domain.Entities.Media", null)
+                        .WithOne("StackGroup")
+                        .HasForeignKey("MediaHandler.Domain.Entities.StackGroup", "MediaId1");
 
                     b.Navigation("Media");
                 });
@@ -529,17 +1249,43 @@ namespace MediaHandler.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("MediaHandler.Domain.Entities.Media", b =>
+            modelBuilder.Entity("MediaHandler.Domain.Entities.LibraryRoot", b =>
                 {
                     b.Navigation("MediaFiles");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.Media", b =>
+                {
+                    b.Navigation("Genres");
+
+                    b.Navigation("MediaFiles");
+
+                    b.Navigation("StackGroup");
 
                     b.Navigation("TvSeasons");
 
                     b.Navigation("UserMedias");
                 });
 
+            modelBuilder.Entity("MediaHandler.Domain.Entities.MediaFile", b =>
+                {
+                    b.Navigation("EpisodeLinks");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.ScanRun", b =>
+                {
+                    b.Navigation("Decisions");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.StackGroup", b =>
+                {
+                    b.Navigation("Parts");
+                });
+
             modelBuilder.Entity("MediaHandler.Domain.Entities.TvEpisode", b =>
                 {
+                    b.Navigation("EpisodeFileLinks");
+
                     b.Navigation("UserEpisodes");
                 });
 

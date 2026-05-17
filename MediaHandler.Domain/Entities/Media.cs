@@ -16,9 +16,47 @@ public class Media : BaseEntity
     public string? BackdropPath { get; set; }
     public decimal? VoteAverage { get; set; }
     public int? VoteCount { get; set; }
-    public string? Genres { get; set; }
     public string? Language { get; set; }
 
+    // Scanner additions
+
+    /// <summary>
+    ///     Release year parsed from the filename or NFO, distinct from
+    ///     <see cref="ReleaseDate" /> which is populated from TMDB.
+    /// </summary>
+    public int? Year { get; set; }
+
+    /// <summary>
+    ///     FK to the <see cref="NfoMetadata" /> row that drove identity for this item,
+    ///     <c>null</c> when identity was resolved from the filename alone.
+    /// </summary>
+    public Guid? NfoMetadataId { get; set; }
+
+    /// <summary>Parsed NFO sidecar, if one existed for this media item.</summary>
+    public NfoMetadata? NfoMetadata { get; set; }
+
+    /// <summary>
+    ///     Multi-part stack descriptor for stacked movies; <c>null</c> for single-file items.
+    /// </summary>
+    public StackGroup? StackGroup { get; set; }
+
+    // Dashboard API / Enrichment additions
+
+    /// <summary>
+    ///     TMDB release or series status (e.g., "Released", "Returning Series", "Ended").
+    ///     Populated during TMDB enrichment.
+    /// </summary>
+    public string? Status { get; set; }
+
+    /// <summary>Total number of seasons. TV shows only; <c>null</c> for films.</summary>
+    public int? NumberOfSeasons { get; set; }
+
+    /// <summary>Total number of episodes. TV shows only; <c>null</c> for films.</summary>
+    public int? NumberOfEpisodes { get; set; }
+
+    // Navigation
+
+    public ICollection<MediaGenre> Genres { get; set; } = new List<MediaGenre>();
     public ICollection<MediaFile> MediaFiles { get; set; } = new List<MediaFile>();
     public ICollection<UserMedia> UserMedias { get; set; } = new List<UserMedia>();
     public ICollection<TvSeason> TvSeasons { get; set; } = new List<TvSeason>();

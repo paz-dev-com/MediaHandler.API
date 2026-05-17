@@ -1,6 +1,12 @@
 <Solution>
-  <Project Path="MediaHandler.API/MediaHandler.API.csproj" />
-  <Project Path="MediaHandler.Application/MediaHandler.Application.csproj" />
-  <Project Path="MediaHandler.Domain/MediaHandler.Domain.csproj" />
-  <Project Path="MediaHandler.Infrastructure/MediaHandler.Infrastructure.csproj" />
+    <Project Path="MediaHandler.API/MediaHandler.API.csproj"/>
+    <Project Path="MediaHandler.Application/MediaHandler.Application.csproj"/>
+    <Project Path="MediaHandler.Domain/MediaHandler.Domain.csproj"/>
+    <Project Path="MediaHandler.Infrastructure/MediaHandler.Infrastructure.csproj"/>
+    <Project Path="MediaHandler.IntegrationTests/MediaHandler.IntegrationTests.csproj">
+        <Build Solution="Debug|*" Project="false"/>
+    </Project>
+    <Project Path="MediaHandler.Tests/MediaHandler.Tests.csproj">
+        <Build Solution="Debug|*" Project="false"/>
+    </Project>
 </Solution>

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://alirezanet.github.io/Husky.Net/schema.json",
+  "tasks": [
+    {
+      "name": "format-fix",
+      "command": "dotnet",
+      "args": ["format", "MediaHandler.slnx", "--no-restore"],
+      "include": ["**/*.cs", "**/*.csproj"]
+    },
+    {
+      "name": "format-check",
+      "command": "dotnet",
+      "args": ["format", "MediaHandler.slnx", "--verify-no-changes", "--no-restore"],
+      "include": ["**/*.cs", "**/*.csproj"]
+    }
+  ]
+}

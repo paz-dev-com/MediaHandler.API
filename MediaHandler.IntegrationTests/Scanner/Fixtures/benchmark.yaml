@@ -1,0 +1,224 @@
+# benchmark.yaml
+# Schema reference: benchmark.schema.md
+#
+# This file documents the fixture layout used by FixtureBuilder.cs.
+# FixtureBuilder generates the in-memory NAS tree programmatically, using this
+# document as the authoritative specification for the fixture structure and
+# expected classification ground-truth.
+#
+# All naming follows Kodi file naming conventions:
+#   https://kodi.wiki/view/Naming_video_files
+#
+# R-001 clean-room: no pattern here is copied from GPL-licensed Kodi source.
+#
+version: "1"
+base_path: "/nas"
+
+# ============================================================================
+# MOVIES (≥ 200 total)
+# ============================================================================
+# 160+ per-folder layout, 20 flat, 5 stacked, 5 with NFO sidecar
+movies:
+  # -- Per-folder layout (authoritative: folder name "Title (Year)") ----------
+  # SOURCE: Kodi wiki — recommended folder naming scheme for movies
+  - folder: "The Matrix (1999)"
+    files: [ { name: "The Matrix (1999).mkv" } ]
+    expected_classification: movie
+    expected_tmdb_id: 603
+
+  - folder: "Inception (2010)"
+    files: [ { name: "Inception (2010).mkv" } ]
+    expected_classification: movie
+    expected_tmdb_id: 27205
+
+  - folder: "The Dark Knight (2008)"
+    files: [ { name: "The Dark Knight (2008).mkv" } ]
+    expected_classification: movie
+    expected_tmdb_id: 155
+
+  # ... (165+ additional per-folder entries generated programmatically in FixtureBuilder.cs)
+
+  # -- Per-folder with NFO sidecar (5 entries) --------------------------------
+  # SOURCE: Kodi wiki — NFO files: https://kodi.wiki/view/NFO_files/Movies
+  - folder: "Pan's Labyrinth (2006)"
+    files: [ { name: "Pans Labyrinth (2006).mkv" } ]
+    nfo: |
+      <?xml version="1.0" encoding="utf-8"?>
+      <movie>
+        <tmdbid>1905</tmdbid>
+        <title>Pan's Labyrinth</title>
+        <year>2006</year>
+      </movie>
+    expected_classification: movie
+    expected_tmdb_id: 1905
+
+  - folder: "Spirited Away (2001)"
+    files: [ { name: "Spirited Away (2001).mkv" } ]
+    nfo: |
+      <?xml version="1.0" encoding="utf-8"?>
+      <movie>
+        <tmdbid>129</tmdbid>
+        <title>Spirited Away</title>
+        <year>2001</year>
+      </movie>
+    expected_classification: movie
+    expected_tmdb_id: 129
+
+  # -- Stacked movies (5 pairs) -----------------------------------------------
+  # SOURCE: Kodi wiki advancedsettings stackingregex — cd1/cd2, part1/part2, disc1/disc2
+  - folder: "Kill Bill Vol 1 (2003)"
+    files:
+      - name: "Kill.Bill.Vol.1.2003.cd1.mkv"
+        stack_part: 1
+      - name: "Kill.Bill.Vol.1.2003.cd2.mkv"
+        stack_part: 2
+    expected_classification: stacked_movie
+    expected_tmdb_id: 24
+
+  - folder: "The Lord of the Rings Extended Cut (2001)"
+    files:
+      - name: "The.Lord.of.the.Rings.Extended.Cut.2001.disc1.mkv"
+        stack_part: 1
+      - name: "The.Lord.of.the.Rings.Extended.Cut.2001.disc2.mkv"
+        stack_part: 2
+    expected_classification: stacked_movie
+    expected_tmdb_id: 120
+
+  - folder: "Once Upon a Time in America (1984)"
+    files:
+      - name: "Once.Upon.a.Time.in.America.1984.part1.mkv"
+        stack_part: 1
+      - name: "Once.Upon.a.Time.in.America.1984.part2.mkv"
+        stack_part: 2
+    expected_classification: stacked_movie
+    expected_tmdb_id: 510
+
+  # -- Flat layout (20 entries, no sub-folder) --------------------------------
+  # SOURCE: Kodi wiki — flat library support: filename carries title+year
+  - flat: true
+    files: [ { name: "Inception.2010.1080p.BluRay.x264-GROUP.mkv" } ]
+    expected_classification: movie
+    expected_tmdb_id: 27205
+
+  - flat: true
+    files: [ { name: "Parasite.2019.1080p.mkv" } ]
+    expected_classification: movie
+    expected_tmdb_id: 496243
+
+  # ... (18 additional flat entries generated in FixtureBuilder.cs)
+
+# ============================================================================
+# TV SHOWS (≥ 50 total)
+# ============================================================================
+tv_shows:
+  # Standard S01E01-style naming
+  # SOURCE: Kodi wiki — "Show/Season XX/Show.SxxExx.ext" recommended naming
+  - show: "Breaking Bad"
+    expected_tmdb_id: 1396
+    nfo: |
+      <?xml version="1.0" encoding="utf-8"?>
+      <tvshow>
+        <tmdbid>1396</tmdbid>
+        <title>Breaking Bad</title>
+      </tvshow>
+    seasons:
+      - season: 1
+        episodes:
+          - episode: 1
+            file: "Breaking.Bad.S01E01.mkv"
+            expected_classification: episode
+          - episode: 2
+            file: "Breaking.Bad.S01E02.mkv"
+            expected_classification: episode
+      - season: 2
+        episodes:
+          # Multi-episode file
+          # SOURCE: Kodi wiki — SxxExx-Eyy range for multi-episode files
+          - episode: 5
+            episode_end: 6
+            file: "Breaking.Bad.S02E05-E06.mkv"
+            expected_classification: episode
+
+  # Show with Specials folder (Season 00)
+  # SOURCE: Kodi wiki — Season 00 / "Specials" folder for special episodes
+  - show: "Doctor Who"
+    expected_tmdb_id: 57243
+    seasons:
+      - season: 0
+        folder_name: "Specials"
+        episodes:
+          - episode: 1
+            file: "Doctor.Who.S00E01.Special.mkv"
+            expected_classification: episode
+      - season: 1
+        episodes:
+          - episode: 1
+            file: "Doctor.Who.S01E01.mkv"
+            expected_classification: episode
+
+  # 1x05-style numbering
+  # SOURCE: Kodi wiki — alternate "1x05" episode numbering pattern
+  - show: "Seinfeld"
+    expected_tmdb_id: 1400
+    seasons:
+      - season: 1
+        episodes:
+          - episode: 5
+            file: "Seinfeld.1x05.mkv"
+            expected_classification: episode
+
+  # Date-based numbering
+  # SOURCE: Kodi wiki — YYYY.MM.DD date-based episode naming for daily shows
+  - show: "The Daily Show With Trevor Noah"
+    expected_tmdb_id: 2224
+    seasons:
+      - season: 2024
+        episodes:
+          - episode: 1
+            file: "The.Daily.Show.With.Trevor.Noah.2024.03.18.mkv"
+            expected_classification: episode
+
+  # ... (46+ additional shows generated in FixtureBuilder.cs)
+
+# ============================================================================
+# EXCLUSION BAITS (≥ 1 per enabled exclusion rule)
+# ============================================================================
+exclusion_baits:
+  # SOURCE: Kodi wiki — "-sample" suffix excluded by default
+  - path: "Movies/The Matrix (1999)/The.Matrix.1999-sample.mkv"
+    expected_exclusion_reason: "sample-filename"
+
+  # SOURCE: Kodi wiki — "Extras" folder excluded by default
+  - path: "Movies/Extras/behind-the-scenes.mkv"
+    expected_exclusion_reason: "extras-folder"
+
+  # SOURCE: Kodi wiki — "Trailers" folder excluded by default
+  - path: "Movies/Trailers/matrix-trailer.mkv"
+    expected_exclusion_reason: "trailer-folder"
+
+  # SOURCE: Kodi wiki — "featurette" filename pattern excluded
+  - path: "Movies/Inception (2010)/inception-featurette.mkv"
+    expected_exclusion_reason: "featurette-filename"
+
+  # SOURCE: Kodi wiki — hidden folders (dot-prefix) excluded
+  - path: "Movies/.recycle/oldfile.mkv"
+    expected_exclusion_reason: "hidden-folder"
+
+  # Non-video extension (JPEG poster)
+  - path: "Movies/poster.jpg"
+    expected_exclusion_reason: "non-video-extension"
+
+# ============================================================================
+# REVIEW BAITS (files expected to land in the review queue)
+# ============================================================================
+review_baits:
+  # No parseable title or year — TMDB stub returns needs-review
+  - path: "Movies/the.movie.mkv"
+    expected_review_reason: "NoTmdbResult"
+    parsed_title: "the movie"
+    parsed_year: null
+
+  # Episode file with no recognisable episode number pattern
+  - path: "TV Shows/SomeObscureShow/Season 01/episode_without_number.mkv"
+    expected_review_reason: "UnparseableEpisode"
+
