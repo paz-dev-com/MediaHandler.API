@@ -8,7 +8,8 @@ namespace MediaHandler.Application.Common.Models.Scanner;
 public record ScanStartParameters(
     Guid ScanRunId,
     Guid[] LibraryRootIds,
-    ScanMode Mode);
+    ScanMode Mode,
+    string? Language = null);
 
 /// <summary>
 ///     Lightweight handle returned by <c>IScanRunCoordinator.StartAsync</c>.
@@ -22,7 +23,6 @@ public record ScanRunHandle(Guid ScanRunId);
 /// </summary>
 public record ScanProgressDto(
     Guid ScanRunId,
-    /// <summary>Pipeline stage label (e.g., "Enumerating", "Classifying", "Persisting").</summary>
     string Phase,
     int Processed,
     int Total,

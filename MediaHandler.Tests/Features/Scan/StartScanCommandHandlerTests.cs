@@ -123,4 +123,48 @@ public class StartScanCommandHandlerTests
 
         result.IsSuccess.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task StartScan_WithLanguageFr_ForwardsLanguageToScanStartParameters()
+    {
+        var root = await AddEnabledRoot();
+
+        ScanStartParameters? capturedParams = null;
+        _coordinator.StartAsync(Arg.Any<ScanStartParameters>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                capturedParams = ci.Arg<ScanStartParameters>();
+                return Task.FromResult(new ScanRunHandle(capturedParams.ScanRunId));
+            });
+
+        var command = new StartScanCommand([root.Id], ScanMode.Full, "fr");
+        var handler = CreateHandler();
+        var result = await handler.Handle(command, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        capturedParams.Should().NotBeNull();
+        capturedParams!.Language.Should().Be("fr");
+    }
+
+    [Fact]
+    public async Task StartScan_WithEmptyStringLanguage_NormalizesToNull()
+    {
+        var root = await AddEnabledRoot();
+
+        ScanStartParameters? capturedParams = null;
+        _coordinator.StartAsync(Arg.Any<ScanStartParameters>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                capturedParams = ci.Arg<ScanStartParameters>();
+                return Task.FromResult(new ScanRunHandle(capturedParams.ScanRunId));
+            });
+
+        var command = new StartScanCommand([root.Id], ScanMode.Full, "");
+        var handler = CreateHandler();
+        var result = await handler.Handle(command, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        capturedParams.Should().NotBeNull();
+        capturedParams!.Language.Should().BeNull();
+    }
 }

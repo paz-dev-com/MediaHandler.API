@@ -41,7 +41,7 @@ public class AdminScanController(ISender sender) : ControllerBase
     [ProducesResponseType<ApiResponse>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> StartScan([FromBody] StartScanRequest request, CancellationToken ct)
     {
-        var result = await sender.Send(new StartScanCommand(request.LibraryRootIds, request.Mode), ct);
+        var result = await sender.Send(new StartScanCommand(request.LibraryRootIds, request.Mode, request.Language), ct);
 
         if (!result.IsSuccess)
         {

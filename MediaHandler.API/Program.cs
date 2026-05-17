@@ -1,6 +1,9 @@
 using MediaHandler.API.Extensions;
 using MediaHandler.API.Middleware;
+using MediaHandler.API.Services;
 using MediaHandler.Application;
+using MediaHandler.Application.Common.Interfaces;
+using Microsoft.AspNetCore.Hosting;
 using Serilog;
 using static MediaHandler.Infrastructure.DependencyInjection;
 
@@ -33,6 +36,7 @@ try
 
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddScoped<IWebRootProvider, WebRootProvider>();
 
     builder.Services.AddApiAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddApiRateLimiting();
@@ -65,6 +69,14 @@ try
 
     if (app.Environment.IsDevelopment())
         await app.InitialiseDatabaseAsync();
+
+    // Ensure the profile picture upload directory exists
+    var env = app.Services.GetRequiredService<IWebHostEnvironment>();
+    var uploadsDir = Path.Combine(
+        env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+        "uploads",
+        "profile-pictures");
+    Directory.CreateDirectory(uploadsDir);
 
     // Recover any ScanRun rows stuck in Running status after a crash/restart
     await ApplyScanRunRecoveryAsync(app.Services);

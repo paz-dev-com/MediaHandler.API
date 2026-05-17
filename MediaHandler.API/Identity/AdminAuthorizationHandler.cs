@@ -19,7 +19,7 @@ public class AdminAuthorizationHandler(
         AuthorizationHandlerContext authContext,
         AdminRequirement requirement)
     {
-        var sub = httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value;
+        var sub = httpContextAccessor.HttpContext?.User.FindFirst("sub")?.Value;
         if (string.IsNullOrEmpty(sub))
             return;
         var isAdmin = await context.Users

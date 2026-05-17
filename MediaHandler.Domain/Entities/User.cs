@@ -11,6 +11,7 @@ public class User : BaseEntity
     public string PreferredLanguage { get; set; } = "en";
     public UserRole Role { get; set; } = UserRole.User;
     public bool IsActive { get; set; } = true;
+    public string? ProfilePicturePath { get; set; }
 
     public ICollection<UserMedia> UserMedias { get; set; } = new List<UserMedia>();
     public ICollection<WishlistItem> WishlistItems { get; set; } = new List<WishlistItem>();

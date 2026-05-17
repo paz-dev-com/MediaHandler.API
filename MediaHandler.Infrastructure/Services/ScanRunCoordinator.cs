@@ -25,22 +25,15 @@ namespace MediaHandler.Infrastructure.Services;
 ///         <c>DbContext</c> and pipeline instance.
 ///     </para>
 /// </summary>
-public sealed class ScanRunCoordinator : IScanRunCoordinator, IDisposable
+public sealed class ScanRunCoordinator(
+    ILogger<ScanRunCoordinator> logger,
+    IServiceScopeFactory scopeFactory)
+    : IScanRunCoordinator, IDisposable
 {
-    private readonly ILogger<ScanRunCoordinator> _logger;
     private readonly SemaphoreSlim _mutex = new(1, 1);
 
     // keyed by ScanRunId
     private readonly Dictionary<Guid, (CancellationTokenSource Cts, Channel<ScanProgressDto> Channel)> _runs = new();
-    private readonly IServiceScopeFactory _scopeFactory;
-
-    public ScanRunCoordinator(
-        ILogger<ScanRunCoordinator> logger,
-        IServiceScopeFactory scopeFactory)
-    {
-        _logger = logger;
-        _scopeFactory = scopeFactory;
-    }
 
     public void Dispose()
     {
@@ -56,7 +49,7 @@ public sealed class ScanRunCoordinator : IScanRunCoordinator, IDisposable
         await _mutex.WaitAsync(ct);
         try
         {
-            await using var scope = _scopeFactory.CreateAsyncScope();
+            await using var scope = scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<MediaHandlerDbContext>();
 
             // Single-active-scan guard
@@ -93,7 +86,7 @@ public sealed class ScanRunCoordinator : IScanRunCoordinator, IDisposable
             // Fire and forget background scan (owns its own DI scope)
             _ = ExecuteScanAsync(parameters.ScanRunId, parameters, cts, channel);
 
-            _logger.LogInformation("ScanRunCoordinator: started scan run {ScanRunId} (mode={Mode})",
+            logger.LogInformation("ScanRunCoordinator: started scan run {ScanRunId} (mode={Mode})",
                 parameters.ScanRunId, parameters.Mode);
 
             return new ScanRunHandle(parameters.ScanRunId);
@@ -109,12 +102,12 @@ public sealed class ScanRunCoordinator : IScanRunCoordinator, IDisposable
     {
         if (_runs.TryGetValue(scanRunId, out var entry))
         {
-            _logger.LogInformation("Cancellation requested for scan run {ScanRunId}.", scanRunId);
+            logger.LogInformation("Cancellation requested for scan run {ScanRunId}.", scanRunId);
             entry.Cts.Cancel();
         }
         else
         {
-            _logger.LogDebug(
+            logger.LogDebug(
                 "RequestCancellationAsync: scan run {ScanRunId} not found (already finished or never started).",
                 scanRunId);
         }
@@ -134,7 +127,7 @@ public sealed class ScanRunCoordinator : IScanRunCoordinator, IDisposable
         CancellationTokenSource cts,
         Channel<ScanProgressDto> channel)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<MediaHandlerDbContext>();
         var pipeline = scope.ServiceProvider.GetRequiredService<ScanPipeline>();
 
@@ -151,9 +144,9 @@ public sealed class ScanRunCoordinator : IScanRunCoordinator, IDisposable
             var rootIds = parameters.LibraryRootIds;
             var roots = rootIds.Length == 0
                 ? await db.LibraryRoots.Where(r => r.IsEnabled).ToListAsync(cts.Token)
-                : await db.LibraryRoots.Where(r => rootIds.Contains(r.Id) && r.IsEnabled).ToListAsync(cts.Token);
+                : await db.LibraryRoots.Where(r => rootIds.AsEnumerable().Contains(r.Id) && r.IsEnabled).ToListAsync(cts.Token);
 
-            await pipeline.ExecuteAsync(scanRun, roots, channel.Writer, cts.Token);
+            await pipeline.ExecuteAsync(scanRun, roots, channel.Writer, parameters.Language, cts.Token);
 
             scanRun.Status = ScanStatus.Completed;
             scanRun.FinishedAt = DateTime.UtcNow;
@@ -162,14 +155,14 @@ public sealed class ScanRunCoordinator : IScanRunCoordinator, IDisposable
         {
             scanRun.Status = ScanStatus.Cancelled;
             scanRun.FinishedAt = DateTime.UtcNow;
-            _logger.LogInformation("Scan run {ScanRunId} cancelled.", scanRunId);
+            logger.LogInformation("Scan run {ScanRunId} cancelled.", scanRunId);
         }
         catch (Exception ex)
         {
             scanRun.Status = ScanStatus.Failed;
             scanRun.FinishedAt = DateTime.UtcNow;
             scanRun.FailureReason = ex.Message;
-            _logger.LogError(ex, "Scan run {ScanRunId} failed.", scanRunId);
+            logger.LogError(ex, "Scan run {ScanRunId} failed.", scanRunId);
         }
         finally
         {
@@ -179,7 +172,7 @@ public sealed class ScanRunCoordinator : IScanRunCoordinator, IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to persist final scan run status for {ScanRunId}.", scanRunId);
+                logger.LogError(ex, "Failed to persist final scan run status for {ScanRunId}.", scanRunId);
             }
 
             channel.Writer.TryComplete();

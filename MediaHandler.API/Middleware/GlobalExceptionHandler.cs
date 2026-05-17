@@ -4,15 +4,8 @@ using Microsoft.AspNetCore.Diagnostics;
 
 namespace MediaHandler.API.Middleware;
 
-public class GlobalExceptionHandler : IExceptionHandler
+public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
-    private readonly ILogger<GlobalExceptionHandler> _logger;
-
-    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
-    {
-        _logger = logger;
-    }
-
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {
         var (statusCode, response) = exception switch
@@ -33,7 +26,7 @@ public class GlobalExceptionHandler : IExceptionHandler
         };
 
         if (statusCode == StatusCodes.Status500InternalServerError)
-            _logger.LogError(exception, "Unhandled exception");
+            logger.LogError(exception, "Unhandled exception");
 
         context.Response.StatusCode = statusCode;
         await context.Response.WriteAsJsonAsync(response, ct);

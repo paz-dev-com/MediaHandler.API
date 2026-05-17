@@ -75,7 +75,9 @@ public class GetMediaListQueryHandler(IApplicationDbContext context, ICurrentUse
                 userId.HasValue
                     ? m.UserMedias.Where(um => um.UserId == userId.Value).Select(um => (bool?)um.IsWatched)
                         .FirstOrDefault()
-                    : null))
+                    : null,
+                m.Status,
+                m.NumberOfSeasons))
             .ToListAsync(cancellationToken);
 
         return Result.Success(new PagedResult<MediaListItemDto>(items, total, request.Page, request.PageSize));

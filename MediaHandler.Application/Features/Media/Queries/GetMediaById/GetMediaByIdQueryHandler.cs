@@ -43,6 +43,8 @@ public class GetMediaByIdQueryHandler(IApplicationDbContext context, ICurrentUse
             media.VoteAverage,
             media.Genres.Select(g => g.Name).ToList().AsReadOnly(),
             files,
-            userMedia?.IsWatched));
+            userMedia?.IsWatched,
+            media.Status,
+            media.NumberOfSeasons));
     }
 }

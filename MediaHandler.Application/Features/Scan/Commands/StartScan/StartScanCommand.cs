@@ -10,7 +10,8 @@ namespace MediaHandler.Application.Features.Scan.Commands.StartScan;
 
 public record StartScanCommand(
     Guid[] LibraryRootIds,
-    ScanMode Mode) : IRequest<Result<ScanRunHandle>>;
+    ScanMode Mode,
+    string? Language = null) : IRequest<Result<ScanRunHandle>>;
 
 public class StartScanCommandValidator : AbstractValidator<StartScanCommand>
 {
@@ -80,8 +81,9 @@ public sealed class StartScanCommandHandler(
         try
         {
             var scanRunId = Guid.NewGuid();
+            var normalizedLanguage = string.IsNullOrWhiteSpace(request.Language) ? null : request.Language;
             var handle = await coordinator.StartAsync(
-                new ScanStartParameters(scanRunId, rootIds, request.Mode),
+                new ScanStartParameters(scanRunId, rootIds, request.Mode, normalizedLanguage),
                 cancellationToken);
 
             return Result.Success(handle);

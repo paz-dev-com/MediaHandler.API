@@ -35,5 +35,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(u => u.Email)
             .IsUnique();
+
+        builder.Property(u => u.ProfilePicturePath)
+            .HasMaxLength(500);
     }
 }

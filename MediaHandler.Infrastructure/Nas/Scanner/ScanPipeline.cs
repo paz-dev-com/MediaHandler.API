@@ -42,7 +42,8 @@ public sealed class ScanPipeline(
         ScanRun scanRun,
         IReadOnlyList<LibraryRoot> roots,
         ChannelWriter<ScanProgressDto> progress,
-        CancellationToken ct)
+        string? language = null,
+        CancellationToken ct = default)
     {
         var counters = new ScanCounters();
 
@@ -58,7 +59,7 @@ public sealed class ScanPipeline(
                 ct.ThrowIfCancellationRequested();
                 logger.LogDebug("Stage transition: starting root processing for {RootId} ({Path})",
                     root.Id, root.Path);
-                var succeeded = await ProcessRootAsync(scanRun, root, counters, progress, ct);
+                var succeeded = await ProcessRootAsync(scanRun, root, counters, progress, language, ct);
                 if (!succeeded)
                     failedRootIds.Add(root.Id);
             }
@@ -110,6 +111,7 @@ public sealed class ScanPipeline(
         LibraryRoot root,
         ScanCounters counters,
         ChannelWriter<ScanProgressDto> progress,
+        string? language,
         CancellationToken ct)
     {
         logger.LogDebug("Stage transition: enumerating files for root {RootId} ({Path})",
@@ -270,7 +272,7 @@ public sealed class ScanPipeline(
 
             await ClassifyAndPersistFileAsync(
                 scanRun, root, file, role, stack, counters, resolvedReviewItems, existingOpenReviewPaths,
-                existingMediaFiles, inFlightPaths, nfoEntriesByPath, ct);
+                existingMediaFiles, inFlightPaths, nfoEntriesByPath, language, ct);
 
             if (processedInRoot % 50 == 0)
                 await EmitProgressAsync(scanRun.Id, "Classifying", processedInRoot, videoFiles.Count,
@@ -302,6 +304,7 @@ public sealed class ScanPipeline(
         Dictionary<string, MediaFile> existingMediaFiles,
         HashSet<string> inFlightPaths,
         Dictionary<string, NasFileEntry> nfoEntriesByPath,
+        string? language,
         CancellationToken ct)
     {
         // Guard against duplicate paths within the same batch (defensive handling of fixture bugs or NAS oddities)
@@ -454,7 +457,7 @@ public sealed class ScanPipeline(
 
         // Build the TMDB match query from parsed name data (and NFO metadata when available).
         // Done here (before the resolved-review check) so all downstream branches have access.
-        var matchQuery = BuildMatchQuery(file, root, episodeNumbers, role, nfoResult);
+        var matchQuery = BuildMatchQuery(file, root, episodeNumbers, role, nfoResult, language);
 
         // TMDB resolution stage
         // Check for a previously resolved ReviewItem for this path first.
@@ -712,7 +715,8 @@ public sealed class ScanPipeline(
         LibraryRoot root,
         IReadOnlyList<EpisodeNumber> episodeNumbers,
         MediaFileRole role,
-        NfoParseResult? nfoResult = null)
+        NfoParseResult? nfoResult = null,
+        string? language = null)
     {
         // Check for explicit TMDB id token in the file or folder name
         int? explicitTokenId = null;
@@ -748,7 +752,8 @@ public sealed class ScanPipeline(
                 year,
                 MediaType.Film,
                 nfoTmdbId,
-                explicitTokenId);
+                explicitTokenId,
+                Language: language ?? "en-US");
         }
         else
         {
@@ -777,6 +782,7 @@ public sealed class ScanPipeline(
                 MediaType.TvShow,
                 nfoTmdbId,
                 explicitTokenId,
+                Language: language ?? "en-US",
                 FallbackTitle: fallbackTitle,
                 SearchLanguages: searchLanguages);
         }
