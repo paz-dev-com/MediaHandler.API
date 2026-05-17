@@ -164,7 +164,29 @@
 - [X] T034 [P] Verify all new and modified endpoints return `ApiResponse<T>` envelope; confirm `UsersController` actions use the standard `ApiResponse.Success(data)` pattern and Result-to-HTTP mapping consistent with other controllers in `MediaHandler.API/Controllers/UsersController.cs`
 - [X] T035 Run `dotnet build MediaHandler.slnx` and fix any compilation errors across all projects
 - [X] T036 Run `dotnet format --verify-no-changes` and fix any formatting violations
-- [ ] T037 Apply migration (`dotnet ef database update -p MediaHandler.Infrastructure -s MediaHandler.API`) and run the quickstart verification checklist: (1) POST scan with `language: "fr"` → 202; (2) GET media detail → `status` + `numberOfSeasons` present; (3) POST profile-picture → 200 with path; (4) GET `/auth/me` → path in response; (5) DELETE profile-picture → 200 with null path
+- [x] T037 Apply migration (`dotnet ef database update -p MediaHandler.Infrastructure -s MediaHandler.API`) and run the quickstart verification checklist: (1) POST scan with `language: "fr"` → 202; (2) GET media detail → `status` + `numberOfSeasons` present; (3) POST profile-picture → 200 with path; (4) GET `/auth/me` → path in response; (5) DELETE profile-picture → 200 with null path
+
+---
+
+## Phase 9: Enrichment Language Support
+
+**Purpose**: Propagate an optional `language` parameter through the enrichment stack — from the HTTP request body all the way to every TMDB call made inside `EnrichmentCoordinator` — mirroring the scan language feature delivered in Phase 2. Both hardcoded `"en-US"` strings inside `EnrichMediaFieldsAsync` and `UpsertTvSeasonsAsync` are replaced with the caller-supplied locale.
+
+**Goal**: Admins can trigger `POST /api/v1/admin/enrichment/start` with `{"language":"fr"}` and have every subsequent TMDB detail/season request use `language=fr-FR` as a query parameter. Null or absent language falls back to `"en-US"` as before — existing callers that send no body are unaffected.
+
+**Independent Test**: `POST /api/v1/admin/enrichment/start` with `{"language":"fr"}` → assert 202 Accepted; verify via trace/log or integration test that TMDB HTTP requests made during the run include `language=fr-FR`. Repeat with no body → verify TMDB calls still use `language=en-US`.
+
+### Implementation
+
+- [x] T038 [P] Add `StartEnrichmentRequest` record (`string? Language = null`) to `MediaHandler.API/Contracts/Admin/ScanRequests.cs`; the new record lives in the same file as `StartScanRequest` and mirrors its shape exactly so the pattern is consistent across both admin trigger endpoints
+- [x] T039 [P] Update `IEnrichmentCoordinator.StartAsync` signature in `MediaHandler.Application/Common/Interfaces/IEnrichmentCoordinator.cs` to `Task StartAsync(Guid enrichmentRunId, string? language = null, CancellationToken ct = default)`; the default value keeps all existing callers compile-clean without changes
+- [x] T040 Extend `StartEnrichmentCommand` from a parameterless record to `record StartEnrichmentCommand(string? Language = null) : IRequest<Result<StartEnrichmentResult>>` in `MediaHandler.Application/Features/Dashboard/Commands/StartEnrichment/StartEnrichmentCommand.cs`; in `StartEnrichmentCommandHandler.Handle`, normalize empty-string to null (`var language = string.IsNullOrWhiteSpace(request.Language) ? null : request.Language;`) and replace the existing `coordinator.StartAsync(run.Id, cancellationToken)` call with `coordinator.StartAsync(run.Id, language, cancellationToken)` — depends on T039
+- [x] T041 Update `AdminEnrichmentController.StartEnrichment` in `MediaHandler.API/Controllers/AdminEnrichmentController.cs` to accept `[FromBody] StartEnrichmentRequest? request = null` as the first parameter (before `CancellationToken ct`) and dispatch `new StartEnrichmentCommand(Language: request?.Language)` instead of `new StartEnrichmentCommand()` — depends on T038 and T040; verify that calling the endpoint with no body (existing behavior) still returns 202/200 without any deserialization error
+- [x] T042 Update `EnrichmentCoordinator.StartAsync` in `MediaHandler.Infrastructure/Services/EnrichmentCoordinator.cs` to accept `string? language = null` and forward it into `ExecuteEnrichmentAsync`; update the private `ExecuteEnrichmentAsync(Guid runId)` signature to `ExecuteEnrichmentAsync(Guid runId, string? language = null)`; add a private static helper `ResolveLocale` that maps short codes to IETF tags: `"fr"` → `"fr-FR"`, `"en"` → `"en-US"`, any value already containing `'-'` is passed through as-is, null/unknown/empty falls back to `"en-US"`; compute `var resolvedLocale = ResolveLocale(language)` once inside `ExecuteEnrichmentAsync` before the processing loop — depends on T039
+- [x] T043 Thread `resolvedLocale` through the two private static helper methods in `MediaHandler.Infrastructure/Services/EnrichmentCoordinator.cs`: (1) update `EnrichMediaFieldsAsync` signature to accept `string language` and replace the hardcoded `"en-US"` in `tmdbService.GetMediaDetailsAsync(media.TmdbId, mediaTypeStr, "en-US", CancellationToken.None)` with `language`; (2) update `UpsertTvSeasonsAsync` signature to accept `string language` and replace the hardcoded `"en-US"` in `tmdbService.GetTvShowSeasonsAsync(media.TmdbId, "en-US", CancellationToken.None)` with `language`; update the two call sites inside `ExecuteEnrichmentAsync` to pass `resolvedLocale` — depends on T042
+- [x] T044 Run `dotnet build MediaHandler.slnx` and fix any compilation errors; smoke-test the full flow: `POST /api/v1/admin/enrichment/start` with body `{"language":"fr"}` → assert 202 Accepted and confirm TMDB calls carry `language=fr-FR`; `POST` with an empty JSON body `{}` → assert 202 Accepted and TMDB calls default to `language=en-US`; `POST` with no body (raw, no Content-Type) → assert no 400/415 error (nullable request body)
+
+**Checkpoint**: Enrichment language pass-through is complete. TMDB metadata (titles, overviews, genre names) is fetched in the admin's active locale during enrichment, mirroring the scan language feature from Phase 2. Existing clients that omit the body are unaffected.
 
 ---
 
@@ -181,6 +203,7 @@ Phase 1 (Domain + DTOs)
   │           └── Phase 6 (API Layer): depends on T013, T014, T015, T016
   └── Phase 7 (Tests): depends on Phases 2–6
 Phase 8 (Polish): depends on all prior phases
+Phase 9 (Enrichment Language): T038+T039 parallel → T040 → T041; T039 → T042 → T043; T044 validates all
 ```
 
 ### Parallel Opportunities
@@ -195,6 +218,8 @@ Phase 8 (Polish): depends on all prior phases
 
 **Within Phase 7** — T019–T031 are all independent unit tests and can be written in parallel. T032 (integration) requires Phase 6 to be complete.
 
+**Within Phase 9** — T038 (`ScanRequests.cs`) and T039 (`IEnrichmentCoordinator.cs`) are fully independent and can run in parallel. T040 (`StartEnrichmentCommand.cs`) depends on T039; T041 (`AdminEnrichmentController.cs`) depends on T038+T040; T042 (`EnrichmentCoordinator.StartAsync`) depends on T039; T043 (private method language wiring) depends on T042; T044 (build + smoke-test) depends on all prior Phase 9 tasks.
+
 ### Suggested MVP Scope
 
 **User Story 1 + User Story 2 only** (Phases 1–3):
@@ -203,3 +228,6 @@ Phase 8 (Polish): depends on all prior phases
 - No new endpoints
 - Zero risk of breaking existing functionality
 - Ship scan language + media DTO fields first; profile-picture feature (Phases 4–6) can follow
+
+**Phase 9 (Enrichment Language)** is a self-contained follow-on to Phase 2 that can be shipped independently once Phase 8 is complete — it touches only three files across two layers (Application + Infrastructure) and introduces no schema changes or new endpoints.
+

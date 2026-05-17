@@ -36,9 +36,11 @@ public class AdminEnrichmentController(ISender sender) : ControllerBase
     [ProducesResponseType<ApiResponse>(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> StartEnrichment(CancellationToken ct)
+    public async Task<IActionResult> StartEnrichment(
+        [FromBody] StartEnrichmentRequest? request,
+        CancellationToken ct)
     {
-        var result = await sender.Send(new StartEnrichmentCommand(), ct);
+        var result = await sender.Send(new StartEnrichmentCommand(Language: request?.Language), ct);
 
         if (!result.IsSuccess)
         {
