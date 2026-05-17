@@ -65,7 +65,7 @@ public sealed class FreeboxNasService(
         var response = await GetFreeboxAsync<FreeboxResponse<FreeboxFileEntry>>(
             $"/api/{_options.ApiVersion}/fs/info/{EncodePath(filePath)}", cancellationToken);
 
-        return response?.Success == true && response.Result is not null
+        return response is { Success: true, Result: not null }
             ? MapToNasFileInfo(response.Result)
             : null;
     }

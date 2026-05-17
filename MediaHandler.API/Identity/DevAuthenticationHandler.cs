@@ -14,11 +14,11 @@ namespace MediaHandler.API.Identity;
 ///     claims (sub, email, name, roles) are extracted WITHOUT signature validation.
 ///     This allows real Auth0 users to authenticate in development.
 ///     2. X-Dev-* headers — useful for Swagger, integration tests, or manual overrides
-///     when no real JWT is available.
+///     when no real JWT is available.q
 ///     3. Hardcoded defaults — "auth0|devuser1" / "dev@local.com" / Admin role.
 ///     These are intentionally kept for unit tests that don't provide a token.
 ///     Headers (all optional, only used when no Bearer JWT is present):
-///     X-Dev-OktaId    — sub claim    (default: "auth0|devuser1")
+///     X-Dev-OktaId    — subclaim    (default: "auth0|devuser1")
 ///     X-Dev-Email     — email claim  (default: "dev@local.com")
 ///     X-Dev-IsAdmin   — Pass "false" to remove the Admin role (default: admin = true)
 /// </summary>

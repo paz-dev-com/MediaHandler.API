@@ -23,7 +23,9 @@ public record MediaDto(
     decimal? VoteAverage,
     IReadOnlyList<string> Genres,
     IReadOnlyList<MediaFileDto> Files,
-    bool? IsWatched);
+    bool? IsWatched,
+    string? Status,
+    int? NumberOfSeasons);
 
 public record MediaListItemDto(
     Guid Id,
@@ -34,7 +36,9 @@ public record MediaListItemDto(
     string? PosterPath,
     decimal? VoteAverage,
     int FileCount,
-    bool? IsWatched);
+    bool? IsWatched,
+    string? Status,
+    int? NumberOfSeasons);
 
 public record MediaStatsDto(
     int TotalMedia,

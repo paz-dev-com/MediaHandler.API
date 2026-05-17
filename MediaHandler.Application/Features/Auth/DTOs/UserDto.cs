@@ -6,4 +6,5 @@ public record UserDto(
     string? DisplayName,
     string PreferredLanguage,
     string Role,
-    bool IsActive);
+    bool IsActive,
+    string? ProfilePicturePath);

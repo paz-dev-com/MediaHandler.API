@@ -8,4 +8,5 @@ namespace MediaHandler.API.Contracts.Admin;
 /// </summary>
 public record StartScanRequest(
     Guid[] LibraryRootIds,
-    ScanMode Mode);
+    ScanMode Mode,
+    string? Language = null);

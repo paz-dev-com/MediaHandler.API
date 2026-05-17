@@ -4,12 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MediaHandler.Infrastructure.Persistence;
 
-public class MediaHandlerDbContext : DbContext, IApplicationDbContext
+public class MediaHandlerDbContext(DbContextOptions<MediaHandlerDbContext> options)
+    : DbContext(options), IApplicationDbContext
 {
-    public MediaHandlerDbContext(DbContextOptions<MediaHandlerDbContext> options) : base(options)
-    {
-    }
-
     public DbSet<User> Users => Set<User>();
     public DbSet<Media> Medias => Set<Media>();
     public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
