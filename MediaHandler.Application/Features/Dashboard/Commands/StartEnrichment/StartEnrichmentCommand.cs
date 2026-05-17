@@ -29,7 +29,7 @@ public record StartEnrichmentResult(
     int TotalItems);
 
 /// <summary>Command to start a background TMDB batch enrichment run.</summary>
-public record StartEnrichmentCommand : IRequest<Result<StartEnrichmentResult>>;
+public record StartEnrichmentCommand(string? Language = null) : IRequest<Result<StartEnrichmentResult>>;
 
 // =========================================================================
 // Validator
@@ -108,7 +108,8 @@ public sealed class StartEnrichmentCommandHandler(
         await db.SaveChangesAsync(cancellationToken);
 
         // (5) Trigger background enrichment (fire-and-forget; coordinator owns the lifecycle)
-        await coordinator.StartAsync(run.Id, cancellationToken);
+        var language = string.IsNullOrWhiteSpace(request.Language) ? null : request.Language;
+        await coordinator.StartAsync(run.Id, language, cancellationToken);
 
         return Result.Success(new StartEnrichmentResult(
             WasStarted: true,

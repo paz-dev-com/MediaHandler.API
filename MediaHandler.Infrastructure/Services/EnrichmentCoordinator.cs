@@ -57,13 +57,13 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
     // =========================================================================
 
     /// <inheritdoc />
-    public Task StartAsync(Guid enrichmentRunId, CancellationToken ct = default)
+    public Task StartAsync(Guid enrichmentRunId, string? language = null, CancellationToken ct = default)
     {
         _logger.LogInformation(
             "EnrichmentCoordinator: starting background enrichment run {RunId}.", enrichmentRunId);
 
         // Fire-and-forget; the background task owns its own DI scope.
-        _ = Task.Run(() => ExecuteEnrichmentAsync(enrichmentRunId), CancellationToken.None);
+        _ = Task.Run(() => ExecuteEnrichmentAsync(enrichmentRunId, language), CancellationToken.None);
 
         return Task.CompletedTask;
     }
@@ -90,11 +90,13 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
     // Background execution — owns a dedicated DI scope
     // =========================================================================
 
-    private async Task ExecuteEnrichmentAsync(Guid runId)
+    private async Task ExecuteEnrichmentAsync(Guid runId, string? language = null)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<MediaHandlerDbContext>();
         var tmdbService = scope.ServiceProvider.GetRequiredService<ITmdbService>();
+
+        var resolvedLocale = ResolveLocale(language);
 
         // Stale-run guard: confirm the row still exists in Pending state
         var run = await db.EnrichmentRuns.FirstOrDefaultAsync(r => r.Id == runId);
@@ -143,11 +145,11 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
                 try
                 {
                     // Fetch and map Media fields
-                    await EnrichMediaFieldsAsync(db, tmdbService, media);
+                    await EnrichMediaFieldsAsync(db, tmdbService, media, resolvedLocale);
 
                     // Upsert TvSeason/TvEpisode for TV shows
                     if (media.Type == MediaType.TvShow)
-                        await UpsertTvSeasonsAsync(db, tmdbService, media);
+                        await UpsertTvSeasonsAsync(db, tmdbService, media, resolvedLocale);
 
                     enrichedCount++;
                     mediaResults.Add(new EnrichmentMediaResult(media.Id, "Enriched"));
@@ -263,11 +265,12 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
     private static async Task EnrichMediaFieldsAsync(
         MediaHandlerDbContext db,
         ITmdbService tmdbService,
-        Media media)
+        Media media,
+        string language)
     {
         var mediaTypeStr = media.Type == MediaType.TvShow ? "tv" : "movie";
         var details = await tmdbService.GetMediaDetailsAsync(
-            media.TmdbId, mediaTypeStr, "en-US", CancellationToken.None);
+            media.TmdbId, mediaTypeStr, language, CancellationToken.None);
 
         if (details is null)
             throw new InvalidOperationException(
@@ -337,10 +340,11 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
     private static async Task UpsertTvSeasonsAsync(
         MediaHandlerDbContext db,
         ITmdbService tmdbService,
-        Media media)
+        Media media,
+        string language)
     {
         var seasons = (await tmdbService.GetTvShowSeasonsAsync(
-            media.TmdbId, "en-US", CancellationToken.None)).ToList();
+            media.TmdbId, language, CancellationToken.None)).ToList();
 
         foreach (var seasonDto in seasons)
         {
@@ -402,6 +406,31 @@ public sealed class EnrichmentCoordinator : IEnrichmentCoordinator
     // =========================================================================
     // Helpers
     // =========================================================================
+
+    /// <summary>
+    ///     Maps a short language code or IETF tag to the full IETF locale used by TMDB.
+    ///     <list type="bullet">
+    ///         <item>Null / empty → <c>en-US</c></item>
+    ///         <item>Values already containing <c>'-'</c> (e.g. <c>fr-FR</c>) → passed through as-is</item>
+    ///         <item>Known short codes: <c>fr</c> → <c>fr-FR</c>, <c>en</c> → <c>en-US</c></item>
+    ///         <item>Unknown short codes → <c>en-US</c> (safe fallback)</item>
+    ///     </list>
+    /// </summary>
+    private static string ResolveLocale(string? language)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+            return "en-US";
+
+        if (language.Contains('-'))
+            return language;
+
+        return language.ToLowerInvariant() switch
+        {
+            "en" => "en-US",
+            "fr" => "fr-FR",
+            _ => "en-US"
+        };
+    }
 
     private static EnrichmentRunDto MapToDto(Domain.Entities.EnrichmentRun run)
     {

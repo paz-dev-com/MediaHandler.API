@@ -22,7 +22,7 @@ public interface IEnrichmentCoordinator
     ///     <c>StartEnrichmentCommand</c> handler before calling this method.
     /// </param>
     /// <param name="ct">Cancellation token (used for the fire-and-forget initiation only).</param>
-    Task StartAsync(Guid enrichmentRunId, CancellationToken ct = default);
+    Task StartAsync(Guid enrichmentRunId, string? language = null, CancellationToken ct = default);
 
     /// <summary>
     ///     Returns the current status of the most recent enrichment run, or <c>null</c> if
