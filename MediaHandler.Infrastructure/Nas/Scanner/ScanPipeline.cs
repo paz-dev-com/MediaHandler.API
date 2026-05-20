@@ -274,6 +274,18 @@ public sealed class ScanPipeline(
                 scanRun, root, file, role, stack, counters, resolvedReviewItems, existingOpenReviewPaths,
                 existingMediaFiles, inFlightPaths, nfoEntriesByPath, language, ct);
 
+            if (processedInRoot % 10 == 0)
+            {
+                scanRun.TotalDiscovered = counters.TotalDiscovered;
+                scanRun.Added = counters.Added;
+                scanRun.Updated = counters.Updated;
+                scanRun.Unchanged = counters.Unchanged;
+                scanRun.Removed = counters.Removed;
+                scanRun.Excluded = counters.Excluded;
+                scanRun.NeedsReview = counters.NeedsReview;
+                await db.SaveChangesAsync(ct);
+            }
+
             if (processedInRoot % 50 == 0)
                 await EmitProgressAsync(scanRun.Id, "Classifying", processedInRoot, videoFiles.Count,
                     file.AbsolutePath, progress, ct);

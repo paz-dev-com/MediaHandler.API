@@ -36,9 +36,12 @@ public class AdminLibraryRootsController(ISender sender) : ControllerBase
         [FromQuery] int pageSize = 20,
         [FromQuery] LibraryRootKind? kind = null,
         [FromQuery] bool enabledOnly = false,
+        [FromQuery] string? sortField = null,
+        [FromQuery] string? sortOrder = "asc",
+        [FromQuery] string? path = null,
         CancellationToken ct = default)
     {
-        var result = await sender.Send(new ListLibraryRootsQuery(page, pageSize, kind, enabledOnly), ct);
+        var result = await sender.Send(new ListLibraryRootsQuery(page, pageSize, kind, enabledOnly, sortField, sortOrder, path), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse.Fail(result.Errors.Select(e => new ApiError("BAD_REQUEST", e)).ToArray()));

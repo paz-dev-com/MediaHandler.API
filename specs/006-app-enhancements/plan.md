@@ -266,3 +266,252 @@ Both `MediaDto` and `MediaListItemDto` are constructed positionally in their res
 > No constitution violations. No entry required.
 
 All changes follow established patterns. No new packages, no new architecture layers, no deviation from CQRS/Result/FluentValidation conventions.
+
+---
+
+## Backend Work Required by Frontend Phases 13–20
+
+**Added**: 2025-07-24 | **Driven by**: Web `specs/006-app-enhancements/tasks.md` Phases 13–20 (T072–T122)
+
+### Summary
+
+The companion Angular frontend (MediaHandler.Web) phases 13–20 introduce four user stories that each require new or extended backend API behaviour. The work is grouped into four areas below and implemented as API Tasks T045–T055 (Phases 10–13 in `tasks.md`).
+
+### Constitution Check — New Work
+
+| Principle | Status | Notes |
+|-----------|--------|-------|
+| I. Clean Architecture | ✅ PASS | All new queries/commands in Application layer; controller changes in API layer; `ScanPipeline` change in Infrastructure. |
+| I. CQRS via MediatR | ✅ PASS | `BatchAssignReviewItemsCommand` is a new Command+Handler pair. Sort/filter params added to existing queries. |
+| I. Result pattern | ✅ PASS | `BatchAssignReviewItemsCommand` returns `Result<BatchAssignReviewItemsResponse>`. Existing queries retain their own return types. |
+| I. FluentValidation pipeline | ✅ PASS | `BatchAssignReviewItemsCommand` validator: array non-empty, each `ReviewItemId` non-empty. |
+| I. Code style | ✅ PASS | File-scoped namespaces, `record` types, `#nullable enable`. |
+| IV. Performance | ✅ PASS | `AsNoTracking()` retained on all read queries. Batch assign uses a single `Media` lookup + loop. Incremental flush limited to every 10 files to avoid excessive DB round-trips. |
+| III. Versioned routes | ✅ PASS | New endpoint `POST /api/v1/admin/review-items/batch-assign` follows existing `/api/v1/admin/…` convention. |
+| III. Role-based access | ✅ PASS | New endpoint uses existing AdminOnly policy, consistent with all other `AdminReviewController` actions. |
+
+**Gate result**: ✅ ALL PASS — no violations. Proceeding to implementation.
+
+---
+
+### A. Sort & Filter on Six Admin List Endpoints
+
+**Web tasks**: T072–T077 | **API tasks**: T045–T050 | **Unblocks**: Web Phase 14 (US-9 table sort/filter)
+
+All six admin list endpoints already accept `page`/`pageSize` as `[FromQuery]` parameters. Each query record and its handler will be extended with two new optional parameters (`string? SortField`, `string? SortOrder`) and, where applicable, a column-specific text-filter parameter. Ordering is appended to the `IQueryable` before the `Skip`/`Take` via a `switch` expression; the fallback order (the current default) is preserved when `SortField` is null.
+
+| Endpoint | Query | New params | Filter field | Sort columns |
+|----------|-------|-----------|--------------|--------------|
+| `GET /api/v1/admin/users` | `GetUsersQuery` | `SortField?`, `SortOrder?` | — | `DisplayName`, `Email`, `Role`, `IsActive` |
+| `GET /api/v1/admin/review-items` | `ListReviewItemsQuery` | `SortField?`, `SortOrder?`, `FileName?` | `Contains(FilePath)` | `FileName`, `Status`, `CreatedAt` |
+| `GET /api/v1/admin/scan/history` | `ListScanHistoryQuery` | `SortField?`, `SortOrder?` | — | `StartedAt`, `Status`, `Mode` |
+| `GET /api/v1/admin/scan/decisions` | `ListScanDecisionsQuery` | `SortField?`, `SortOrder?`, `FileName?` | `Contains(FilePath)` | `FileName`, `Status`, `CreatedAt` |
+| `GET /api/v1/admin/enrichment/history` | `ListEnrichmentHistoryQuery` | `SortField?`, `SortOrder?` | — | `StartedAt`, `Status` |
+| `GET /api/v1/admin/library-roots` | `ListLibraryRootsQuery` | `SortField?`, `SortOrder?`, `Path?` | `Contains(Path)` | `Path`, `CreatedAt` |
+
+**Implementation pattern** (same for all six):
+
+```csharp
+// In query record — append optional params after existing pagination params:
+public record GetUsersQuery(
+    int Page = 1,
+    int PageSize = 20,
+    string? Search = null,
+    string? SortField = null,
+    string? SortOrder = "asc") : IRequest<Result<PagedResult<UserDto>>>;
+
+// In handler — replace the current .OrderBy(…) with a switch:
+IOrderedQueryable<User> ordered = (SortField?.ToLowerInvariant(), SortOrder?.ToLowerInvariant() == "desc") switch
+{
+    ("displayname", false) => query.OrderBy(u => u.DisplayName),
+    ("displayname", true)  => query.OrderByDescending(u => u.DisplayName),
+    ("email",       false) => query.OrderBy(u => u.Email),
+    ("email",       true)  => query.OrderByDescending(u => u.Email),
+    ("role",        false) => query.OrderBy(u => u.Role),
+    ("role",        true)  => query.OrderByDescending(u => u.Role),
+    ("isactive",    false) => query.OrderBy(u => u.IsActive),
+    ("isactive",    true)  => query.OrderByDescending(u => u.IsActive),
+    _                      => query.OrderBy(u => u.Email),   // existing default
+};
+```
+
+For text-filter params (`FileName`, `Path`), the filter is applied before the count and ordering:
+
+```csharp
+if (!string.IsNullOrWhiteSpace(request.FileName))
+    query = query.Where(r => r.FilePath.Contains(request.FileName));
+```
+
+Each controller action receives the new params from `[FromQuery]` and forwards them to the query constructor unchanged.
+
+---
+
+### B. Incremental Scan Counter Flush
+
+**Web tasks**: T078 (duplicate intent in T096) | **API task**: T051 | **Unblocks**: Web Phase 16 (US-11 real-time counters)
+
+**Problem**: `ScanPipeline.ExecuteAsync` accumulates counters in the in-memory `ScanCounters` struct and writes them to `scanRun` only at the very end (lines 82–89 of `ExecuteAsync`). The `GET /api/v1/admin/scan/active` endpoint reads these fields from the DB, so they remain 0 throughout the entire scan.
+
+**Fix location**: `MediaHandler.Infrastructure/Nas/Scanner/ScanPipeline.cs` — inside the `foreach (var file in videoFiles)` loop in `ProcessRootAsync` (around line 277, where `processedInRoot % 50 == 0` already triggers a progress emit).
+
+**Implementation**:
+
+```csharp
+// After ClassifyAndPersistFileAsync call, inside the foreach (var file in videoFiles) loop:
+if (processedInRoot % 10 == 0)
+{
+    scanRun.TotalDiscovered = counters.TotalDiscovered;
+    scanRun.Added           = counters.Added;
+    scanRun.Updated         = counters.Updated;
+    scanRun.Unchanged       = counters.Unchanged;
+    scanRun.Removed         = counters.Removed;
+    scanRun.Excluded        = counters.Excluded;
+    scanRun.NeedsReview     = counters.NeedsReview;
+    await db.SaveChangesAsync(ct);
+}
+```
+
+The `counters.TotalDiscovered` increment at line 175 covers ALL enumerated entries (including excluded dirs). The `processedInRoot` counter in the video-file loop tracks only video files. Flushing every 10 video files ensures the active-scan endpoint reflects useful progress while keeping additional DB round-trips to a minimum (1 extra save per 10 files vs the existing 1 save per root).
+
+> **Note**: The Web tasks.md T078 and T096 both describe the same fix and attribute it to `ScanRunCoordinator.cs`. That file orchestrates scans but does not own the `ScanCounters` struct — the counters live in `ScanPipeline.cs` and must be flushed there.
+
+---
+
+### C. Batch Assign Review Items
+
+**Web tasks**: T079–T080 | **API tasks**: T052–T053 | **Unblocks**: Web Phase 17 (US-12 multi-select batch assign)
+
+A new command `BatchAssignReviewItemsCommand` assigns multiple `ReviewItem` rows to a single target `Media` entity in one operation. Unlike `ResolveReviewItemCommand` (which accepts a TmdbId + Kind and performs a TMDB-lookup to find the Media), this command takes the internal `Media.Id` (Guid) directly — the frontend has already resolved the target media via the existing `GET /api/v1/media?title=…` search.
+
+**New files**:
+
+```text
+MediaHandler.Application/Features/Review/Commands/BatchAssignReviewItems/
+└── BatchAssignReviewItemsCommand.cs   ← command record + validator + handler
+MediaHandler.API/Contracts/Admin/
+└── ReviewRequests.cs                  ← MODIFIED: add BatchAssignReviewItemsRequest,
+                                                   BatchAssignItemResult,
+                                                   BatchAssignReviewItemsResponse
+MediaHandler.API/Controllers/
+└── AdminReviewController.cs           ← MODIFIED: add POST batch-assign action
+```
+
+**Command shape**:
+
+```csharp
+public record BatchAssignReviewItemsCommand(
+    Guid[] ReviewItemIds,
+    Guid TargetMediaId) : IRequest<Result<BatchAssignReviewItemsResponse>>;
+
+public record BatchAssignItemResult(
+    Guid ReviewItemId,
+    bool Success,
+    string? ErrorMessage);
+
+public record BatchAssignReviewItemsResponse(
+    IReadOnlyList<BatchAssignItemResult> Results);
+```
+
+**Handler logic** (per item):
+1. Resolve `ReviewItem` by `id` — record failure if not found.
+2. Resolve `Media` by `TargetMediaId` (once, outside the loop) — fail the entire batch if not found.
+3. Set `reviewItem.ResolvedTmdbId = media.TmdbId`, `reviewItem.ResolvedKind = media.Type`, `reviewItem.AssignedMediaId = media.Id` (if the domain entity has that FK), `reviewItem.Status = ReviewStatus.Resolved`, `reviewItem.ResolvedAt = DateTime.UtcNow`.
+4. Collect per-item `BatchAssignItemResult`; continue on per-item exceptions.
+5. `SaveChangesAsync` once after the loop.
+6. Return `Result.Success(new BatchAssignReviewItemsResponse(results))`.
+
+**Validator**: `ReviewItemIds` must be non-empty; `TargetMediaId` must be non-empty.
+
+**Endpoint**:
+
+```
+POST /api/v1/admin/review-items/batch-assign
+Authorization: AdminOnly
+Body: { "reviewItemIds": ["…"], "targetMediaId": "…" }
+200 OK: ApiResponse<BatchAssignReviewItemsResponse>
+400 Bad Request: empty array / missing targetMediaId
+404 Not Found: targetMediaId does not correspond to a Media record
+```
+
+---
+
+### D. Collection Completeness Data
+
+**Web tasks**: T081–T082 | **API tasks**: T054–T055 | **Unblocks**: Web Phase 19 (US-14 completeness badges)
+
+Two additive DTO changes surface TV show completeness information without any schema migration.
+
+#### D.1 — `MediaStatsDto.IncompleteTvShowCount`
+
+Add `int IncompleteTvShowCount` as the last field in `MediaStatsDto` (same file: `MediaDto.cs`). Compute in `GetMediaStatsQueryHandler`:
+
+```csharp
+var incompleteTvShows = await context.Medias
+    .CountAsync(m => m.Type == MediaType.TvShow
+                  && m.NumberOfSeasons.HasValue
+                  && m.TvSeasons.Count() < m.NumberOfSeasons.Value,
+                cancellationToken);
+```
+
+Pass `incompleteTvShows` as the last positional argument in the `new MediaStatsDto(…)` constructor call.
+
+#### D.2 — `MediaListItemDto.OwnedSeasonCount`
+
+Add `int? OwnedSeasonCount` as the last field in `MediaListItemDto`. Project it in `GetMediaListQueryHandler`'s `.Select(m => new MediaListItemDto(…))`:
+
+```csharp
+m.Type == MediaType.TvShow ? (int?)m.TvSeasons.Count() : null
+```
+
+Films receive `null`; TV shows receive the count of persisted `TvSeason` rows. EF Core translates `m.TvSeasons.Count()` to a correlated subquery — no `Include` needed.
+
+---
+
+### Source Structure — New & Modified Files (Phases 10–13)
+
+```text
+MediaHandler.Application/
+├── Features/
+│   ├── Admin/Queries/GetUsers/
+│   │   └── GetUsersQueryHandler.cs             ← MODIFIED: add SortField?, SortOrder?
+│   ├── Review/
+│   │   ├── Queries/ListReviewItems/
+│   │   │   └── ListReviewItemsQuery.cs          ← MODIFIED: add SortField?, SortOrder?, FileName?
+│   │   └── Commands/BatchAssignReviewItems/
+│   │       └── BatchAssignReviewItemsCommand.cs ← NEW: command + validator + handler
+│   ├── Scan/Queries/ListScanHistory/
+│   │   └── ListScanHistoryQuery.cs              ← MODIFIED: add SortField?, SortOrder?
+│   ├── Dashboard/Queries/
+│   │   ├── ListScanDecisions/
+│   │   │   └── ListScanDecisionsQuery.cs        ← MODIFIED: add SortField?, SortOrder?, FileName?
+│   │   └── ListEnrichmentHistory/
+│   │       └── ListEnrichmentHistoryQuery.cs    ← MODIFIED: add SortField?, SortOrder?
+│   ├── LibraryRoots/Queries/ListLibraryRoots/
+│   │   └── ListLibraryRootsQuery.cs             ← MODIFIED: add SortField?, SortOrder?, Path?
+│   └── Media/
+│       ├── DTOs/
+│       │   └── MediaDto.cs                      ← MODIFIED: IncompleteTvShowCount on MediaStatsDto;
+│       │                                                     OwnedSeasonCount on MediaListItemDto
+│       ├── Queries/GetMediaStats/
+│       │   └── GetMediaStatsQueryHandler.cs     ← MODIFIED: compute IncompleteTvShowCount
+│       └── Queries/GetMediaList/
+│           └── GetMediaListQueryHandler.cs      ← MODIFIED: project OwnedSeasonCount
+
+MediaHandler.Infrastructure/
+└── Nas/Scanner/
+    └── ScanPipeline.cs                          ← MODIFIED: incremental counter flush every 10 files
+
+MediaHandler.API/
+├── Contracts/Admin/
+│   └── ReviewRequests.cs                        ← MODIFIED: add BatchAssignReviewItemsRequest,
+│                                                             BatchAssignItemResult,
+│                                                             BatchAssignReviewItemsResponse
+└── Controllers/
+    ├── AdminController.cs                       ← MODIFIED: forward SortField?, SortOrder? to GetUsersQuery
+    ├── AdminReviewController.cs                 ← MODIFIED: forward sort/filter params; add batch-assign action
+    ├── AdminScanController.cs                   ← MODIFIED: forward SortField?, SortOrder? to ListScanHistoryQuery
+    ├── AdminScanDecisionsController.cs          ← MODIFIED: forward sort/fileName params to ListScanDecisionsQuery
+    ├── AdminEnrichmentController.cs             ← MODIFIED: forward SortField?, SortOrder? to ListEnrichmentHistoryQuery
+    └── AdminLibraryRootsController.cs           ← MODIFIED: forward sort/path params to ListLibraryRootsQuery
+```
+

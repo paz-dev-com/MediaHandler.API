@@ -13,7 +13,9 @@ namespace MediaHandler.Application.Features.Dashboard.Queries.ListEnrichmentHist
 /// </summary>
 public record ListEnrichmentHistoryQuery(
     int Page,
-    int PageSize) : IRequest<PagedResult<EnrichmentRunDto>>;
+    int PageSize,
+    string? SortField = null,
+    string? SortOrder = "asc") : IRequest<PagedResult<EnrichmentRunDto>>;
 
 // =========================================================================
 // Validator
@@ -39,13 +41,20 @@ public sealed class ListEnrichmentHistoryQueryHandler(IApplicationDbContext db)
         ListEnrichmentHistoryQuery request,
         CancellationToken cancellationToken)
     {
-        var query = db.EnrichmentRuns
-            .AsNoTracking()
-            .OrderByDescending(r => r.StartedAt);
+        var query = db.EnrichmentRuns.AsNoTracking();
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var items = await query
+        var ordered = (request.SortField?.ToLowerInvariant(), request.SortOrder?.ToLowerInvariant() == "desc") switch
+        {
+            ("startedat", false) => query.OrderBy(r => r.StartedAt),
+            ("startedat", true) => query.OrderByDescending(r => r.StartedAt),
+            ("status", false) => query.OrderBy(r => r.Status),
+            ("status", true) => query.OrderByDescending(r => r.Status),
+            _ => query.OrderByDescending(r => r.StartedAt),
+        };
+
+        var items = await ordered
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToListAsync(cancellationToken);
