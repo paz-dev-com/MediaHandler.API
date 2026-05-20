@@ -123,9 +123,11 @@ public class AdminEnrichmentController(ISender sender) : ControllerBase
     public async Task<IActionResult> ListEnrichmentHistory(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] string? sortField = null,
+        [FromQuery] string? sortOrder = "asc",
         CancellationToken ct = default)
     {
-        var pagedResult = await sender.Send(new ListEnrichmentHistoryQuery(page, pageSize), ct);
+        var pagedResult = await sender.Send(new ListEnrichmentHistoryQuery(page, pageSize, sortField, sortOrder), ct);
 
         var meta = new ApiResponseMeta(
             pagedResult.Page,

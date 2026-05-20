@@ -15,7 +15,9 @@ namespace MediaHandler.Application.Features.Scan.Queries.ListScanHistory;
 /// </summary>
 public record ListScanHistoryQuery(
     int Page = 1,
-    int PageSize = 20) : IRequest<Result<PagedResult<ScanRunDto>>>;
+    int PageSize = 20,
+    string? SortField = null,
+    string? SortOrder = "asc") : IRequest<Result<PagedResult<ScanRunDto>>>;
 
 // =========================================================================
 // Validator
@@ -50,8 +52,18 @@ public sealed class ListScanHistoryQueryHandler(IApplicationDbContext db)
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var items = await query
-            .OrderByDescending(r => r.StartedAt)
+        var ordered = (request.SortField?.ToLowerInvariant(), request.SortOrder?.ToLowerInvariant() == "desc") switch
+        {
+            ("startedat", false) => query.OrderBy(r => r.StartedAt),
+            ("startedat", true) => query.OrderByDescending(r => r.StartedAt),
+            ("status", false) => query.OrderBy(r => r.Status),
+            ("status", true) => query.OrderByDescending(r => r.Status),
+            ("mode", false) => query.OrderBy(r => r.Mode),
+            ("mode", true) => query.OrderByDescending(r => r.Mode),
+            _ => query.OrderByDescending(r => r.StartedAt),
+        };
+
+        var items = await ordered
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToListAsync(cancellationToken);

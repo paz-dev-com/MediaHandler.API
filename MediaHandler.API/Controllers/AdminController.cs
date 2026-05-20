@@ -22,9 +22,10 @@ public class AdminController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 20,
-        [FromQuery] string? search = null, CancellationToken ct = default)
+        [FromQuery] string? search = null, [FromQuery] string? sortField = null,
+        [FromQuery] string? sortOrder = "asc", CancellationToken ct = default)
     {
-        var result = await sender.Send(new GetUsersQuery(page, pageSize, search), ct);
+        var result = await sender.Send(new GetUsersQuery(page, pageSize, search, sortField, sortOrder), ct);
         var meta = new ApiResponseMeta(result.Value.Page, result.Value.PageSize, result.Value.TotalCount,
             result.Value.TotalPages);
         return Ok(ApiResponse<object>.Success(result.Value.Items, meta));

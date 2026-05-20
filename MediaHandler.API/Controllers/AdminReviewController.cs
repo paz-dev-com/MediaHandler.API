@@ -4,6 +4,7 @@
 using MediaHandler.API.Contracts.Admin;
 using MediaHandler.API.Models;
 using MediaHandler.Application.Common.DTOs;
+using MediaHandler.Application.Features.Review.Commands.BatchAssignReviewItems;
 using MediaHandler.Application.Features.Review.Commands.BulkResolveReviewItems;
 using MediaHandler.Application.Features.Review.Commands.ResolveReviewItem;
 using MediaHandler.Application.Features.Review.Queries.ListReviewItems;
@@ -40,10 +41,13 @@ public class AdminReviewController(ISender sender) : ControllerBase
         [FromQuery] Guid? scanRunId = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
+        [FromQuery] string? sortField = null,
+        [FromQuery] string? sortOrder = "asc",
+        [FromQuery] string? fileName = null,
         CancellationToken ct = default)
     {
         var result = await sender.Send(
-            new ListReviewItemsQuery(status, reason, scanRunId, page, pageSize), ct);
+            new ListReviewItemsQuery(status, reason, scanRunId, page, pageSize, sortField, sortOrder, fileName), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse.Fail(new ApiError("VALIDATION_ERROR",
@@ -149,5 +153,41 @@ public class AdminReviewController(ISender sender) : ControllerBase
         }
 
         return Ok(ApiResponse<BulkResolveResult>.Success(result.Value));
+    }
+
+    /// <summary>
+    ///     Batch-assign multiple review items to a single target media record.
+    ///     Resolves all specified review items to the target Media in one call.
+    ///     Returns per-item success/failure results.
+    ///     Returns 404 when <paramref name="request" />'s <c>targetMediaId</c> is not found.
+    /// </summary>
+    [HttpPost("batch-assign")]
+    [ProducesResponseType(typeof(ApiResponse<BatchAssignReviewItemsResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> BatchAssignReviewItems(
+        [FromBody] BatchAssignReviewItemsRequest request,
+        CancellationToken ct = default)
+    {
+        if (request.ReviewItemIds is null || request.ReviewItemIds.Length == 0)
+            return BadRequest(ApiResponse.Fail(new ApiError("VALIDATION_ERROR", "ReviewItemIds must not be empty.")));
+
+        var result = await sender.Send(
+            new BatchAssignReviewItemsCommand(request.ReviewItemIds, request.TargetMediaId), ct);
+
+        if (!result.IsSuccess)
+        {
+            var error = result.Errors.FirstOrDefault() ?? "Unknown error";
+
+            if (error.Contains("MEDIA_NOT_FOUND", StringComparison.OrdinalIgnoreCase))
+                return NotFound(ApiResponse.Fail(new ApiError("MEDIA_NOT_FOUND",
+                    $"Media '{request.TargetMediaId}' was not found.")));
+
+            return BadRequest(ApiResponse.Fail(new ApiError("VALIDATION_ERROR", error)));
+        }
+
+        return Ok(ApiResponse<BatchAssignReviewItemsResponse>.Success(result.Value));
     }
 }

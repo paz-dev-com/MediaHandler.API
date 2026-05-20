@@ -32,3 +32,12 @@ public record BulkResolveReviewRequest(
     int? TmdbId,
     /// <summary>Required when <see cref="Action"/> is <see cref="ReviewResolutionAction.Assign"/>.</summary>
     MediaType? Kind);
+
+/// <summary>
+///     Request body for <c>POST /api/v1/admin/review-items/batch-assign</c>.
+/// </summary>
+public record BatchAssignReviewItemsRequest(
+    /// <summary>IDs of the review items to assign.</summary>
+    Guid[] ReviewItemIds,
+    /// <summary>Internal Media.Id of the target media record.</summary>
+    Guid TargetMediaId);

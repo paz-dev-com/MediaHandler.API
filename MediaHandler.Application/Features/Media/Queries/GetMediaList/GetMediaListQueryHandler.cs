@@ -77,7 +77,8 @@ public class GetMediaListQueryHandler(IApplicationDbContext context, ICurrentUse
                         .FirstOrDefault()
                     : null,
                 m.Status,
-                m.NumberOfSeasons))
+                m.NumberOfSeasons,
+                m.Type == MediaType.TvShow ? (int?)m.TvSeasons.Count() : null))
             .ToListAsync(cancellationToken);
 
         return Result.Success(new PagedResult<MediaListItemDto>(items, total, request.Page, request.PageSize));

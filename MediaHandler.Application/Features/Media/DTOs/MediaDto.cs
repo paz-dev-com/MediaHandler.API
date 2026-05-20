@@ -38,7 +38,8 @@ public record MediaListItemDto(
     int FileCount,
     bool? IsWatched,
     string? Status,
-    int? NumberOfSeasons);
+    int? NumberOfSeasons,
+    int? OwnedSeasonCount);
 
 public record MediaStatsDto(
     int TotalMedia,
@@ -47,4 +48,5 @@ public record MediaStatsDto(
     int WatchedByCurrentUser,
     int UnwatchedByCurrentUser,
     int TotalFiles,
-    int UnlinkedFiles);
+    int UnlinkedFiles,
+    int IncompleteTvShowCount);

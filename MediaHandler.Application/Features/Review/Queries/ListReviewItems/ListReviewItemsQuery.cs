@@ -23,7 +23,10 @@ public record ListReviewItemsQuery(
     ReviewReason? Reason = null,
     Guid? ScanRunId = null,
     int Page = 1,
-    int PageSize = 25) : IRequest<Result<PagedResult<ReviewItemDto>>>;
+    int PageSize = 25,
+    string? SortField = null,
+    string? SortOrder = "asc",
+    string? FileName = null) : IRequest<Result<PagedResult<ReviewItemDto>>>;
 
 // =========================================================================
 // Validator
@@ -67,10 +70,23 @@ public sealed class ListReviewItemsQueryHandler(IApplicationDbContext db)
         if (request.ScanRunId.HasValue)
             query = query.Where(r => r.FirstSeenScanRunId == request.ScanRunId.Value);
 
+        if (!string.IsNullOrWhiteSpace(request.FileName))
+            query = query.Where(r => r.FilePath.Contains(request.FileName));
+
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var items = await query
-            .OrderByDescending(r => r.CreatedAt)
+        IOrderedQueryable<ReviewItem> ordered = (request.SortField?.ToLowerInvariant(), request.SortOrder?.ToLowerInvariant() == "desc") switch
+        {
+            ("filename", false) => query.OrderBy(r => r.FilePath),
+            ("filename", true) => query.OrderByDescending(r => r.FilePath),
+            ("status", false) => query.OrderBy(r => r.Status),
+            ("status", true) => query.OrderByDescending(r => r.Status),
+            ("createdat", false) => query.OrderBy(r => r.CreatedAt),
+            ("createdat", true) => query.OrderByDescending(r => r.CreatedAt),
+            _ => query.OrderByDescending(r => r.CreatedAt),
+        };
+
+        var items = await ordered
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToListAsync(cancellationToken);
