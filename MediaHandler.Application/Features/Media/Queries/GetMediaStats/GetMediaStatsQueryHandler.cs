@@ -36,7 +36,9 @@ public class GetMediaStatsQueryHandler(IApplicationDbContext context, ICurrentUs
         var incompleteTvShows = await context.Medias
             .CountAsync(m => m.Type == MediaType.TvShow
                           && m.NumberOfSeasons.HasValue
-                          && m.TvSeasons.Count() < m.NumberOfSeasons.Value,
+                          && m.TvSeasons.Count(s =>
+                              s.SeasonNumber > 0 &&
+                              s.TvEpisodes.Any(e => e.EpisodeFileLinks.Any())) < m.NumberOfSeasons.Value,
                         cancellationToken);
 
         return Result.Success(new MediaStatsDto(
