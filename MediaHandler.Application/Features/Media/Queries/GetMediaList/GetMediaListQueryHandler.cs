@@ -51,8 +51,16 @@ public class GetMediaListQueryHandler(IApplicationDbContext context, ICurrentUse
             query = query.Where(m => m.Type == request.Type.Value);
 
         if (request.IsWatched.HasValue && userId.HasValue)
-            query = query.Where(m =>
-                m.UserMedias.Any(um => um.UserId == userId.Value && um.IsWatched == request.IsWatched.Value));
+        {
+            if (request.IsWatched.Value)
+                // Watched: must have a UserMedia entry with IsWatched = true
+                query = query.Where(m =>
+                    m.UserMedias.Any(um => um.UserId == userId.Value && um.IsWatched));
+            else
+                // Unwatched: no UserMedia entry at all, OR UserMedia with IsWatched = false
+                query = query.Where(m =>
+                    !m.UserMedias.Any(um => um.UserId == userId.Value && um.IsWatched));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Genre))
             query = query.Where(m => m.Genres.Any(g => g.Name == request.Genre));
@@ -78,7 +86,7 @@ public class GetMediaListQueryHandler(IApplicationDbContext context, ICurrentUse
                     : null,
                 m.Status,
                 m.NumberOfSeasons,
-                m.Type == MediaType.TvShow ? (int?)m.TvSeasons.Count() : null))
+                m.Type == MediaType.TvShow ? (int?)m.TvSeasons.Count(s => s.SeasonNumber > 0) : null))
             .ToListAsync(cancellationToken);
 
         return Result.Success(new PagedResult<MediaListItemDto>(items, total, request.Page, request.PageSize));
