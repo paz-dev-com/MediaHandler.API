@@ -37,6 +37,9 @@ public class GetMediaByIdQueryHandler(IApplicationDbContext context, ICurrentUse
             .ToList()
             .AsReadOnly();
 
+        var rootFolder = media.RootFolder
+            ?? ComputeCommonParent(media.MediaFiles.Select(f => f.FilePath));
+
         return Result.Success(new MediaDto(
             media.Id, media.TmdbId, media.Title, media.OriginalTitle, media.Overview,
             media.Type, media.ReleaseDate, media.Runtime, media.PosterPath, media.BackdropPath,
@@ -45,6 +48,29 @@ public class GetMediaByIdQueryHandler(IApplicationDbContext context, ICurrentUse
             files,
             userMedia?.IsWatched,
             media.Status,
-            media.NumberOfSeasons));
+            media.NumberOfSeasons,
+            rootFolder));
+    }
+
+    private static string? ComputeCommonParent(IEnumerable<string> filePaths)
+    {
+        var dirs = filePaths
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => Path.GetDirectoryName(p.Replace('\\', '/'))?.TrimEnd('/'))
+            .Where(d => !string.IsNullOrWhiteSpace(d))
+            .Select(d => d!.Split('/'))
+            .ToList();
+
+        if (dirs.Count == 0) return null;
+        if (dirs.Count == 1) return string.Join("/", dirs[0]);
+
+        var common = dirs[0].AsEnumerable();
+        foreach (var segments in dirs.Skip(1))
+            common = common.Zip(segments, (a, b) => a == b ? a : null)
+                           .TakeWhile(s => s is not null)
+                           .Select(s => s!);
+
+        var result = string.Join("/", common);
+        return string.IsNullOrEmpty(result) ? null : result;
     }
 }

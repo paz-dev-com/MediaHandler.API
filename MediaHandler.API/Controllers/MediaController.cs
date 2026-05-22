@@ -4,6 +4,7 @@ using MediaHandler.Application.Features.Media.Commands.CreateMedia;
 using MediaHandler.Application.Features.Media.Commands.DeleteMedia;
 using MediaHandler.Application.Features.Media.DTOs;
 using MediaHandler.Application.Features.Media.Queries.GetMediaById;
+using MediaHandler.Application.Features.Media.Queries.GetMediaCompleteness;
 using MediaHandler.Application.Features.Media.Queries.GetMediaList;
 using MediaHandler.Application.Features.Media.Queries.GetMediaStats;
 using MediaHandler.Application.Features.WatchStatus.Commands.SetWatchStatus;
@@ -85,6 +86,27 @@ public class MediaController(ISender sender) : ControllerBase
         return result.IsSuccess
             ? NoContent()
             : NotFound(ApiResponse.Fail(result.Errors.Select(e => new ApiError("NOT_FOUND", e)).ToArray()));
+    }
+
+    [HttpGet("{id:guid}/completeness")]
+    [ProducesResponseType<ApiResponse<IReadOnlyList<SeasonCompletenessDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetCompleteness(Guid id, CancellationToken ct)
+    {
+        var result = await sender.Send(new GetMediaCompletenessQuery(id), ct);
+        if (!result.IsSuccess)
+        {
+            var error = result.Errors.FirstOrDefault() ?? string.Empty;
+            if (error.StartsWith("NOT_FOUND", StringComparison.OrdinalIgnoreCase))
+                return NotFound(ApiResponse.Fail(new ApiError("NOT_FOUND", error)));
+            if (error.StartsWith("MEDIA_NOT_TV_SHOW", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(ApiResponse.Fail(new ApiError("MEDIA_NOT_TV_SHOW",
+                    "Completeness is only supported for TV shows.")));
+            return BadRequest(ApiResponse.Fail(new ApiError("VALIDATION_ERROR", error)));
+        }
+        return Ok(ApiResponse<IReadOnlyList<SeasonCompletenessDto>>.Success(result.Value));
     }
 
     [HttpPut("{id:guid}/watched")]
