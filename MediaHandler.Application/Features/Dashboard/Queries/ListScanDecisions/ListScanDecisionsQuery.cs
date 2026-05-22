@@ -26,7 +26,10 @@ public record ListScanDecisionsQuery(
     MediaType? MediaType,
     Guid? LibraryRootId,
     int Page = 1,
-    int PageSize = 50) : IRequest<Result<PagedResult<ScanItemDecisionDto>>>;
+    int PageSize = 50,
+    string? SortField = null,
+    string? SortOrder = "asc",
+    string? FileName = null) : IRequest<Result<PagedResult<ScanItemDecisionDto>>>;
 
 // =========================================================================
 // Validator
@@ -77,10 +80,23 @@ public sealed class ListScanDecisionsQueryHandler(IApplicationDbContext db)
         if (request.LibraryRootId.HasValue)
             query = query.Where(d => d.LibraryRootId == request.LibraryRootId.Value);
 
+        if (!string.IsNullOrWhiteSpace(request.FileName))
+            query = query.Where(d => d.FilePath.Contains(request.FileName));
+
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var items = await query
-            .OrderBy(d => d.FilePath)
+        var ordered = (request.SortField?.ToLowerInvariant(), request.SortOrder?.ToLowerInvariant() == "desc") switch
+        {
+            ("filename", false) => query.OrderBy(d => d.FilePath),
+            ("filename", true) => query.OrderByDescending(d => d.FilePath),
+            ("status", false) => query.OrderBy(d => d.Kind),
+            ("status", true) => query.OrderByDescending(d => d.Kind),
+            ("createdat", false) => query.OrderBy(d => d.CreatedAt),
+            ("createdat", true) => query.OrderByDescending(d => d.CreatedAt),
+            _ => query.OrderBy(d => d.FilePath),
+        };
+
+        var items = await ordered
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .Select(d => new

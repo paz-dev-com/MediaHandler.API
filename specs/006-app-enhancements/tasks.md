@@ -190,6 +190,77 @@
 
 ---
 
+## Phase 10: Sort & Filter on Admin List Endpoints (Unblocks Web US-9)
+
+**Purpose**: Extend all six admin list query handlers with optional `sortField`/`sortOrder` parameters and column-specific text filters so the frontend PrimeNG `p-table` components can delegate sort and filter to the server. Each query already has `page`/`pageSize`; this phase adds the complementary sort/filter surface.
+
+**Goal**: `GET /api/v1/admin/users?sortField=displayName&sortOrder=desc` returns users sorted by `DisplayName` descending. `GET /api/v1/admin/review-items?fileName=Inception` returns only items whose `FilePath` contains `"Inception"`. All six endpoints behave identically to today when the new params are omitted.
+
+**Independent Test**: Call each endpoint with `?sortField=<column>&sortOrder=desc` and verify ordering; call endpoints with a text filter value and verify filtering. Omit params and verify existing behaviour is unchanged.
+
+### Implementation
+
+- [X] T045 [P] Add `string? SortField = null` and `string? SortOrder = "asc"` as the last two positional parameters to `GetUsersQuery` record in `MediaHandler.Application/Features/Admin/Queries/GetUsers/GetUsersQueryHandler.cs`; replace the hardcoded `query.OrderBy(u => u.Email)` with a `switch (SortField?.ToLowerInvariant(), SortOrder?.ToLowerInvariant() == "desc")` that maps `"displayname"`, `"email"`, `"role"`, `"isactive"` to ascending/descending `OrderBy`/`OrderByDescending` calls, with `OrderBy(u => u.Email)` as the default case; update `AdminController.GetUsers()` in `MediaHandler.API/Controllers/AdminController.cs` to accept `[FromQuery] string? sortField = null` and `[FromQuery] string? sortOrder = "asc"` and pass them to the query constructor — verify `dotnet build`
+- [X] T046 [P] Add `string? SortField = null`, `string? SortOrder = "asc"`, and `string? FileName = null` as the last three positional parameters to `ListReviewItemsQuery` record in `MediaHandler.Application/Features/Review/Queries/ListReviewItems/ListReviewItemsQuery.cs`; apply `query = query.Where(r => r.FilePath.Contains(request.FileName))` when `FileName` is non-null/non-whitespace; replace the hardcoded `OrderByDescending(r => r.CreatedAt)` with a `switch` covering `"filename"` (maps to `r.FilePath`), `"status"`, `"createdat"`, with `OrderByDescending(r => r.CreatedAt)` as default; update `AdminReviewController.ListReviewItems()` in `MediaHandler.API/Controllers/AdminReviewController.cs` to accept and forward `[FromQuery] string? sortField`, `string? sortOrder`, `string? fileName` — verify `dotnet build`
+- [X] T047 [P] Add `string? SortField = null` and `string? SortOrder = "asc"` as the last two positional parameters to `ListScanHistoryQuery` record in `MediaHandler.Application/Features/Scan/Queries/ListScanHistory/ListScanHistoryQuery.cs`; replace the hardcoded `OrderByDescending(r => r.StartedAt)` with a `switch` covering `"startedat"`, `"status"`, `"mode"`, with `OrderByDescending(r => r.StartedAt)` as default; update `AdminScanController.ListHistory()` in `MediaHandler.API/Controllers/AdminScanController.cs` to accept and forward the new `[FromQuery]` params — verify `dotnet build`
+- [X] T048 [P] Add `string? SortField = null`, `string? SortOrder = "asc"`, and `string? FileName = null` as the last three positional parameters to `ListScanDecisionsQuery` record in `MediaHandler.Application/Features/Dashboard/Queries/ListScanDecisions/ListScanDecisionsQuery.cs`; apply `Contains(request.FileName)` filter on `d.FilePath` when `FileName` is non-null; replace the hardcoded `OrderBy(d => d.FilePath)` with a `switch` covering `"filename"` (maps to `d.FilePath`), `"status"` (maps to `d.Kind`), `"createdat"` (maps to `d.CreatedAt`), with `OrderBy(d => d.FilePath)` as default; update the scan decisions controller action in `MediaHandler.API/Controllers/AdminScanDecisionsController.cs` to accept and forward the new params — verify `dotnet build`
+- [X] T049 [P] Add `string? SortField = null` and `string? SortOrder = "asc"` as the last two positional parameters to `ListEnrichmentHistoryQuery` record in `MediaHandler.Application/Features/Dashboard/Queries/ListEnrichmentHistory/ListEnrichmentHistoryQuery.cs`; replace the hardcoded `OrderByDescending(r => r.StartedAt)` with a `switch` covering `"startedat"`, `"status"`, with `OrderByDescending(r => r.StartedAt)` as default; note that this query returns `PagedResult<EnrichmentRunDto>` directly (not `Result<…>`), so no change to the return-type wrapper is needed; update `AdminEnrichmentController.ListHistory()` in `MediaHandler.API/Controllers/AdminEnrichmentController.cs` to accept and forward the new params — verify `dotnet build`
+- [X] T050 [P] Add `string? SortField = null`, `string? SortOrder = "asc"`, and `string? Path = null` as the last three positional parameters to `ListLibraryRootsQuery` record in `MediaHandler.Application/Features/LibraryRoots/Queries/ListLibraryRoots/ListLibraryRootsQuery.cs`; apply `query = query.Where(r => r.Path.Contains(request.Path))` when `Path` is non-null; replace the hardcoded `OrderBy(r => r.Path)` with a `switch` covering `"path"`, `"createdat"`, with `OrderBy(r => r.Path)` as default; update `AdminLibraryRootsController.List()` in `MediaHandler.API/Controllers/AdminLibraryRootsController.cs` to accept and forward the new params — verify `dotnet build`
+
+**Checkpoint**: All six admin list endpoints accept `sortField`/`sortOrder` and their respective text filters. Omitting the new params returns data in the same default order as before. `dotnet build` succeeds with zero warnings.
+
+---
+
+## Phase 11: Incremental Scan Counter Flush (Unblocks Web US-11)
+
+**Purpose**: The `GET /api/v1/admin/scan/active` endpoint reads scan counters (`TotalDiscovered`, `Added`, `Updated`, `NeedsReview`) from the `ScanRun` DB row, which currently stays at zero until the entire scan finishes. Flushing the in-memory `ScanCounters` struct to the DB every 10 video files makes the counters visible mid-scan within the first two 4-second polling cycles.
+
+**Goal**: Start a scan on a library with >10 files; within ~8 seconds (two polling intervals), `GET /api/v1/admin/scan/active` returns at least one counter > 0.
+
+**Independent Test**: Run a scan on a library with 20+ files; confirm `GET /api/v1/admin/scan/active` returns non-zero `counts` before the scan completes.
+
+### Implementation
+
+- [X] T051 Inside the `foreach (var file in videoFiles)` loop in `ProcessRootAsync` in `MediaHandler.Infrastructure/Nas/Scanner/ScanPipeline.cs` (immediately after the `ClassifyAndPersistFileAsync` call, at the same position as the existing `processedInRoot % 50 == 0` progress-emit block), add an incremental counter flush every 10 files: `if (processedInRoot % 10 == 0) { scanRun.TotalDiscovered = counters.TotalDiscovered; scanRun.Added = counters.Added; scanRun.Updated = counters.Updated; scanRun.Unchanged = counters.Unchanged; scanRun.Removed = counters.Removed; scanRun.Excluded = counters.Excluded; scanRun.NeedsReview = counters.NeedsReview; await db.SaveChangesAsync(ct); }` — the existing final flush at lines 82–89 of `ExecuteAsync` is retained unchanged as the authoritative end-of-scan snapshot — verify `dotnet build` and run a test scan confirming non-zero counters mid-run
+
+**Checkpoint**: Scanner counters are visible in `GET /api/v1/admin/scan/active` after the first 10 video files have been processed. The final counter flush at scan completion is unaffected.
+
+---
+
+## Phase 12: Batch Assign Review Items (Unblocks Web US-12)
+
+**Purpose**: Introduce a `BatchAssignReviewItemsCommand` that resolves multiple `ReviewItem` rows to the same target `Media` in a single request, and expose it via `POST /api/v1/admin/review-items/batch-assign`. Unlike the existing `ResolveReviewItemCommand` (which accepts a TmdbId + Kind and performs a DB lookup), this command uses the internal `Media.Id` (Guid) directly — the frontend has already resolved the target via `GET /api/v1/media?title=…` search.
+
+**Goal**: `POST /api/v1/admin/review-items/batch-assign` with `{ "reviewItemIds": ["…","…"], "targetMediaId": "…" }` resolves all specified review items to the target media in one call and returns per-item success/failure results.
+
+**Independent Test**: POST with 3 valid ReviewItemIds + a valid targetMediaId — verify all 3 items are resolved (Status = Resolved) and the response contains 3 `success: true` entries. POST with one invalid ReviewItemId mixed in — verify the valid ones succeed and the invalid one produces `success: false` with a descriptive error message. POST with an unknown `targetMediaId` — verify 404.
+
+### Implementation
+
+- [X] T052 Create `BatchAssignReviewItemsCommand` record (`Guid[] ReviewItemIds`, `Guid TargetMediaId`) implementing `IRequest<Result<BatchAssignReviewItemsResponse>>`; add `BatchAssignReviewItemsCommandValidator` (FluentValidation: `ReviewItemIds` must not be empty, each element must not be `Guid.Empty`, `TargetMediaId` must not be `Guid.Empty`); implement handler: (1) resolve `Media` by `TargetMediaId` via `db.Medias.FindAsync` — return `Result.Fail("MEDIA_NOT_FOUND")` if null, (2) for each `ReviewItemId` in a loop: find `ReviewItem` by id — if not found record `BatchAssignItemResult(id, false, "REVIEW_ITEM_NOT_FOUND")`; otherwise set `reviewItem.ResolvedTmdbId = media.TmdbId`, `reviewItem.ResolvedKind = media.Type`, `reviewItem.Status = ReviewStatus.Resolved`, `reviewItem.ResolvedAt = DateTime.UtcNow`, record `BatchAssignItemResult(id, true, null)`; (3) `await db.SaveChangesAsync(cancellationToken)` once after the loop; (4) return `Result.Success(new BatchAssignReviewItemsResponse(results))` — all in `MediaHandler.Application/Features/Review/Commands/BatchAssignReviewItems/BatchAssignReviewItemsCommand.cs`; also add `BatchAssignReviewItemsRequest(Guid[] ReviewItemIds, Guid TargetMediaId)`, `BatchAssignItemResult(Guid ReviewItemId, bool Success, string? ErrorMessage)`, and `BatchAssignReviewItemsResponse(IReadOnlyList<BatchAssignItemResult> Results)` records to `MediaHandler.API/Contracts/Admin/ReviewRequests.cs` — verify `dotnet build`
+- [X] T053 Add `POST /api/v1/admin/review-items/batch-assign` action to `AdminReviewController` in `MediaHandler.API/Controllers/AdminReviewController.cs`: accept `[FromBody] BatchAssignReviewItemsRequest request`; validate that `request.ReviewItemIds` is non-empty (return `400 Bad Request ApiResponse` if empty); dispatch `new BatchAssignReviewItemsCommand(request.ReviewItemIds, request.TargetMediaId)` via `_mediator`; map `Result.IsFailure` to `404 Not Found` when the failure code is `"MEDIA_NOT_FOUND"`; return `200 OK ApiResponse<BatchAssignReviewItemsResponse>` on success; add `[ProducesResponseType(typeof(ApiResponse<BatchAssignReviewItemsResponse>), 200)]`, `[ProducesResponseType(400)]`, `[ProducesResponseType(403)]`, `[ProducesResponseType(404)]` attributes — depends on T052; verify `dotnet build` and a test POST confirming per-item results in the response
+
+**Checkpoint**: `POST /api/v1/admin/review-items/batch-assign` is live. Multiple review items can be resolved to a single target media in one call. Per-item failures are captured and returned without failing the entire batch.
+
+---
+
+## Phase 13: Collection Completeness Data (Unblocks Web US-14)
+
+**Purpose**: Surface TV show completeness information in two existing endpoints without any schema migration. `GET /api/v1/media/stats` gains an `incompleteTvShowCount` stat; `GET /api/v1/media` list items gain an `ownedSeasonCount` field for TV shows (null for films). Both changes are purely additive DTO extensions with computed EF Core projections.
+
+**Goal**: `GET /api/v1/media/stats` returns `"incompleteTvShowCount": 3` when 3 TV shows have fewer `TvSeason` records than `NumberOfSeasons`. `GET /api/v1/media` returns `"ownedSeasonCount": 2` for a TV show that has 2 persisted `TvSeason` rows, and `"ownedSeasonCount": null` for films.
+
+**Independent Test**: For a TV show with `numberOfSeasons = 4` and 2 persisted `TvSeason` rows: confirm `GET /api/v1/media` returns `ownedSeasonCount: 2`; confirm `GET /api/v1/media/stats` includes that show in `incompleteTvShowCount`. For a film: confirm `ownedSeasonCount: null`. For the stats endpoint: confirm count decreases by 1 after adding a missing season record.
+
+### Implementation
+
+- [X] T054 Add `int IncompleteTvShowCount` as the last positional parameter to `MediaStatsDto` record in `MediaHandler.Application/Features/Media/DTOs/MediaDto.cs`; update `GetMediaStatsQueryHandler.Handle` in `MediaHandler.Application/Features/Media/Queries/GetMediaStats/GetMediaStatsQueryHandler.cs` to compute `var incompleteTvShows = await context.Medias.CountAsync(m => m.Type == MediaType.TvShow && m.NumberOfSeasons.HasValue && m.TvSeasons.Count() < m.NumberOfSeasons.Value, cancellationToken)` and pass it as the last argument in `new MediaStatsDto(totalMedia, films, tvShows, watchedByUser, totalMedia - watchedByUser, totalFiles, unlinkedFiles, incompleteTvShows)` — verify `dotnet build` and confirm `GET /api/v1/media/stats` response includes `incompleteTvShowCount`
+- [X] T055 Add `int? OwnedSeasonCount` as the last positional parameter to `MediaListItemDto` record in `MediaHandler.Application/Features/Media/DTOs/MediaDto.cs`; update the `.Select(m => new MediaListItemDto(…))` projection in `GetMediaListQueryHandler.Handle` in `MediaHandler.Application/Features/Media/Queries/GetMediaList/GetMediaListQueryHandler.cs` to append `m.Type == MediaType.TvShow ? (int?)m.TvSeasons.Count() : null` as the last argument — EF Core translates this to a correlated subquery; no `Include` or additional DB calls needed — verify `dotnet build` and confirm `GET /api/v1/media` list items include `ownedSeasonCount` for TV shows and `null` for films
+
+**Checkpoint**: `GET /api/v1/media/stats` returns `incompleteTvShowCount` and `GET /api/v1/media` returns `ownedSeasonCount`. Films receive `null`. No migration required — `TvSeasons` and `NumberOfSeasons` already exist on the `Media` entity.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -204,6 +275,10 @@ Phase 1 (Domain + DTOs)
   └── Phase 7 (Tests): depends on Phases 2–6
 Phase 8 (Polish): depends on all prior phases
 Phase 9 (Enrichment Language): T038+T039 parallel → T040 → T041; T039 → T042 → T043; T044 validates all
+Phase 10 (Sort/Filter): T045–T050 are all fully independent and can run in parallel (different files)
+Phase 11 (Counter Flush): T051 is independent; can run in parallel with Phase 10
+Phase 12 (Batch Assign): T052 → T053 (endpoint depends on command); T052 independent of Phases 10–11
+Phase 13 (Completeness Data): T054 and T055 are independent (same file, different records); both independent of Phases 10–12
 ```
 
 ### Parallel Opportunities
@@ -220,6 +295,10 @@ Phase 9 (Enrichment Language): T038+T039 parallel → T040 → T041; T039 → T0
 
 **Within Phase 9** — T038 (`ScanRequests.cs`) and T039 (`IEnrichmentCoordinator.cs`) are fully independent and can run in parallel. T040 (`StartEnrichmentCommand.cs`) depends on T039; T041 (`AdminEnrichmentController.cs`) depends on T038+T040; T042 (`EnrichmentCoordinator.StartAsync`) depends on T039; T043 (private method language wiring) depends on T042; T044 (build + smoke-test) depends on all prior Phase 9 tasks.
 
+**Within Phase 10** — T045–T050 each target a different query file and a different controller file; all six can run simultaneously.
+
+**Phase 10 vs Phase 11 vs Phase 12 vs Phase 13** — All four new phases are independent of each other and can run in parallel. T053 depends on T052; T055 and T054 can run in parallel (same file, no dependency between the two changes).
+
 ### Suggested MVP Scope
 
 **User Story 1 + User Story 2 only** (Phases 1–3):
@@ -230,4 +309,6 @@ Phase 9 (Enrichment Language): T038+T039 parallel → T040 → T041; T039 → T0
 - Ship scan language + media DTO fields first; profile-picture feature (Phases 4–6) can follow
 
 **Phase 9 (Enrichment Language)** is a self-contained follow-on to Phase 2 that can be shipped independently once Phase 8 is complete — it touches only three files across two layers (Application + Infrastructure) and introduces no schema changes or new endpoints.
+
+**Phases 10–13 (Frontend-driven enhancements)** are all additive and independent — any can be shipped in isolation once Phase 8 is complete. No new migrations. Phase 12 (Batch Assign) is the only phase that adds a new endpoint; Phases 10, 11, and 13 extend existing endpoints only.
 

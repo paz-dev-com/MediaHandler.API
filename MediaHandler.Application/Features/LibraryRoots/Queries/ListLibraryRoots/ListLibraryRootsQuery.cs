@@ -12,7 +12,10 @@ public record ListLibraryRootsQuery(
     int Page = 1,
     int PageSize = 20,
     LibraryRootKind? Kind = null,
-    bool EnabledOnly = false) : IRequest<Result<PagedResult<LibraryRootDto>>>;
+    bool EnabledOnly = false,
+    string? SortField = null,
+    string? SortOrder = "asc",
+    string? Path = null) : IRequest<Result<PagedResult<LibraryRootDto>>>;
 
 public class ListLibraryRootsQueryValidator : AbstractValidator<ListLibraryRootsQuery>
 {
@@ -38,10 +41,21 @@ public sealed class ListLibraryRootsQueryHandler(IApplicationDbContext db)
         if (request.EnabledOnly)
             query = query.Where(r => r.IsEnabled);
 
+        if (!string.IsNullOrWhiteSpace(request.Path))
+            query = query.Where(r => r.Path.Contains(request.Path));
+
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var items = await query
-            .OrderBy(r => r.Path)
+        var ordered = (request.SortField?.ToLowerInvariant(), request.SortOrder?.ToLowerInvariant() == "desc") switch
+        {
+            ("path", false) => query.OrderBy(r => r.Path),
+            ("path", true) => query.OrderByDescending(r => r.Path),
+            ("createdat", false) => query.OrderBy(r => r.CreatedAt),
+            ("createdat", true) => query.OrderByDescending(r => r.CreatedAt),
+            _ => query.OrderBy(r => r.Path),
+        };
+
+        var items = await ordered
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .Select(r => new LibraryRootDto(

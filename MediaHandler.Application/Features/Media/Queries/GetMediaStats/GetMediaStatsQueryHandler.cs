@@ -33,6 +33,14 @@ public class GetMediaStatsQueryHandler(IApplicationDbContext context, ICurrentUs
             watchedByUser = await context.UserMedias
                 .CountAsync(um => um.UserId == userId.Value && um.IsWatched, cancellationToken);
 
+        var incompleteTvShows = await context.Medias
+            .CountAsync(m => m.Type == MediaType.TvShow
+                          && m.NumberOfSeasons.HasValue
+                          && m.TvSeasons.Count(s =>
+                              s.SeasonNumber > 0 &&
+                              s.TvEpisodes.Any(e => e.EpisodeFileLinks.Any())) < m.NumberOfSeasons.Value,
+                        cancellationToken);
+
         return Result.Success(new MediaStatsDto(
             totalMedia,
             films,
@@ -40,6 +48,7 @@ public class GetMediaStatsQueryHandler(IApplicationDbContext context, ICurrentUs
             watchedByUser,
             totalMedia - watchedByUser,
             totalFiles,
-            unlinkedFiles));
+            unlinkedFiles,
+            incompleteTvShows));
     }
 }

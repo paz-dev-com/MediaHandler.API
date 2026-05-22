@@ -264,6 +264,9 @@ namespace MediaHandler.Infrastructure.Migrations
                     b.Property<DateTime?>("ReleaseDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("RootFolder")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int?>("Runtime")
                         .HasColumnType("int");
 

@@ -160,9 +160,11 @@ public class AdminScanController(ISender sender) : ControllerBase
     public async Task<IActionResult> ListHistory(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] string? sortField = null,
+        [FromQuery] string? sortOrder = "asc",
         CancellationToken ct = default)
     {
-        var result = await sender.Send(new ListScanHistoryQuery(page, pageSize), ct);
+        var result = await sender.Send(new ListScanHistoryQuery(page, pageSize, sortField, sortOrder), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse.Fail(new ApiError("VALIDATION_ERROR",
@@ -194,10 +196,13 @@ public class AdminScanController(ISender sender) : ControllerBase
         [FromQuery] Guid? libraryRootId = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
+        [FromQuery] string? sortField = null,
+        [FromQuery] string? sortOrder = "asc",
+        [FromQuery] string? fileName = null,
         CancellationToken ct = default)
     {
         var result = await sender.Send(
-            new ListScanDecisionsQuery(scanId, decisionType, mediaType, libraryRootId, page, pageSize), ct);
+            new ListScanDecisionsQuery(scanId, decisionType, mediaType, libraryRootId, page, pageSize, sortField, sortOrder, fileName), ct);
 
         if (!result.IsSuccess)
             return BadRequest(ApiResponse.Fail(new ApiError("VALIDATION_ERROR",

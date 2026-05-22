@@ -69,5 +69,86 @@ public class GetMediaByIdQueryHandlerTests
         result.Value.Status.Should().BeNull();
         result.Value.NumberOfSeasons.Should().BeNull();
     }
-}
 
+    [Fact]
+    public async Task GetMediaById_WithLinkedFilesAndNoOverride_ReturnsComputedRootFolder()
+    {
+        var media = new Domain.Entities.Media
+        {
+            TmdbId = 9001,
+            Title = "Breaking Bad",
+            Type = MediaType.TvShow,
+            RootFolder = null
+        };
+        _context.Medias.Add(media);
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        _context.MediaFiles.Add(new Domain.Entities.MediaFile
+        {
+            MediaId = media.Id,
+            FilePath = "/nas/tv/Breaking Bad/Season 1/Episode 1.mkv",
+            Fingerprint = "a"
+        });
+        _context.MediaFiles.Add(new Domain.Entities.MediaFile
+        {
+            MediaId = media.Id,
+            FilePath = "/nas/tv/Breaking Bad/Season 1/Episode 2.mkv",
+            Fingerprint = "b"
+        });
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(new GetMediaByIdQuery(media.Id), TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.RootFolder.Should().Be("/nas/tv/Breaking Bad/Season 1");
+    }
+
+    [Fact]
+    public async Task GetMediaById_WithRootFolderOverride_ReturnsOverrideValue()
+    {
+        var media = new Domain.Entities.Media
+        {
+            TmdbId = 9002,
+            Title = "Breaking Bad",
+            Type = MediaType.TvShow,
+            RootFolder = "/mnt/nas/tv/Breaking Bad"
+        };
+        _context.Medias.Add(media);
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        _context.MediaFiles.Add(new Domain.Entities.MediaFile
+        {
+            MediaId = media.Id,
+            FilePath = "/some/other/path/file.mkv",
+            Fingerprint = "c"
+        });
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(new GetMediaByIdQuery(media.Id), TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.RootFolder.Should().Be("/mnt/nas/tv/Breaking Bad");
+    }
+
+    [Fact]
+    public async Task GetMediaById_NoFilesAndNoOverride_ReturnsNullRootFolder()
+    {
+        var media = new Domain.Entities.Media
+        {
+            TmdbId = 9003,
+            Title = "Unknown",
+            Type = MediaType.Film,
+            RootFolder = null
+        };
+        _context.Medias.Add(media);
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var handler = CreateHandler();
+        var result = await handler.Handle(new GetMediaByIdQuery(media.Id), TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.RootFolder.Should().BeNull();
+    }
+}

@@ -3,6 +3,7 @@ using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Features.Media.Commands.CreateMedia;
 using MediaHandler.Application.Features.Media.Queries.GetMediaById;
 using MediaHandler.Application.Features.Media.Queries.GetMediaList;
+using MediaHandler.Domain.Entities;
 using MediaHandler.Domain.Enums;
 using MediaHandler.IntegrationTests.Common;
 using NSubstitute;
@@ -87,5 +88,41 @@ public class MediaIntegrationTests : IntegrationTestBase
 
         result.IsSuccess.Should().BeFalse();
         result.Errors.Should().Contain("Media not found.");
+    }
+
+    [Fact]
+    public async Task GetMediaList_TvShowOwnedSeasonCount_UsesActualOwnedSeasons()
+    {
+        var media = new Domain.Entities.Media
+        {
+            TmdbId = 110492,
+            Title = "Peacemaker",
+            Type = MediaType.TvShow,
+            NumberOfSeasons = 2
+        };
+        DbContext.Medias.Add(media);
+        await DbContext.SaveChangesAsync(CancellationToken.None);
+
+        DbContext.TvSeasons.AddRange(
+            new TvSeason { MediaId = media.Id, SeasonNumber = 1, Name = "Season 1", EpisodeCount = 8 },
+            new TvSeason { MediaId = media.Id, SeasonNumber = 2, Name = "Season 2", EpisodeCount = 8 });
+
+        for (var ep = 1; ep <= 8; ep++)
+            DbContext.MediaFiles.Add(new MediaFile
+            {
+                MediaId = media.Id,
+                FilePath = $"/nas/tv/Peacemaker/Season 01/Peacemaker.S01E{ep:D2}.mkv",
+                Fingerprint = $"fp_s01e{ep:D2}"
+            });
+
+        await DbContext.SaveChangesAsync(CancellationToken.None);
+
+        var handler = new GetMediaListQueryHandler(DbContext, CurrentUser());
+        var result = await handler.Handle(new GetMediaListQuery(Page: 1, PageSize: 20), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var item = result.Value.Items.Single(i => i.Id == media.Id);
+        item.NumberOfSeasons.Should().Be(2);
+        item.OwnedSeasonCount.Should().Be(1);
     }
 }

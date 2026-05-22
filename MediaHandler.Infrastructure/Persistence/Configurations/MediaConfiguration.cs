@@ -54,6 +54,9 @@ public class MediaConfiguration : IEntityTypeConfiguration<Media>
 
         builder.Property(m => m.NumberOfEpisodes);
 
+        // File linking additions
+        builder.Property(m => m.RootFolder);
+
         builder.HasOne(m => m.NfoMetadata)
             .WithOne()
             .HasForeignKey<Media>(m => m.NfoMetadataId)
