@@ -25,7 +25,31 @@ public record MediaDto(
     IReadOnlyList<MediaFileDto> Files,
     bool? IsWatched,
     string? Status,
-    int? NumberOfSeasons);
+    int? NumberOfSeasons,
+    string? RootFolder);
+
+/// <summary>
+///     Per-season completeness result returned by
+///     <c>GET /api/v1/media/{id}/completeness</c>.
+/// </summary>
+public record SeasonCompletenessDto(
+    int SeasonNumber,
+    string SeasonName,
+    int TotalExpected,
+    int OwnedCount,
+    IReadOnlyList<int> MissingEpisodeNumbers,
+    bool IsComplete);
+
+/// <summary>
+///     Projection of a <see cref="MediaFile" /> record that has no
+///     associated <see cref="Media" /> item (<c>MediaId == null</c>).
+/// </summary>
+public record UnlinkedFileDto(
+    Guid Id,
+    string FilePath,
+    long? FileSizeBytes,
+    string? Format,
+    string? Resolution);
 
 public record MediaListItemDto(
     Guid Id,

@@ -36,7 +36,7 @@ public class Media : BaseEntity
     public NfoMetadata? NfoMetadata { get; set; }
 
     /// <summary>
-    ///     Multi-part stack descriptor for stacked movies; <c>null</c> for single-file items.
+    ///     Multipart stack descriptor for stacked movies; <c>null</c> for single-file items.
     /// </summary>
     public StackGroup? StackGroup { get; set; }
 
@@ -53,6 +53,14 @@ public class Media : BaseEntity
 
     /// <summary>Total number of episodes. TV shows only; <c>null</c> for films.</summary>
     public int? NumberOfEpisodes { get; set; }
+
+    /// <summary>
+    ///     Admin-set override for the root folder path on the NAS.
+    ///     When non-null, this value is returned as-is in <see cref="MediaFile" />.
+    ///     When null, the effective root folder is derived from the common parent directory
+    ///     of all linked <see cref="MediaFile" /> records at query time.
+    /// </summary>
+    public string? RootFolder { get; set; }
 
     // Navigation
 
