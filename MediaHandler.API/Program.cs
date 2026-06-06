@@ -51,6 +51,7 @@ try
     });
 
     var app = builder.Build();
+    var useHttpsRedirection = builder.Configuration.GetValue("App:UseHttpsRedirection", true);
 
     if (app.Environment.IsDevelopment())
     {
@@ -59,7 +60,8 @@ try
     }
 
     app.UseExceptionHandler();
-    app.UseHttpsRedirection();
+    if (useHttpsRedirection)
+        app.UseHttpsRedirection();
     app.UseCors("AllowFrontend");
     app.UseRateLimiter();
     app.UseAuthentication();
@@ -67,8 +69,7 @@ try
     app.MapControllers();
     app.MapHealthChecks("/health");
 
-    if (app.Environment.IsDevelopment())
-        await app.InitialiseDatabaseAsync();
+    await app.InitialiseDatabaseAsync();
 
     // Ensure the profile picture upload directory exists
     var env = app.Services.GetRequiredService<IWebHostEnvironment>();

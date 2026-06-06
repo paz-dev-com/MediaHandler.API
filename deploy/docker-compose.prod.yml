@@ -1,0 +1,81 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Production stack — pre‑built images from GHCR
+# Architecture:
+#   Caddy (host) ──► /srv/docker/mediahandler/web/ (Angular SPA, file_server)
+#   Caddy (host) ──► localhost:8080 (API .NET, reverse_proxy)
+#   │
+#   db:1433 (internal Docker network, never exposed)
+#   The "web" service no longer exists at runtime.
+#   Angular static files are deployed to /srv/docker/mediahandler/web
+#   by the CI/CD workflow of the MediaHandler.Web repository.
+# Usage:
+#  docker compose --env-file .env -f docker-compose.prod.yml up -d
+# IMAGE_TAG=sha-abc1234 docker compose ... up -d (rollback)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Database ────────────────────────────────────────────────────────
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: ${DB_SA_PASSWORD:?DB_SA_PASSWORD is required}
+      MSSQL_PID: "Developer"
+      MSSQL_TCP_PORT: 1433
+    volumes:
+      # Bind mount configurable via DATA_ROOT (persistance même si container détruit)
+      - ${DATA_ROOT:-/srv/docker/mediahandler}/db:/var/opt/mssql
+    networks:
+      - mediahandler_net
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$SA_PASSWORD\" -Q 'SELECT 1' -No -C || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
+    restart: unless-stopped
+
+  # ── .NET API ───────────────────────────────────────────────────────────────
+  api:
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER is required}/mediahandler-api:${IMAGE_TAG:-latest}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      App__UseHttpsRedirection: "false"   # TLS terminated by Caddy
+      ConnectionStrings__DefaultConnection: >-
+        Server=db,1433;Database=MediaHandler;User ID=sa;
+        Password=${DB_SA_PASSWORD};TrustServerCertificate=True;Connection Timeout=30;
+      AllowedOrigins__0: https://${APP_HOST:?APP_HOST is required}
+      Okta__Domain: ${OKTA_DOMAIN:?OKTA_DOMAIN is required}
+      Okta__ClientId: ${OKTA_CLIENT_ID:?OKTA_CLIENT_ID is required}
+      Okta__ClientSecret: ${OKTA_CLIENT_SECRET:?OKTA_CLIENT_SECRET is required}
+      Okta__Audience: ${OKTA_AUDIENCE}
+      Tmdb__ReadAccessToken: ${TMDB_READ_ACCESS_TOKEN:?TMDB_READ_ACCESS_TOKEN is required}
+      Nas__AppId: ${NAS_APP_ID:-mediahandler}
+      Nas__AppToken: ${NAS_APP_TOKEN}
+      Nas__BasePaths__0: ${NAS_BASE_PATH_0}
+      Nas__BasePaths__1: ${NAS_BASE_PATH_1}
+      Nas__FreeboxUrl: ${NAS_FREEBOX_URL:-http://mafreebox.freebox.fr}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Exposed only on localhost → accessible exclusively by Caddy (host)
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ${DATA_ROOT:-/srv/docker/mediahandler}/api/logs:/app/logs
+      - ${DATA_ROOT:-/srv/docker/mediahandler}/api/uploads:/app/wwwroot/uploads
+    networks:
+      - mediahandler_net
+    restart: unless-stopped
+
+# ── Internal Docker network ──────────────────────────────────────────────────
+# Declared as external: created once on the server (docker network create mediahandler_net)
+networks:
+  mediahandler_net:
+    name: mediahandler_net
+    external: true
+
+# No named Docker volumes — everything uses bind mounts to DATA_ROOT 
+# for simple management and direct disk‑level backups.
+
