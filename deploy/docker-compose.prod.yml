@@ -18,7 +18,7 @@ services:
   # ── Database ────────────────────────────────────────────────────────
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    user: "10001:0"   # Exécute SQL Server avec l'utilisateur mssql
+    user: "10001:0"   # rootless image: runs as non-root user with UID 10001, GID 0 (root group)
     environment:
       ACCEPT_EULA: "Y"
       SA_PASSWORD: ${DB_SA_PASSWORD:?DB_SA_PASSWORD is required}
@@ -26,8 +26,11 @@ services:
       MSSQL_TCP_PORT: 1433
     volumes:
       - ${DATA_ROOT:-/srv/docker/mediahandler}/db:/var/opt/mssql
+    ports:
+      - "127.0.0.1:1433:1433"   # Exposed only on localhost → inaccessible from outside the server
     entrypoint: >
       /bin/bash -c "
+      echo 'Fixing permissions on /var/opt/mssql...' &&
       chown -R 10001:0 /var/opt/mssql &&
       chmod -R 770 /var/opt/mssql &&
       exec /opt/mssql/bin/launch_sqlservr.sh
@@ -35,7 +38,7 @@ services:
     networks:
       - mediahandler_net
     healthcheck:
-      test: [ "CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$SA_PASSWORD\" -Q 'SELECT 1' -No -C || exit 1" ]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$SA_PASSWORD\" -Q 'SELECT 1' -No -C || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 10
