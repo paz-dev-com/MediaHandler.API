@@ -33,6 +33,14 @@ public static class ServiceExtensions
                     // Auth0 requires a trailing slash on the authority URL for OIDC discovery
                     options.Authority = okta.Domain.TrimEnd('/') + '/';
                     options.Audience = okta.Audience;
+
+                    // Preserve raw JWT claim names (sub, email, name…) instead of remapping
+                    // them to the long XML-schema ClaimTypes equivalents.
+                    // Without this, ASP.NET maps "sub" → ClaimTypes.NameIdentifier, so
+                    // User.FindFirstValue("sub") returns null and /auth/me cannot look up
+                    // the user by OktaId even though the user exists in the database.
+                    options.MapInboundClaims = false;
+
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuer = true,
@@ -41,7 +49,9 @@ public static class ServiceExtensions
                         ValidateIssuerSigningKey = true,
                         ClockSkew = TimeSpan.FromSeconds(30),
                         // Auth0 places roles in a namespaced custom claim
-                        RoleClaimType = "https://mediahandler.com/roles"
+                        RoleClaimType = "https://mediahandler.com/roles",
+                        // Keep "sub" as the name claim type to stay consistent with raw JWT names
+                        NameClaimType = "sub"
                     };
                 });
         }
