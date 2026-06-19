@@ -21,7 +21,7 @@ public class MediaConfiguration : IEntityTypeConfiguration<Media>
             .HasMaxLength(500);
 
         builder.Property(m => m.Overview)
-            .HasMaxLength(2000);
+            .HasMaxLength(int.MaxValue);
 
         builder.Property(m => m.Type)
             .IsRequired()
