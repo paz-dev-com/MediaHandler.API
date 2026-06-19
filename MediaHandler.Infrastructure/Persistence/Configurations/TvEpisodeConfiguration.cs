@@ -18,7 +18,7 @@ public class TvEpisodeConfiguration : IEntityTypeConfiguration<TvEpisode>
             .HasMaxLength(200);
 
         builder.Property(e => e.Overview)
-            .HasMaxLength(2000);
+            .HasMaxLength(int.MaxValue);
 
         builder.Property(e => e.StillPath)
             .HasMaxLength(500);

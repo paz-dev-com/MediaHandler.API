@@ -18,7 +18,7 @@ public class TvSeasonConfiguration : IEntityTypeConfiguration<TvSeason>
             .HasMaxLength(200);
 
         builder.Property(s => s.Overview)
-            .HasMaxLength(2000);
+            .HasMaxLength(int.MaxValue);
 
         builder.Property(s => s.PosterPath)
             .HasMaxLength(500);
