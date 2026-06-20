@@ -18,7 +18,7 @@ services:
   # ── Database ────────────────────────────────────────────────────────
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    user: "10001:0"   # rootless image: runs as non-root user with UID 10001, GID 0 (root group)
+    user: root
     environment:
       ACCEPT_EULA: "Y"
       SA_PASSWORD: ${DB_SA_PASSWORD:?DB_SA_PASSWORD is required}
@@ -27,14 +27,7 @@ services:
     volumes:
       - ${DATA_ROOT:-/srv/docker/mediahandler}/db:/var/opt/mssql
     ports:
-      - "127.0.0.1:1433:1433"   # Exposed only on localhost → inaccessible from outside the server
-    entrypoint: >
-      /bin/bash -c "
-      echo 'Fixing permissions on /var/opt/mssql...' &&
-      chown -R 10001:0 /var/opt/mssql &&
-      chmod -R 770 /var/opt/mssql &&
-      exec /opt/mssql/bin/launch_sqlservr.sh
-      "
+      - "127.0.0.1:1433:1433"
     networks:
       - mediahandler_net
     healthcheck:
@@ -50,7 +43,7 @@ services:
     image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER is required}/mediahandler-api:${IMAGE_TAG:-latest}
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      App__UseHttpsRedirection: "false"   # TLS terminated by Caddy
+      App__UseHttpsRedirection: "false"
       ConnectionStrings__DefaultConnection: >-
         Server=db,1433;Database=MediaHandler;User ID=sa;
         Password=${DB_SA_PASSWORD};TrustServerCertificate=True;Connection Timeout=30;
@@ -64,12 +57,15 @@ services:
       Nas__AppToken: ${NAS_APP_TOKEN}
       Nas__BasePaths__0: ${NAS_BASE_PATH_0}
       Nas__BasePaths__1: ${NAS_BASE_PATH_1}
+      Nas__BasePaths__2: ${NAS_BASE_PATH_2}
+      Nas__BasePaths__3: ${NAS_BASE_PATH_3}
+      Nas__BasePaths__4: ${NAS_BASE_PATH_4}
+      Nas__BasePaths__5: ${NAS_BASE_PATH_5}
       Nas__FreeboxUrl: ${NAS_FREEBOX_URL:-http://mafreebox.freebox.fr}
     depends_on:
       db:
         condition: service_healthy
     ports:
-      # Exposed only on localhost → accessible exclusively by Caddy (host)
       - "127.0.0.1:8080:8080"
     volumes:
       - ${DATA_ROOT:-/srv/docker/mediahandler}/api/logs:/app/logs
