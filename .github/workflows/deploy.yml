@@ -69,6 +69,10 @@ jobs:
     needs: build-push
   
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Prepare deploy directories
         run: mkdir -p /srv/docker/mediahandler/{db,api/logs,api/uploads,deploy}
   
