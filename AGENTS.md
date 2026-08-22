@@ -171,6 +171,19 @@ When a filename is parsed incorrectly, add a `[Theory]` row in `MediaHandler.Tes
 
 ---
 
+## Feature Delivery Pipeline
+
+For any feature request or non-trivial change, act as the delivery orchestrator and run this pipeline using the custom sub-agents in `.kimi-code/agents/` — one phase at a time, in order:
+
+1. `functional-analyst` — turn the request into a functional spec (user stories, acceptance criteria, business rules, edge cases). Summarize it to the user and confirm scope before continuing.
+2. `technical-architect` — convert the validated spec into a concrete design (files, handlers, DTOs, migrations, endpoints, test plan) following this document's conventions.
+3. `developer` — implement the design exactly; `dotnet build` and `dotnet test MediaHandler.Tests` must pass.
+4. `code-reviewer` — independently verify the developer's implementation against spec, design, and conventions; verdict APPROVED or CHANGES_REQUESTED. On CHANGES_REQUESTED, send the findings back to the developer and re-review (max 3 cycles, then escalate to the user).
+
+Sub-agents only see what you pass them — include the full relevant context from previous phases in every dispatch. Skip a phase only if the user explicitly asks.
+
+---
+
 ## Active Feature Spec
 
 Current active plan: `specs/007-media-file-linking/plan.md` — adds file linking/unlinking, `Media.RootFolder` override, TV completeness endpoint, and unlinked-files query.

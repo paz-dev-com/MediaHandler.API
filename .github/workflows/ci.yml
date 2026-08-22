@@ -86,11 +86,11 @@ jobs:
 
       - name: Run unit tests
         run: >
-          dotnet test MediaHandler.Tests/MediaHandler.Tests.csproj
+          dotnet test --project MediaHandler.Tests/MediaHandler.Tests.csproj
           --configuration Release
-          --logger "trx;LogFileName=unit-results.trx"
-          --collect:"XPlat Code Coverage"
           --results-directory ./test-results/unit
+          -- --report-trx --report-trx-filename unit-results.trx
+          --coverage --coverage-output-format cobertura
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -138,11 +138,11 @@ jobs:
 
       - name: Run integration tests
         run: >
-          dotnet test MediaHandler.IntegrationTests/MediaHandler.IntegrationTests.csproj
+          dotnet test --project MediaHandler.IntegrationTests/MediaHandler.IntegrationTests.csproj
           --configuration Release
-          --logger "trx;LogFileName=integration-results.trx"
-          --collect:"XPlat Code Coverage"
           --results-directory ./test-results/integration
+          -- --report-trx --report-trx-filename integration-results.trx
+          --coverage --coverage-output-format cobertura
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
