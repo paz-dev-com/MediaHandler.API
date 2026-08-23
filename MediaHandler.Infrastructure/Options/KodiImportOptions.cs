@@ -14,7 +14,7 @@ public class KodiImportOptions
     ///     are 1–50 MB. Hard ceiling 500 MB matches the transport-level request size limit.
     /// </summary>
     [Range(1_048_576, 524_288_000)]
-    public long MaxUploadSizeBytes { get; set; } = 404_857_600;
+    public long MaxUploadSizeBytes { get; set; } = 104_857_600;
 
     /// <summary>
     ///     Supported Kodi video-database schema versions (file name suffix of

@@ -7,6 +7,7 @@ using MediaHandler.Domain.Entities;
 using MediaHandler.Domain.Enums;
 using MediaHandler.Tests.Common;
 using NSubstitute;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MediaHandler.Tests.Features.KodiImport;
 
@@ -19,7 +20,12 @@ public class StartKodiImportCommandHandlerTests
 
     private StartKodiImportCommandHandler CreateHandler()
     {
-        return new StartKodiImportCommandHandler(_context, _reader, _fileStore, _coordinator);
+        return new StartKodiImportCommandHandler(
+            _context,
+            _reader,
+            _fileStore,
+            _coordinator,
+            NullLogger<StartKodiImportCommandHandler>.Instance);
     }
 
     private StartKodiImportCommand ValidCommand(

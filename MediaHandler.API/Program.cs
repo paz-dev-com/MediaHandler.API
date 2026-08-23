@@ -3,7 +3,11 @@ using MediaHandler.API.Middleware;
 using MediaHandler.API.Services;
 using MediaHandler.Application;
 using MediaHandler.Application.Common.Interfaces;
+using MediaHandler.Infrastructure.Options;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.Options;
 using Serilog;
 using static MediaHandler.Infrastructure.DependencyInjection;
 
@@ -39,6 +43,7 @@ try
     builder.Services.AddScoped<IWebRootProvider, WebRootProvider>();
 
     builder.Services.AddApiAuthentication(builder.Configuration, builder.Environment);
+    builder.Services.AddApiBehavior();
     builder.Services.AddApiRateLimiting();
     builder.Services.AddApiSwagger();
     builder.Services.AddApiHealthChecks();
@@ -48,6 +53,16 @@ try
         var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
         options.AddPolicy("AllowFrontend", policy =>
             policy.WithOrigins(allowedOrigins).AllowAnyMethod().AllowAnyHeader());
+    });
+
+    builder.Services.Configure<FormOptions>(options =>
+    {
+        options.MultipartBodyLengthLimit = 524_288_000;
+    });
+
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.Limits.MaxRequestBodySize = 524_288_000;
     });
 
     var app = builder.Build();
@@ -60,6 +75,7 @@ try
     }
 
     app.UseExceptionHandler();
+    app.UseSerilogRequestLogging();
     if (useHttpsRedirection)
         app.UseHttpsRedirection();
     app.UseCors("AllowFrontend");
@@ -78,6 +94,14 @@ try
         "uploads",
         "profile-pictures");
     Directory.CreateDirectory(uploadsDir);
+
+    // Ensure multipart buffering and Kodi import staging both use writable temp directories.
+    var aspNetTempDir = Environment.GetEnvironmentVariable("ASPNETCORE_TEMP");
+    if (!string.IsNullOrWhiteSpace(aspNetTempDir))
+        Directory.CreateDirectory(aspNetTempDir);
+
+    var kodiImportOptions = app.Services.GetRequiredService<IOptions<KodiImportOptions>>().Value;
+    Directory.CreateDirectory(kodiImportOptions.EffectiveTempDirectory);
 
     // Recover any ScanRun rows stuck in Running status after a crash/restart
     await ApplyScanRunRecoveryAsync(app.Services);

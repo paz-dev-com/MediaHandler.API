@@ -14,6 +14,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Logging;
+using System.IO;
 
 namespace MediaHandler.API.Controllers;
 
@@ -25,7 +27,7 @@ namespace MediaHandler.API.Controllers;
 [Route("api/v1/admin/kodi-import")]
 [Authorize(Policy = "AdminOnly")]
 [EnableRateLimiting("fixed")]
-public class AdminKodiImportController(ISender sender) : ControllerBase
+public class AdminKodiImportController(ISender sender, ILogger<AdminKodiImportController> logger) : ControllerBase
 {
     private static readonly JsonSerializerOptions OverrideJsonOptions = new()
     {
@@ -58,80 +60,186 @@ public class AdminKodiImportController(ISender sender) : ControllerBase
     {
         if (file is null || file.Length == 0)
         {
+            logger.LogWarning("Rejected Kodi import request: no file was provided.");
             return BadRequest(ApiResponse.Fail(new ApiError(
                 "VALIDATION_ERROR", "A non-empty Kodi database file is required.", "file")));
         }
 
-        KodiImportMode importMode;
-        if (string.IsNullOrWhiteSpace(mode))
+        if (!TryParseMode(mode, out var importMode))
         {
-            importMode = KodiImportMode.Import;
-        }
-        else if (mode.Equals("import", StringComparison.OrdinalIgnoreCase))
-        {
-            importMode = KodiImportMode.Import;
-        }
-        else if (mode.Equals("preview", StringComparison.OrdinalIgnoreCase))
-        {
-            importMode = KodiImportMode.Preview;
-        }
-        else
-        {
+            logger.LogWarning("Rejected Kodi import request for file {FileName}: invalid mode {Mode}.", file.FileName, mode);
             return BadRequest(ApiResponse.Fail(new ApiError(
                 "VALIDATION_ERROR", "mode must be 'import' or 'preview'.", "mode")));
         }
 
-        IReadOnlyList<KodiPathMappingSnapshot>? overrideMappings = null;
-        if (!string.IsNullOrWhiteSpace(overrides))
+        if (!TryParseOverrides(overrides, file.FileName, out var overrideMappings, out var overrideError))
         {
-            try
-            {
-                var parsed = JsonSerializer.Deserialize<List<PathMappingOverrideRequest>>(overrides, OverrideJsonOptions);
-                if (parsed is not null)
-                {
-                    overrideMappings = parsed
-                        .Select(o => new KodiPathMappingSnapshot(o.KodiPrefix ?? string.Empty, o.NasPrefix ?? string.Empty))
-                        .ToList();
-                }
-            }
-            catch (JsonException)
-            {
-                return BadRequest(ApiResponse.Fail(new ApiError(
-                    "VALIDATION_ERROR",
-                    "overrides must be a JSON array of {\"kodiPrefix\":…,\"nasPrefix\":…}.",
-                    "overrides")));
-            }
+            return overrideError!;
         }
 
         await using var content = file.OpenReadStream();
-        var result = await sender.Send(
-            new StartKodiImportCommand(file.FileName, file.Length, content, importMode, overrideMappings), ct);
+        return await StartImportInternal(file.FileName, file.Length, content, importMode, overrideMappings, ct);
+    }
 
-        if (!result.IsSuccess)
-            return MapStartError(result.Errors.FirstOrDefault() ?? "Unknown error");
-
-        // Re-read the newly created run to build the response (mirrors AdminScanController.StartScan)
-        var detail = await sender.Send(new GetKodiImportRunQuery(result.Value.ImportRunId), ct);
-        if (detail.IsSuccess)
+    /// <summary>
+    ///     Raw binary upload alternative for environments where multipart uploads are
+    ///     truncated by intermediate proxies. The request body is the DB file bytes.
+    /// </summary>
+    [HttpPost("raw")]
+    [RequestSizeLimit(524_288_000)]
+    [Consumes("application/octet-stream")]
+    [ProducesResponseType<ApiResponse<ImportRunDto>>(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ApiResponse>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> StartImportRaw(
+        [FromQuery] string? fileName,
+        [FromQuery] string? mode,
+        [FromQuery] string? overrides,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
         {
-            var d = detail.Value;
-            return StatusCode(StatusCodes.Status202Accepted,
-                ApiResponse<ImportRunDto>.Success(new ImportRunDto(
-                    d.Id, d.Mode, d.Status, d.SourceFileName, d.SchemaVersion,
-                    d.StartedAt, d.FinishedAt, d.FailureReason, d.Counts)));
+            return BadRequest(ApiResponse.Fail(new ApiError(
+                "VALIDATION_ERROR", "fileName query parameter is required.", "fileName")));
         }
 
-        return StatusCode(StatusCodes.Status202Accepted,
-            ApiResponse<ImportRunDto>.Success(new ImportRunDto(
-                result.Value.ImportRunId,
-                importMode,
-                ImportRunStatus.Pending,
-                file.FileName,
-                0,
-                DateTime.UtcNow,
-                null,
-                null,
-                new ImportCountsDto(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))));
+        if (!TryParseMode(mode, out var importMode))
+        {
+            logger.LogWarning("Rejected raw Kodi import request for file {FileName}: invalid mode {Mode}.", fileName, mode);
+            return BadRequest(ApiResponse.Fail(new ApiError(
+                "VALIDATION_ERROR", "mode must be 'import' or 'preview'.", "mode")));
+        }
+
+        if (!TryParseOverrides(overrides, fileName, out var overrideMappings, out var overrideError))
+        {
+            return overrideError!;
+        }
+
+        try
+        {
+            var declaredLength = Request.ContentLength ?? 0;
+            return await StartImportInternal(fileName, declaredLength, Request.Body, importMode, overrideMappings, ct);
+        }
+        catch (IOException ioEx)
+        {
+            logger.LogWarning(ioEx,
+                "Raw Kodi import upload for file {FileName} failed while reading request body.", fileName);
+            return BadRequest(ApiResponse.Fail(new ApiError(
+                "UPLOAD_INCOMPLETE",
+                "The uploaded request body ended unexpectedly. Please retry the upload.")));
+        }
+    }
+
+    private async Task<IActionResult> StartImportInternal(
+        string fileName,
+        long declaredLength,
+        Stream content,
+        KodiImportMode importMode,
+        IReadOnlyList<KodiPathMappingSnapshot>? overrideMappings,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await sender.Send(
+                new StartKodiImportCommand(fileName, declaredLength, content, importMode, overrideMappings), ct);
+
+            if (!result.IsSuccess)
+            {
+                var error = result.Errors.FirstOrDefault() ?? "Unknown error";
+                logger.LogWarning("Kodi import request for file {FileName} was rejected: {Error}.", fileName, error);
+                return MapStartError(error);
+            }
+
+            // Re-read the newly created run to build the response (mirrors AdminScanController.StartScan)
+            var detail = await sender.Send(new GetKodiImportRunQuery(result.Value.ImportRunId), ct);
+            if (detail.IsSuccess)
+            {
+                var d = detail.Value;
+                logger.LogInformation("Accepted Kodi import run {ImportRunId} for file {FileName} (mode={Mode}).",
+                    result.Value.ImportRunId, fileName, importMode);
+                return StatusCode(StatusCodes.Status202Accepted,
+                    ApiResponse<ImportRunDto>.Success(new ImportRunDto(
+                        d.Id, d.Mode, d.Status, d.SourceFileName, d.SchemaVersion,
+                        d.StartedAt, d.FinishedAt, d.FailureReason, d.Counts)));
+            }
+
+            logger.LogInformation("Accepted Kodi import run {ImportRunId} for file {FileName} (mode={Mode}); run details were not available yet.",
+                result.Value.ImportRunId, fileName, importMode);
+            return StatusCode(StatusCodes.Status202Accepted,
+                ApiResponse<ImportRunDto>.Success(new ImportRunDto(
+                    result.Value.ImportRunId,
+                    importMode,
+                    ImportRunStatus.Pending,
+                    fileName,
+                    0,
+                    DateTime.UtcNow,
+                    null,
+                    null,
+                    new ImportCountsDto(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected failure while starting Kodi import for file {FileName}.", fileName);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                ApiResponse.Fail(new ApiError("INTERNAL_ERROR", "The Kodi import could not be started.")));
+        }
+    }
+
+    private static bool TryParseMode(string? mode, out KodiImportMode importMode)
+    {
+        if (string.IsNullOrWhiteSpace(mode) || mode.Equals("import", StringComparison.OrdinalIgnoreCase))
+        {
+            importMode = KodiImportMode.Import;
+            return true;
+        }
+
+        if (mode.Equals("preview", StringComparison.OrdinalIgnoreCase))
+        {
+            importMode = KodiImportMode.Preview;
+            return true;
+        }
+
+        importMode = KodiImportMode.Import;
+        return false;
+    }
+
+    private bool TryParseOverrides(
+        string? overrides,
+        string fileName,
+        out IReadOnlyList<KodiPathMappingSnapshot>? overrideMappings,
+        out IActionResult? error)
+    {
+        overrideMappings = null;
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(overrides))
+        {
+            return true;
+        }
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<List<PathMappingOverrideRequest>>(overrides, OverrideJsonOptions);
+            if (parsed is not null)
+            {
+                overrideMappings = parsed
+                    .Select(o => new KodiPathMappingSnapshot(o.KodiPrefix ?? string.Empty, o.NasPrefix ?? string.Empty))
+                    .ToList();
+            }
+
+            return true;
+        }
+        catch (JsonException)
+        {
+            logger.LogWarning("Rejected Kodi import request for file {FileName}: malformed overrides JSON.", fileName);
+            error = BadRequest(ApiResponse.Fail(new ApiError(
+                "VALIDATION_ERROR",
+                "overrides must be a JSON array of {\"kodiPrefix\":…,\"nasPrefix\":…}.",
+                "overrides")));
+            return false;
+        }
     }
 
     /// <summary>Browse the import-run history, newest first. Paginated (max pageSize 100).</summary>

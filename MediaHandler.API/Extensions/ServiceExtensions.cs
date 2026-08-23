@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using MediaHandler.API.Models;
 using MediaHandler.API.Identity;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Infrastructure.Options;
@@ -6,6 +7,8 @@ using MediaHandler.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -121,5 +124,80 @@ public static class ServiceExtensions
             .AddDbContextCheck<MediaHandlerDbContext>("database");
 
         return services;
+    }
+
+    public static IServiceCollection AddApiBehavior(this IServiceCollection services)
+    {
+        services.Configure<ApiBehaviorOptions>(options =>
+        {
+            options.InvalidModelStateResponseFactory = context =>
+            {
+                var logger = context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("MediaHandler.API.ModelBinding");
+
+                var details = context.ModelState
+                    .Where(entry => entry.Value is { Errors.Count: > 0 })
+                    .SelectMany(entry => entry.Value!.Errors.Select(error => new
+                    {
+                        Field = entry.Key,
+                        Message = ResolveModelErrorMessage(error)
+                    }))
+                    .ToList();
+
+                logger.LogWarning(
+                    "Rejected request {Method} {Path} due to invalid model state. ContentType={ContentType}; ContentLength={ContentLength}; Errors={Errors}",
+                    context.HttpContext.Request.Method,
+                    context.HttpContext.Request.Path,
+                    context.HttpContext.Request.ContentType,
+                    context.HttpContext.Request.ContentLength,
+                    details);
+
+                var apiErrors = details.Count == 0
+                    ? [new ApiError("VALIDATION_ERROR", "The request payload is invalid.")]
+                    : details.Select(detail => MapModelError(detail.Field, detail.Message)).ToArray();
+
+                return new BadRequestObjectResult(ApiResponse.Fail(apiErrors));
+            };
+        });
+
+        return services;
+    }
+
+    private static ApiError MapModelError(string? field, string message)
+    {
+        var normalizedField = string.IsNullOrWhiteSpace(field) ? "file" : field;
+
+        if (message.Contains("Multipart body length limit", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("request body too large", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("Request body too large", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("exceeds the configured request body size limit", StringComparison.OrdinalIgnoreCase))
+        {
+            return new ApiError(
+                "UPLOAD_TOO_LARGE",
+                "The uploaded file exceeds the configured request size limit of 500 MB.",
+                normalizedField);
+        }
+
+        if (message.Contains("Failed to read the request form", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("multipart", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("Unexpected end of Stream", StringComparison.OrdinalIgnoreCase) ||
+            message.Contains("Unexpected end of request content", StringComparison.OrdinalIgnoreCase))
+        {
+            return new ApiError(
+                "INVALID_MULTIPART",
+                "The uploaded form-data payload could not be read completely. Please retry the upload.",
+                normalizedField);
+        }
+
+        return new ApiError("VALIDATION_ERROR", message, normalizedField);
+    }
+
+    private static string ResolveModelErrorMessage(ModelError error)
+    {
+        if (!string.IsNullOrWhiteSpace(error.ErrorMessage))
+            return error.ErrorMessage;
+
+        return error.Exception?.Message ?? "The request payload could not be parsed.";
     }
 }

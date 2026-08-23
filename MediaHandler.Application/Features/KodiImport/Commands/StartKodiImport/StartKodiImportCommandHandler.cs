@@ -4,6 +4,7 @@ using MediaHandler.Application.Common.Models.Kodi;
 using MediaHandler.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace MediaHandler.Application.Features.KodiImport.Commands.StartKodiImport;
 
@@ -22,7 +23,8 @@ public sealed class StartKodiImportCommandHandler(
     IApplicationDbContext db,
     IKodiVideoDbReader reader,
     IKodiImportFileStore fileStore,
-    IImportRunCoordinator coordinator)
+    IImportRunCoordinator coordinator,
+    ILogger<StartKodiImportCommandHandler> logger)
     : IRequestHandler<StartKodiImportCommand, Result<KodiImportRunHandle>>
 {
     public async Task<Result<KodiImportRunHandle>> Handle(
@@ -32,6 +34,7 @@ public sealed class StartKodiImportCommandHandler(
         // 1. Schema version comes from the file name suffix (FR-003)
         if (!KodiDbFileName.TryParseVersion(request.FileName, out var schemaVersion))
         {
+            logger.LogWarning("Rejected Kodi import upload {FileName}: invalid Kodi database file name.", request.FileName);
             return Result.Fail<KodiImportRunHandle>(
                 "INVALID_FILE_NAME: The uploaded file name does not look like a Kodi video database. " +
                 "Keep the original MyVideos<version>.db file name (e.g. MyVideos121.db).");
@@ -41,7 +44,13 @@ public sealed class StartKodiImportCommandHandler(
         var stored = await fileStore.SaveAsync(
             request.Content, request.FileName, request.DeclaredLengthBytes, cancellationToken);
         if (!stored.IsSuccess)
+        {
+            logger.LogWarning(
+                "Kodi import upload {FileName} was rejected while storing the file: {Error}.",
+                request.FileName,
+                stored.Errors.FirstOrDefault() ?? "Unknown error");
             return Result.Fail<KodiImportRunHandle>(stored.Errors);
+        }
 
         var storedFilePath = stored.Value.FilePath;
 
@@ -51,6 +60,12 @@ public sealed class StartKodiImportCommandHandler(
         if (!validation.IsValid)
         {
             fileStore.Delete(storedFilePath);
+            logger.LogWarning(
+                "Kodi import upload {FileName} stored at {StoredFilePath} failed validation: {ErrorCode} - {ErrorMessage}.",
+                request.FileName,
+                storedFilePath,
+                validation.ErrorCode,
+                validation.ErrorMessage);
             return Result.Fail<KodiImportRunHandle>(
                 $"{validation.ErrorCode}: {validation.ErrorMessage}");
         }
@@ -66,6 +81,11 @@ public sealed class StartKodiImportCommandHandler(
         if (activeRun is not null)
         {
             fileStore.Delete(storedFilePath);
+            logger.LogWarning(
+                "Kodi import upload {FileName} stored at {StoredFilePath} was rejected because import run {ActiveRunId} is already running.",
+                request.FileName,
+                storedFilePath,
+                activeRun.Id);
             return Result.Fail<KodiImportRunHandle>(
                 "IMPORT_IN_PROGRESS: An import is already running. Wait for it to complete.");
         }
@@ -88,6 +108,10 @@ public sealed class StartKodiImportCommandHandler(
         catch (InvalidOperationException ex) when (ex.Message.Contains("IMPORT_IN_PROGRESS"))
         {
             fileStore.Delete(storedFilePath);
+            logger.LogWarning(
+                "Kodi import upload {FileName} stored at {StoredFilePath} lost the coordinator race: import already running.",
+                request.FileName,
+                storedFilePath);
             return Result.Fail<KodiImportRunHandle>(
                 "IMPORT_IN_PROGRESS: An import is already running. Wait for it to complete.");
         }
