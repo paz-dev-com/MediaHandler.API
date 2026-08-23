@@ -29,6 +29,9 @@ public class ReviewItem : BaseEntity
     /// <summary>Current resolution state.</summary>
     public required ReviewStatus Status { get; set; }
 
+    /// <summary>Which subsystem surfaced this item (scanner or Kodi database import).</summary>
+    public ReviewItemSource Source { get; set; } = ReviewItemSource.Scan;
+
     // Parsed metadata (populated from the filename / NFO)
 
     /// <summary>Title extracted from the filename or NFO; may be <c>null</c> if unparseable.</summary>

@@ -17,7 +17,7 @@ namespace MediaHandler.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "10.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -172,6 +172,234 @@ namespace MediaHandler.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("ExclusionRules");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.ImportItemOutcome", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ImportRunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("KodiItemId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("KodiItemKind")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("KodiPathPrefix")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("LinkOutcome")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("LinkedFileCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("MediaFileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("MediaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("MediaKind")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImportRunId");
+
+                    b.HasIndex("ImportRunId", "Outcome");
+
+                    b.HasIndex("KodiItemKind", "KodiItemId");
+
+                    b.ToTable("ImportItemOutcomes");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.ImportRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Conflicts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("EpisodesCreated")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("FilesLinked")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("IdentityLookupFailures")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ItemsReused")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ItemsUnchanged")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("MoviesCreated")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NeedsReview")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NoLongerInKodi")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NoScannedFiles")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PathMappingsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("[]");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ShowsCreated")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SkippedMusicVideos")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceFileName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("TotalItems")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UnmatchedPaths")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UnmatchedPrefixesJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("[]");
+
+                    b.Property<int>("UnsupportedLocations")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UploadedFilePath")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartedAt");
+
+                    b.HasIndex("Status")
+                        .IsUnique()
+                        .HasFilter("[Status] = 'Running'");
+
+                    b.ToTable("ImportRuns");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.KodiPathMapping", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("KodiPrefix")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("NasPrefix")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KodiPrefix")
+                        .IsUnique();
+
+                    b.HasIndex("SortOrder");
+
+                    b.ToTable("KodiPathMappings");
                 });
 
             modelBuilder.Entity("MediaHandler.Domain.Entities.LibraryRoot", b =>
@@ -533,6 +761,12 @@ namespace MediaHandler.Infrastructure.Migrations
 
                     b.Property<int?>("ResolvedTmdbId")
                         .HasColumnType("int");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Scan");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -1090,6 +1324,17 @@ namespace MediaHandler.Infrastructure.Migrations
                     b.Navigation("TvEpisode");
                 });
 
+            modelBuilder.Entity("MediaHandler.Domain.Entities.ImportItemOutcome", b =>
+                {
+                    b.HasOne("MediaHandler.Domain.Entities.ImportRun", "ImportRun")
+                        .WithMany("Outcomes")
+                        .HasForeignKey("ImportRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ImportRun");
+                });
+
             modelBuilder.Entity("MediaHandler.Domain.Entities.Media", b =>
                 {
                     b.HasOne("MediaHandler.Domain.Entities.NfoMetadata", "NfoMetadata")
@@ -1250,6 +1495,11 @@ namespace MediaHandler.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MediaHandler.Domain.Entities.ImportRun", b =>
+                {
+                    b.Navigation("Outcomes");
                 });
 
             modelBuilder.Entity("MediaHandler.Domain.Entities.LibraryRoot", b =>

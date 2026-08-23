@@ -57,4 +57,23 @@ public interface ITmdbService
         MediaType? kindHint,
         string language = "en-US",
         CancellationToken cancellationToken = default);
+
+    // Kodi import: external-id resolution
+    /// <summary>
+    ///     Resolves a non-TMDB external identifier to a TMDB identity via
+    ///     <c>GET /3/find/{id}?external_source=…</c>.
+    /// </summary>
+    /// <param name="externalId">The identifier value (e.g. an IMDB id such as <c>tt0133093</c>).</param>
+    /// <param name="externalSource"><c>imdb_id</c> | <c>tvdb_id</c>.</param>
+    /// <param name="kindHint">
+    ///     <c>Film</c> → movie results, <c>TvShow</c> → tv results, <c>null</c> → movie first then tv
+    ///     (mirrors the matcher's id-lookup precedence).
+    /// </param>
+    /// <returns><c>null</c> when the external id yields no result. <see cref="HttpRequestException" /> propagates.</returns>
+    Task<TmdbIdLookupResult?> FindByExternalIdAsync(
+        string externalId,
+        string externalSource,
+        MediaType? kindHint,
+        string language = "en-US",
+        CancellationToken cancellationToken = default);
 }

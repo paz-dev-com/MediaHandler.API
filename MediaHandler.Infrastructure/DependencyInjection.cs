@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using MediaHandler.Application.Common.Interfaces;
 using MediaHandler.Application.Common.Models.Scanner;
 using MediaHandler.Domain.Enums;
+using MediaHandler.Infrastructure.Kodi;
 using MediaHandler.Infrastructure.Nas;
 using MediaHandler.Infrastructure.Nas.Scanner;
 using MediaHandler.Infrastructure.Options;
@@ -54,6 +55,11 @@ public static class DependencyInjection
         services.AddOptions<ReleaseTagOptions>()
             .Bind(configuration.GetSection(ReleaseTagOptions.SectionName));
 
+        services.AddOptions<KodiImportOptions>()
+            .Bind(configuration.GetSection(KodiImportOptions.Section))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<MediaHandlerDbContext>());
 
         services.AddHttpClient("Freebox")
@@ -81,6 +87,20 @@ public static class DependencyInjection
         // Singleton: owns background TMDB enrichment run lifecycle (mirrors ScanRunCoordinator).
         services.AddSingleton<EnrichmentCoordinator>();
         services.AddSingleton<IEnrichmentCoordinator>(sp => sp.GetRequiredService<EnrichmentCoordinator>());
+
+        // Kodi import coordinator
+        // Singleton: owns background import run lifecycle (mirrors ScanRunCoordinator).
+        services.AddSingleton<ImportRunCoordinator>();
+        services.AddSingleton<IImportRunCoordinator>(sp => sp.GetRequiredService<ImportRunCoordinator>());
+
+        // Kodi import scoped services
+        services.AddScoped<IKodiVideoDbReader, KodiVideoDbReader>();
+        services.AddScoped<IKodiImportFileStore, KodiImportFileStore>();
+
+        // KodiImportPipeline: scoped so each import run gets a fresh pipeline (and fresh DbContext).
+        // Resolved by ImportRunCoordinator via IServiceScopeFactory — never injected directly
+        // into a singleton.
+        services.AddScoped<KodiImportPipeline>();
 
         // File rename service
         // Scoped: uses IApplicationDbContext (also scoped) for DB updates.
@@ -143,5 +163,43 @@ public static class DependencyInjection
         logger.LogWarning(
             "Startup recovery: {Count} scan run(s) were stuck in Running status and have been marked Failed.",
             stuckRuns.Count);
+    }
+
+    /// <summary>
+    ///     On application startup, transitions any <c>ImportRun</c> rows left in <c>Pending</c> or
+    ///     <c>Running</c> status to <c>Failed</c>, deletes their still-referenced uploaded files,
+    ///     and purges the Kodi import temp directory (no legitimate uploaded file can exist at
+    ///     startup). Call this from <c>Program.cs</c> right after <see cref="ApplyScanRunRecoveryAsync" />.
+    /// </summary>
+    public static async Task ApplyImportRunRecoveryAsync(IServiceProvider serviceProvider)
+    {
+        await using var scope = serviceProvider.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<MediaHandlerDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<MediaHandlerDbContext>>();
+        var fileStore = scope.ServiceProvider.GetRequiredService<IKodiImportFileStore>();
+
+        var stuckRuns = await db.ImportRuns
+            .Where(r => r.Status == ImportRunStatus.Pending || r.Status == ImportRunStatus.Running)
+            .ToListAsync();
+
+        foreach (var run in stuckRuns)
+        {
+            run.Status = ImportRunStatus.Failed;
+            run.FinishedAt = DateTime.UtcNow;
+            run.FailureReason = "Process restarted before import finished";
+
+            fileStore.Delete(run.UploadedFilePath);
+            run.UploadedFilePath = null;
+        }
+
+        if (stuckRuns.Count > 0)
+        {
+            await db.SaveChangesAsync();
+            logger.LogWarning(
+                "Startup recovery: {Count} import run(s) were stuck and have been marked Failed.",
+                stuckRuns.Count);
+        }
+
+        fileStore.PurgeOrphans();
     }
 }

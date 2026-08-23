@@ -28,5 +28,10 @@ public interface IApplicationDbContext
     // Dashboard API entities
     DbSet<EnrichmentRun> EnrichmentRuns { get; }
 
+    // Kodi import entities
+    DbSet<ImportRun> ImportRuns { get; }
+    DbSet<ImportItemOutcome> ImportItemOutcomes { get; }
+    DbSet<KodiPathMapping> KodiPathMappings { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

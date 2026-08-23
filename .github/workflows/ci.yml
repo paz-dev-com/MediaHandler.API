@@ -86,7 +86,7 @@ jobs:
 
       - name: Run unit tests
         run: >
-          dotnet test --project MediaHandler.Tests/MediaHandler.Tests.csproj
+          dotnet test MediaHandler.Tests/MediaHandler.Tests.csproj
           --configuration Release
           --results-directory ./test-results/unit
           -- --report-trx --report-trx-filename unit-results.trx
@@ -138,7 +138,7 @@ jobs:
 
       - name: Run integration tests
         run: >
-          dotnet test --project MediaHandler.IntegrationTests/MediaHandler.IntegrationTests.csproj
+          dotnet test MediaHandler.IntegrationTests/MediaHandler.IntegrationTests.csproj
           --configuration Release
           --results-directory ./test-results/integration
           -- --report-trx --report-trx-filename integration-results.trx

@@ -171,20 +171,22 @@ When a filename is parsed incorrectly, add a `[Theory]` row in `MediaHandler.Tes
 
 ---
 
-## Feature Delivery Pipeline
+## Feature Delivery Pipeline (Unified Agents — Backend Context)
 
-For any feature request or non-trivial change, act as the delivery orchestrator and run this pipeline using the custom sub-agents in `.kimi-code/agents/` — one phase at a time, in order:
+Unified agents automatically detect whether the request concerns backend, frontend, or both.
 
-1. `functional-analyst` — turn the request into a functional spec (user stories, acceptance criteria, business rules, edge cases). Summarize it to the user and confirm scope before continuing.
-2. `technical-architect` — convert the validated spec into a concrete design (files, handlers, DTOs, migrations, endpoints, test plan) following this document's conventions.
-3. `developer` — implement the design exactly; `dotnet build` and `dotnet test MediaHandler.Tests` must pass.
-4. `code-reviewer` — independently verify the developer's implementation against spec, design, and conventions; verdict APPROVED or CHANGES_REQUESTED. On CHANGES_REQUESTED, send the findings back to the developer and re-review (max 3 cycles, then escalate to the user).
+### Backend pipeline
 
-Sub-agents only see what you pass them — include the full relevant context from previous phases in every dispatch. Skip a phase only if the user explicitly asks.
+1. `analyst` — backend functional spec
+2. `architect` — CQRS handlers, DTOs, migrations, endpoints
+3. `developer` — implement backend design; run `dotnet build` + `dotnet test MediaHandler.Tests`
+4. `code-reviewer` — verify backend correctness; APPROVED or CHANGES_REQUESTED
+
+Unified agents load this repo’s conventions automatically when backend context is detected.
 
 ---
 
 ## Active Feature Spec
 
-Current active plan: `specs/007-media-file-linking/plan.md` — adds file linking/unlinking, `Media.RootFolder` override, TV completeness endpoint, and unlinked-files query.
+Current active plan: `specs/008-kodi-db-import/plan.md` — adds Kodi video database upload import (path-mapping translation, file linking, idempotent re-import, preview mode, run reports).
 
