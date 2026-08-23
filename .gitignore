@@ -88,3 +88,8 @@ Desktop.ini
 
 # Logs
 *.log
+
+# IA
+.kimi-code/
+.specify/
+.kimi-code/agents/

@@ -171,7 +171,22 @@ When a filename is parsed incorrectly, add a `[Theory]` row in `MediaHandler.Tes
 
 ---
 
+## Feature Delivery Pipeline (Unified Agents — Backend Context)
+
+Unified agents automatically detect whether the request concerns backend, frontend, or both.
+
+### Backend pipeline
+
+1. `analyst` — backend functional spec
+2. `architect` — CQRS handlers, DTOs, migrations, endpoints
+3. `developer` — implement backend design; run `dotnet build` + `dotnet test MediaHandler.Tests`
+4. `code-reviewer` — verify backend correctness; APPROVED or CHANGES_REQUESTED
+
+Unified agents load this repo’s conventions automatically when backend context is detected.
+
+---
+
 ## Active Feature Spec
 
-Current active plan: `specs/007-media-file-linking/plan.md` — adds file linking/unlinking, `Media.RootFolder` override, TV completeness endpoint, and unlinked-files query.
+Current active plan: `specs/008-kodi-db-import/plan.md` — adds Kodi video database upload import (path-mapping translation, file linking, idempotent re-import, preview mode, run reports).
 

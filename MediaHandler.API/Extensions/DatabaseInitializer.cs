@@ -1,6 +1,7 @@
 using MediaHandler.Domain.Enums;
 using MediaHandler.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace MediaHandler.API.Extensions;
 
@@ -24,16 +25,31 @@ public static class DatabaseInitializer
             return;
         }
 
-        if (!await db.Database.CanConnectAsync())
+        try
         {
-            // Database does not exist yet — create it by applying all migrations.
+            // Attempt to migrate the database.
+            // This will create the database and apply all migrations if it doesn't exist,
+            // or just apply pending migrations if it already exists.
             await db.Database.MigrateAsync();
         }
-        else
+        catch (SqlException ex) when (ex.Number == 1801)
         {
+            // Error 1801: "Database already exists"
+            // This happens when the container restarts and the persisted database in the volume
+            // still exists. In this case, just apply any pending migrations.
+            var logger = app.Services.GetRequiredService<ILogger<object>>();
+            logger.LogInformation("Database already exists. Checking for pending migrations...");
+
             var pending = await db.Database.GetPendingMigrationsAsync();
             if (pending.Any())
+            {
+                logger.LogInformation("Found {PendingCount} pending migrations. Applying migrations...", pending.Count());
                 await db.Database.MigrateAsync();
+            }
+            else
+            {
+                logger.LogInformation("No pending migrations found. Database is up to date.");
+            }
         }
 
         await CleanUpStaleEnrichmentRunsAsync(db);
