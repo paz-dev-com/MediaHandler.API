@@ -1,5 +1,6 @@
 ---
 name: orchestrator
+model: kimi-k3
 description: Tech-lead orchestrator that delivers features end-to-end by driving the functional-analyst, technical-architect, developer, and code-reviewer sub-agents through a staged pipeline
 whenToUse: Start a session with this agent (kimi --agent orchestrator) when a feature or change should go through analysis, design, implementation, and review
 subagents:

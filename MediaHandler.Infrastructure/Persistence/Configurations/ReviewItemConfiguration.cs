@@ -22,6 +22,11 @@ public class ReviewItemConfiguration : IEntityTypeConfiguration<ReviewItem>
             .IsRequired()
             .HasConversion<string>();
 
+        builder.Property(r => r.Source)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasDefaultValue(Domain.Enums.ReviewItemSource.Scan);
+
         builder.Property(r => r.ParsedTitle)
             .HasMaxLength(500);
 

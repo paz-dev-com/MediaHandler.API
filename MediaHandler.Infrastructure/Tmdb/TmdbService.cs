@@ -265,6 +265,60 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
         return DateTime.TryParse(date, out var result) ? result : null;
     }
 
+    // =========================================================================
+    // Kodi import: external-id resolution
+    // =========================================================================
+
+    /// <inheritdoc />
+    public async Task<TmdbIdLookupResult?> FindByExternalIdAsync(
+        string externalId,
+        string externalSource,
+        MediaType? kindHint,
+        string language = "en-US",
+        CancellationToken cancellationToken = default)
+    {
+        // SOURCE: TMDB API docs – GET /3/find/{external_id}?external_source=imdb_id|tvdb_id
+        var url = $"/3/find/{Uri.EscapeDataString(externalId)}?external_source={externalSource}&language={language}";
+
+        TmdbFindResultJson? response;
+        try
+        {
+            response = await httpClient.GetFromJsonAsync<TmdbFindResultJson>(url, cancellationToken);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "TMDB external-id lookup failed for {Source} '{ExternalId}'.",
+                externalSource, externalId);
+            throw;
+        }
+
+        if (response is null)
+            return null;
+
+        // kindHint picks the preferred result list; null hint tries movie first then tv
+        // (mirrors the matcher's id-lookup precedence).
+        var movie = response.MovieResults?.FirstOrDefault();
+        var tv = response.TvResults?.FirstOrDefault();
+
+        var (entry, kind) = kindHint == MediaType.TvShow
+            ? (tv ?? movie, tv is not null ? MediaType.TvShow : MediaType.Film)
+            : (movie ?? tv, movie is not null ? MediaType.Film : MediaType.TvShow);
+
+        if (entry is null)
+            return null;
+
+        return new TmdbIdLookupResult(
+            entry.Id,
+            kind,
+            entry.Title ?? entry.Name ?? string.Empty,
+            ParseDate(entry.ReleaseDate ?? entry.FirstAirDate)?.Year,
+            entry.PosterPath);
+    }
+
     private record TmdbPagedResponse<T>(
         [property: JsonPropertyName("results")]
         List<T>? Results,
@@ -301,6 +355,23 @@ public sealed class TmdbService(HttpClient httpClient, ILogger<TmdbService> logg
     private record TmdbGenreJson(
         [property: JsonPropertyName("id")] int Id,
         [property: JsonPropertyName("name")] string Name);
+
+    private record TmdbFindResultJson(
+        [property: JsonPropertyName("movie_results")]
+        List<TmdbFindEntryJson>? MovieResults,
+        [property: JsonPropertyName("tv_results")]
+        List<TmdbFindEntryJson>? TvResults);
+
+    private record TmdbFindEntryJson(
+        [property: JsonPropertyName("id")] int Id,
+        [property: JsonPropertyName("title")] string? Title,
+        [property: JsonPropertyName("name")] string? Name,
+        [property: JsonPropertyName("release_date")]
+        string? ReleaseDate,
+        [property: JsonPropertyName("first_air_date")]
+        string? FirstAirDate,
+        [property: JsonPropertyName("poster_path")]
+        string? PosterPath);
 
     private record TmdbMovieDetailsJson(
         [property: JsonPropertyName("id")] int Id,

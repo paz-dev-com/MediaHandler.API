@@ -1,5 +1,6 @@
 ---
 name: code-reviewer
+model: kimi-k2.7-code
 description: Strict code reviewer that independently verifies the developer agent's implementation — re-running builds and tests, auditing the diff against spec, design, and conventions — and returns severity-ranked findings with a clear verdict
 whenToUse: Fourth phase of the delivery pipeline, after implementation; also resumed to re-review fixes
 tools:

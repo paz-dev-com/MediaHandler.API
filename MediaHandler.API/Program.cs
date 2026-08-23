@@ -9,7 +9,7 @@ using static MediaHandler.Infrastructure.DependencyInjection;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .CreateBootstrapLogger();
+    .CreateLogger();
 
 try
 {
@@ -81,6 +81,9 @@ try
 
     // Recover any ScanRun rows stuck in Running status after a crash/restart
     await ApplyScanRunRecoveryAsync(app.Services);
+
+    // Recover any ImportRun rows stuck in Pending/Running status and purge orphaned uploads
+    await ApplyImportRunRecoveryAsync(app.Services);
 
     app.Run();
 }

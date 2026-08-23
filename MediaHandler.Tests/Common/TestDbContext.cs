@@ -31,6 +31,11 @@ public class TestDbContext : DbContext, IApplicationDbContext
     public DbSet<EpisodeFileLink> EpisodeFileLinks => Set<EpisodeFileLink>();
     public DbSet<EnrichmentRun> EnrichmentRuns => Set<EnrichmentRun>();
 
+    // Kodi import entities
+    public DbSet<ImportRun> ImportRuns => Set<ImportRun>();
+    public DbSet<ImportItemOutcome> ImportItemOutcomes => Set<ImportItemOutcome>();
+    public DbSet<KodiPathMapping> KodiPathMappings => Set<KodiPathMapping>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

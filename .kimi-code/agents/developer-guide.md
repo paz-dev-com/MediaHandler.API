@@ -1,5 +1,6 @@
 ---
 name: developer
+model: kimi-k2.7-code
 description: Software developer that implements a technical design with surgical, convention-compliant changes and verifies them with builds and tests
 whenToUse: Third phase of the delivery pipeline, once a technical design exists; also resumed to fix code-review findings
 tools:
